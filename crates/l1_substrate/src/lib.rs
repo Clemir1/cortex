@@ -35,6 +35,7 @@ pub mod metrics;
 pub mod module;
 pub mod reservoir;
 pub mod runner;
+pub mod soa;
 pub mod state_matrix;
 pub mod survival;
 
@@ -47,5 +48,6 @@ pub use metrics::L1Metrics;
 pub use module::{ClusterModule, SubstrateSummary};
 pub use reservoir::{HotmReservoir, PlasticityStatus, ReadoutResult};
 pub use runner::{L1Runner, L1StepReport};
+pub use soa::SampleSoA;
 pub use state_matrix::ClusterStateMatrix;
 pub use survival::{CollectiveEmergency, SurvivalConfig, SurvivalDecision, SurvivalState};

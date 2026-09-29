@@ -212,43 +212,21 @@ impl HotmReservoir {
         }
 
         // --- Features da amostra (todas com denominador explícito) ---
+        // 17.2: kernels SoA colunares da amostra — bit-idênticos aos
+        // loops AoS anteriores (mesma ordem de acumulação; prontos
+        // para o rayon por coluna com redução canônica na 17.3).
         let d = cfg::DIMENSIONALITY;
         let sm = crate::config::slice::SHORT_MEMORY;
-        let mut mean_norm = 0.0;
+        let soa = crate::soa::SampleSoA::pack(clusters, &sample);
+        let dim_mean = soa.dim_sums();
+        let mut mean_norm = soa.norms_sum();
+        let mut short_proj = soa.proj_sums(sm.start, self.dim);
+        let (sep_acc, sep_n) = soa.separation_sum((sample.len() / 64).max(1), d);
         let mut mean_entropy = 0.0;
         let mut mean_firing = 0.0;
-        let mut short_proj = vec![0.0; self.dim];
-        // Separação: pares espaçados por stride (cap de custo, sem rng).
-        let mut sep_acc = 0.0;
-        let mut sep_n = 0;
-        let pair_stride = (sample.len() / 64).max(1);
-        let mut p = 0;
-        while p + pair_stride < sample.len() {
-            let a = &clusters[sample[p]].state;
-            let b = &clusters[sample[p + pair_stride]].state;
-            let mut s = 0.0;
-            for k in 0..d {
-                s += (a[k] - b[k]).abs();
-            }
-            sep_acc += s / d as f64;
-            sep_n += 1;
-            p += pair_stride;
-        }
-        // Diversidade: desvio-padrão das médias por dimensão.
-        let mut dim_mean = vec![0.0; d];
         for &i in &sample {
-            let st = &clusters[i].state;
-            let mut n2 = 0.0;
-            for k in 0..d {
-                dim_mean[k] += st[k];
-                n2 += st[k] * st[k];
-            }
-            mean_norm += n2.sqrt();
             mean_entropy += clusters[i].entropy_cache;
             mean_firing += clusters[i].firing_rate;
-            for k in 0..self.dim {
-                short_proj[k] += st[sm.start + k];
-            }
         }
         let n = sample.len() as f64;
         mean_norm /= n;

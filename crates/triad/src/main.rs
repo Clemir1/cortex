@@ -1,4 +1,4 @@
-﻿//! Organismo cognitivo Triad_AEE: sobe o núcleo L1–L5 e roda passos.
+//! Organismo cognitivo Triad_AEE: sobe o núcleo L1–L5 e roda passos.
 //!
 //! L1 e L2 são REAIS: o substrato executa o passo físico e o tecido
 //! deriva a organização mesoscópica sobre ele (formação por afinidade,
@@ -141,6 +141,36 @@ fn main() {
     // ciclo L3→L2 ter janelas de cadência completas (slots 31 e 61).
     let ticks = 65u64;
     println!("=== Triad_AEE: núcleo L1-L5 online ===");
+
+    // ---- Inventário canônico de módulos (doc/CAMADA.txt, seção 17.1) ----
+    // O BOOT serve de inventário: classificação por FUNÇÃO PRIMÁRIA
+    // (L1–L5 cognitivas + T suporte), ordens O1–O5 como dimensão
+    // própria, dono do estado, backend, criticalidade e evidência
+    // na escada E0–E5 — tudo DECLARADO; pendência de declaração é
+    // reportada, nunca silenciada (ausência ≠ zero).
+    {
+        let inventario: Vec<(&str, &dyn rt::CognitiveModule)> = vec![
+            ("1", &*l1_handle),
+            ("2", &*l2_handle),
+            ("3", &*l3_handle),
+            ("4", &*l4_handle),
+            ("5", &*l5_handle),
+        ];
+        println!("=== Inventário canônico (doc/CAMADA.txt) ===");
+        let mut completos = 0usize;
+        for (pos, m) in &inventario {
+            let d = m.descriptor();
+            println!("  [{pos}] {}", d.summary());
+            if d.is_canonical().is_empty() {
+                completos += 1;
+            }
+        }
+        println!(
+            "Descritores canônicos completos: {completos}/{} — development (T) declarado, montagem no app é a 16.6",
+            inventario.len()
+        );
+    }
+
     for t in 1..=ticks {
         let report = scheduler.step();
         println!(
@@ -294,6 +324,39 @@ fn main() {
         l5_stats.wake_scheduled,
         l5_stats.no_source_ticks,
     );
+
+    // T-observability (diretriz do dono): a validação do organismo vai
+    // para var/system.log (legível) e var/system.json (estruturado) —
+    // a cada RUN é um evento de validação, taxas sempre com denominador.
+    if let Ok(journal) = triad_observability::SystemJournal::open_default() {
+        let _ = journal.event(
+            "validacao_organismo",
+            &[
+                ("ticks", "65".to_string()),
+                ("l2_publicacoes_valor", pv.to_string()),
+                ("l2_publicacoes_ausencia", pa.to_string()),
+                ("l2_consumos_valor", cv.to_string()),
+                ("l2_consumos_ausencia", ca.to_string()),
+                ("l3_propostas", l3_handle.proposals_total().to_string()),
+                ("chladni_bonus_ticks", bonus_ticks.to_string()),
+                ("chladni_total_ticks", chladni_total.to_string()),
+                (
+                    "chladni_taxa",
+                    format!(
+                        "{:?}",
+                        tf::Rate::from_ratio(bonus_ticks, chladni_total).map(|r| r.value())
+                    ),
+                ),
+                ("l4_commits", l4_stats.decisions_committed.to_string()),
+                ("l4_envelopes_fechados", l4_stats.envelopes_closed.to_string()),
+                ("l4_confirmados", l4_stats.confirmed.to_string()),
+                ("l4_reforcos_l3", l4_stats.memory_submissions.to_string()),
+                ("l5_propostas_meta", l5_stats.meta_proposals.to_string()),
+                ("l5_revertidas_meta", l5_stats.meta_reverted.to_string()),
+                ("resultado", "sem violar as leis da casa".to_string()),
+            ],
+        );
+    }
 
     println!("Núcleo encerrado sem violar as leis da casa.");
 }

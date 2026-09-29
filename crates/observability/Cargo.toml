@@ -1,0 +1,20 @@
+# =============================================================================
+# triad-observability — T-observability (transversal, camada NONE)
+#
+# Telemetria profunda e reporting do organismo (diretriz do dono): a
+# cada teste e validação, a interface system.log (legível) e a
+# telemetria estruturada system.json (um objeto por evento) —
+# herdeiros do legado. Escrita em append atômico por linha.
+#
+# FORA de escopo: estado cognitivo, decisão, política — este crate
+# SÓ observa e registra (nunca escreve estado do organismo).
+# =============================================================================
+
+[package]
+name = "triad-observability"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+serde_json = "1"

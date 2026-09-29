@@ -13,3 +13,4 @@ triad-l2-tissue = { path = "../l2_tissue" }
 triad-l3-local = { path = "../l3_local" }
 triad-l4-global = { path = "../l4_global" }
 triad-l5-meta = { path = "../l5_metacognition" }
+triad-observability = { path = "../observability" }

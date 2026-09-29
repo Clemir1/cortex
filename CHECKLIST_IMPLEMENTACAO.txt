@@ -443,7 +443,7 @@ legado -- a 17.3 e extensao consciente (gate ALIGNED/OPPOSING como mecanica);
 
 FASE 1 -- FUNDACAO ESTRUTURAL (instrumentacao; faz todo o resto
 conforme o desenho; sem isso os descritores continuam inferidos):
-[ ] [7] 17.1 DESCritor CANONICO de modulo (CAMADA.txt): estender
+[x] [7] 17.1 DESCritor CANONICO de modulo (CAMADA.txt): estender
          ModuleDescriptor com entity_kind, cognitive_layer,
          support_layer, cybernetic_orders [O1..O5], state_owner,
          inputs/outputs/actuators, execution_backend, criticality,
@@ -538,7 +538,7 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
 [x] [6] 17.1 Benchmarks baseline (criterion): passo L1 atual nas cargas
         1.200 / 5K / 30K (tick e2e), thresholds declarados ANTES de
         medir; baseline salvo em var/ (nao versionado)
-[ ] [6] 17.2 SoA n x 97 bit-identico: estado dos clusters em
+[x] [6] 17.2 SoA n x 97 bit-identico: estado dos clusters em
         Struct-of-Arrays com A/A bit-exato vs AoS (mesma seed)
 [ ] [6] 17.3 Paralelismo deterministico da fisica L1: rayon par_chunks
         com reducao em ordem canonica (sem lock global no hot path),
@@ -595,3 +595,21 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
   GPU (17.7) decide pelo objetivo de frequencia por cluster, nao por
   emergencia. Baseline completo em var/bench/baseline-l1*.txt (nao
   versionado), numeros citados aqui (auditoria).
+
+- SESSAO 6 (17.2 fechado + DIRETRIZES NOVAS do dono): (1) SoA n x 97
+  INTEGRADO ao reservoir: soa.rs com kernels colunares
+  (dim_sums/norms_sum/proj_sums/separation_sum) que preservam a ordem
+  de acumulacao -- A/A BIT-EXATO provado com assert_eq! f64 SEM
+  tolerancia contra os loops AoS originais; L1 48 verdes (46 + 2);
+  30K re-medido: 3.67 ms/tick (baseline 3.99). (2) DIRETRIZ DO DONO
+  f32/f64 DINAMICO registrada como POLITICA DA 17.3: f32 no estado
+  dinamico/compute massivo (GPU-ready), f64 so onde o beneficio de
+  precisao for MEDIDO -- a comparacao f32 vs f64 entra no bench do
+  rayon (17.3); o estado canonico 97D permanece f64 (hashes
+  versionados, A/A bit-exato). (3) DIRETRIZ DO DONO de telemetria:
+  CRATE triad-observability (T-transversal, camada NONE) com
+  SystemJournal -> var/system.log (interface legivel) e
+  var/system.json (objeto por evento) a CADA validacao; app integrado
+  (evento validacao_organismo com taxas e denominadores); harnesses
+  de teste seguem o mesmo padrao (proximos marcos); ausencia !=
+  zero e append atomico por linha.
