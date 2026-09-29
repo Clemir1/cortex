@@ -514,6 +514,7 @@ dependencies = [
  "triad-chladni",
  "triad-contracts",
  "triad-foundation",
+ "triad-l1-substrate",
  "triad-runtime",
 ]
 
@@ -574,6 +575,7 @@ dependencies = [
  "serde",
  "toml",
  "tracing",
+ "triad-chladni",
  "triad-contracts",
  "triad-foundation",
  "triad-l1-substrate",
@@ -601,9 +603,16 @@ dependencies = [
 name = "triad-l5-meta"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "toml",
+ "tracing",
  "triad-contracts",
  "triad-development",
  "triad-foundation",
+ "triad-l1-substrate",
+ "triad-l2-tissue",
+ "triad-l3-local",
+ "triad-l4-global",
  "triad-runtime",
 ]
 

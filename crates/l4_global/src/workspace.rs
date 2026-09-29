@@ -1,9 +1,14 @@
 //! Espaço de trabalho global: competição e broadcast com uma vitória por rodada.
 //!
-//! REAL (P1 da análise 13-0): a capacidade vem de `[l4.workspace]
-//! capacity` (clássico 7±2 do workspace, não mais 128 hard-coded);
-//! as entradas são submetidas pelo `L4Module` a partir de dados L3 —
-//! este módulo nunca fabrica candidatos.
+//! REAL (P1 da análise 13-0 + correção da seção 15): a capacidade vem
+//! de `[l4.workspace] capacity` (clássico 7±2 do workspace); a
+//! **habituação** (GWT/novelty — Baars: o workspace valoriza o NOVO)
+//! faz o vencedor repetido perder força exponencial, circulando o
+//! spotlight (Dehaene: seleção por amplificação, não por mérito
+//! estático); as entradas vêm do `L4Module` com dados L3 — este
+//! módulo nunca fabrica candidatos.
+
+use std::collections::HashMap;
 
 use crate::config::WorkspaceCfg;
 use crate::{StageLosses, WorkspaceStage};
@@ -26,6 +31,8 @@ pub struct GlobalWorkspace {
     entries: Vec<WorkspaceEntry>,
     /// Histórico de perdas por estágio.
     losses: Vec<StageLosses>,
+    /// Vitórias consecutivas por conteúdo (habituação — GWT/novelty).
+    win_streaks: HashMap<String, u32>,
     /// Política vigente de `[l4.workspace]`.
     cfg: WorkspaceCfg,
 }
@@ -41,6 +48,7 @@ impl GlobalWorkspace {
         Self {
             entries: Vec::new(),
             losses: Vec::new(),
+            win_streaks: HashMap::new(),
             cfg,
         }
     }
@@ -78,21 +86,37 @@ impl GlobalWorkspace {
         }
     }
 
-    /// Broadcast: devolve o vencedor (maior saliência; empate fica
-    /// com o mais antigo — determinismo) e limpa a competição.
+    /// Broadcast: devolve o vencedor pela SALIÊNCIA EFETIVA (com
+    /// habituação — vencedor repetido perde força exponencial;
+    /// empate fica com o mais antigo: determinismo) e limpa a
+    /// competição. O streak do vencedor sobe; o dos demais zera
+    /// (novelty: quem não venceu volta com força total).
     pub fn broadcast(&mut self) -> Option<WorkspaceEntry> {
         if self.entries.is_empty() {
             return None;
         }
+        let rate = self.cfg.habituation_rate.clamp(0.0, 1.0);
+        let effective = |content: &str, salience: f32| -> f32 {
+            let streak = self.win_streaks.get(content).copied().unwrap_or(0);
+            salience * rate.powi(streak as i32)
+        };
         let mut best = 0usize;
+        let mut best_eff = f32::NEG_INFINITY;
         for (i, e) in self.entries.iter().enumerate() {
-            if e.salience > self.entries[best].salience {
+            let eff = effective(&e.content, e.salience);
+            if eff > best_eff {
+                best_eff = eff;
                 best = i;
             }
         }
         let total = self.entries.len();
         let winner = self.entries.remove(best);
         let dropped = self.entries.len();
+        // Habituação: o vencedor acumula streak; os demais resetam.
+        for e in &self.entries {
+            self.win_streaks.remove(&e.content);
+        }
+        *self.win_streaks.entry(winner.content.clone()).or_insert(0) += 1;
         // Perdas tipadas da fronteira do broadcast (contrato L4 interno:
         // candidate→…→broadcast).
         self.losses.push(StageLosses {
@@ -112,6 +136,12 @@ impl GlobalWorkspace {
     /// Histórico de perdas por estágio.
     pub fn losses(&self) -> &[StageLosses] {
         &self.losses
+    }
+
+    /// Sequência de vitórias corrente de um conteúdo (auditoria da
+    /// habituação — GWT/novelty).
+    pub fn win_streak(&self, content: &str) -> u32 {
+        self.win_streaks.get(content).copied().unwrap_or(0)
     }
 
     /// Política vigente (auditoria da configuração).
@@ -157,5 +187,63 @@ mod tests {
         ws.submit(WorkspaceStage::Local, "segundo", 0.7);
         let winner = ws.broadcast().expect("empate resolvido");
         assert_eq!(winner.content, "primeiro");
+    }
+
+    #[test]
+    fn habituacao_circula_o_spotlight_entre_conteudos() {
+        // GWT/novelty: sem habituação, "forte" venceria para sempre.
+        let mut ws = GlobalWorkspace::new();
+        ws.submit(WorkspaceStage::Local, "forte", 0.9);
+        ws.submit(WorkspaceStage::Local, "medio", 0.5);
+        assert_eq!(ws.broadcast().expect("1º").content, "forte");
+        // Reaparecem com as mesmas saliências: forte agora 0.9×0.5=0.45.
+        ws.submit(WorkspaceStage::Local, "forte", 0.9);
+        ws.submit(WorkspaceStage::Local, "medio", 0.5);
+        assert_eq!(ws.broadcast().expect("2º").content, "medio", "streak halvera o forte");
+        assert_eq!(ws.win_streak("medio"), 1);
+        // Terceira rodada: medio 0.5×0.5=0.25 vs forte resetado 0.9.
+        ws.submit(WorkspaceStage::Local, "forte", 0.9);
+        ws.submit(WorkspaceStage::Local, "medio", 0.5);
+        let winner = ws.broadcast().expect("3º");
+        assert_eq!(winner.content, "forte", "perdedor reseta o streak");
+        assert_eq!(ws.win_streak("medio"), 0, "medio perdeu ⇒ novelty zerada");
+    }
+
+    #[test]
+    fn habituacao_rate_um_desliga_a_politica() {
+        // rate = 1.0: 1^streak = 1 ⇒ sem habituação, o bruto vence sempre.
+        let cfg = WorkspaceCfg {
+            habituation_rate: 1.0,
+            ..WorkspaceCfg::default()
+        };
+        let mut ws = GlobalWorkspace::with_config(cfg);
+        for _ in 0..3 {
+            ws.submit(WorkspaceStage::Local, "forte", 0.9);
+            ws.submit(WorkspaceStage::Local, "medio", 0.5);
+            assert_eq!(ws.broadcast().expect("sem habituação").content, "forte");
+        }
+    }
+
+    #[test]
+    fn habituacao_rate_zero_zera_o_vencedor_anterior() {
+        // rate = 0.0: uma vitória zera o conteúdo até ele perder.
+        let cfg = WorkspaceCfg {
+            habituation_rate: 0.0,
+            ..WorkspaceCfg::default()
+        };
+        let mut ws = GlobalWorkspace::with_config(cfg);
+        ws.submit(WorkspaceStage::Local, "forte", 0.9);
+        ws.submit(WorkspaceStage::Local, "medio", 0.5);
+        assert_eq!(ws.broadcast().expect("1º").content, "forte");
+        ws.submit(WorkspaceStage::Local, "forte", 0.9);
+        ws.submit(WorkspaceStage::Local, "medio", 0.5);
+        assert_eq!(
+            ws.broadcast().expect("2º").content,
+            "medio",
+            "forte com streak zera (0.9×0)"
+        );
+        ws.submit(WorkspaceStage::Local, "forte", 0.9);
+        ws.submit(WorkspaceStage::Local, "medio", 0.5);
+        assert_eq!(ws.broadcast().expect("3º").content, "forte", "streaks resetam");
     }
 }

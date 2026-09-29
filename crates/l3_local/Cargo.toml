@@ -8,10 +8,11 @@ triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
 triad-runtime = { path = "../runtime" }
 triad-l2-tissue = { path = "../l2_tissue" }
+triad-l1-substrate = { path = "../l1_substrate" }
+triad-chladni = { path = "../chladni" }
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "1" }
 tracing = "0.1"
 
 [dev-dependencies]
-triad-l1-substrate = { path = "../l1_substrate" }
 toml = "0.8"

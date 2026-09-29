@@ -1,0 +1,1751 @@
+A reescrita em Rust + Lua deve começar por uma correção conceitual: L1–L5 não podem continuar sendo inferidos pelo pipeline em que um componente executa. A própria telemetria atual avisa que vários `L5*` foram inferidos de `meta_pipeline`, que camada cognitiva não é a mesma coisa que pipeline de execução, e ainda existem módulos sem camada definida e divergência entre os 69 módulos observados e os 72 registrados. :chatgpt-content-reference{index="0"} :chatgpt-content-reference{index="1"}
+
+Portanto, para Rust/Lua eu faria uma classificação canônica nova baseada na função primária de cada componente. O BOOT atual deve servir como inventário; ele próprio registra que `DECLARED` não prova execução, produção, consumo ou efeito causal. :chatgpt-content-reference{index="2"}
+
+A regra estrutural deve ser:
+
+L1 = substrato e dinâmica.
+L2 = organização mesoscópica/tecidual.
+L3 = cognição local e representação.
+L4 = integração cognitiva global.
+L5 = metacognição, adaptação e governo cognitivo.
+T = tudo que atravessa camadas sem ser uma camada cognitiva: runtime, GPU, persistência, telemetria, leis, federações, ecologias, desenvolvimento etc.
+
+E O1–O5 continuam sendo outra dimensão. O1 não é L1, O2 não é L2 etc.
+
+L1 = SUBSTRATO E DINÂMICA NEURAL COMPUTACIONAL
+
+Responsabilidade:
+
+manter unidades cognitivas vivas, dinâmicas, temporalmente recorrentes, conectadas e plasticamente modificáveis.
+
+L1 não deve “entender conceitos”. Deve fornecer o meio físico/computacional sobre o qual conceitos podem emergir.
+
+Módulos canônicos:
+
+1. ClusterStore — RUST
+
+Responsável pelo estado canônico dos clusters.
+
+Absorve:
+
+ClusterBio
+ClusterState
+ClusterRole
+ClusterLifecycle
+energia individual
+stress local
+atividade
+estado 97D
+memory_trace
+idade
+tenure
+especialização básica.
+
+Não usar objetos espalhados.
+
+Em Rust:
+
+SoA/Structure-of-Arrays.
+
+GPU trabalha diretamente sobre os buffers.
+
+2. LocalGraph — RUST + WGPU
+
+Responsável pelas conexões físicas/funcionais entre clusters.
+
+Contém:
+
+neighbors
+edges
+weights
+CSR
+overlays
+local degree
+connectivity.
+
+Absorve:
+
+connectivity
+spatial hash
+edge orchestration
+semantic repair estrutural quando puramente topológico.
+
+3. EnergyHomeostasis — RUST
+
+Responsável por:
+
+energia local
+sobrevivência
+stress fisiológico
+resiliência
+homeostase básica.
+
+Absorve:
+
+Energy Regulation
+energy_homeostasis
+energy_survival.
+
+Não absorve Cognitive Economy; esta pertence a L5.
+
+4. RecurrentDynamics — RUST + WGPU
+
+Este será um dos componentes fundamentais.
+
+Absorve:
+
+HOTM Layer
+Reservoir Computing
+Temporal Recurrence
+Temporal Dynamics
+memory trace temporal.
+
+Internamente deve permitir vários motores:
+
+HotmDynamics
+PredictiveRecurrentDynamics
+future SpikingDynamics.
+
+O HOTM deixa de definir o córtex e passa a implementar uma estratégia de dinâmica recorrente.
+
+5. LocalPlasticity — RUST + WGPU
+
+Responsável por:
+
+Hebbian
+STDP-like
+weight update
+local adaptation
+synaptic decay.
+
+Lua pode fornecer parâmetros.
+
+Lua nunca altera os pesos diretamente.
+
+6. LocalInhibition — RUST/WGPU
+
+Novo componente recomendado.
+
+Responsável por:
+
+competição local
+inibição lateral
+sparsidade
+controle de saturação
+seleção local.
+
+Isso é necessário se o objetivo for uma dinâmica cortical mais realista.
+
+7. LocalPredictionError — RUST/WGPU
+
+Novo componente recomendado.
+
+Permite:
+
+prediction
+→ observation
+→ local error
+→ plasticity.
+
+Esse será o início do Predictive Coding hierárquico.
+
+8. HarmonicDynamics — RUST/WGPU
+
+Absorve somente a parte realmente funcional de:
+
+Harmonic Engine
+Multi-Phase Resonance local.
+
+Não deve virar “módulo cognitivo”.
+
+É uma propriedade dinâmica de L1.
+
+9. ChladniModulator — RUST/WGPU, EXPERIMENTAL
+
+Chladni deve permanecer apenas se ablações demonstrarem benefício.
+
+Função:
+
+modulação estrutural/ressonante
+perturbação controlada
+separação de padrões
+exploração de atratores.
+
+Não é cognição.
+
+Pode posteriormente migrar para `extensions/experimental`.
+
+10. ClusterLifecycle — RUST
+
+Responsável por:
+
+ACTIVE
+QUIESCENT
+DORMANT
+MATURE
+CONSOLIDATED
+DEAD etc.
+
+Mas:
+
+divisão
+fusão
+macro-morfogênese
+
+não devem permanecer no loop cognitivo L1.
+
+Devem ir para T/Development.
+
+L1 NÃO DEVE CONTER
+
+World Model
+Global Workspace
+identidade
+semântica
+linguagem
+governança
+federação
+ecologia
+leis
+telemetria.
+
+L2 = ORGANIZAÇÃO TECIDUAL / MESOSCÓPICA
+
+L2 responde:
+
+como milhares de unidades L1 formam populações funcionais cooperativas?
+
+A Run atual já possui cobertura tecidual de 100%, milhares de bridges e adaptação, mas o feedback L3→L2 continua chegando sem ser admitido: 16 recebidos e zero admitidos. Essa é uma fronteira estrutural que a nova arquitetura precisa corrigir. :chatgpt-content-reference{index="3"}
+
+Módulos canônicos:
+
+1. TissueStore — RUST
+
+Estado canônico dos tecidos:
+
+TissueId
+members
+specialization
+energy
+coherence
+capacity
+state
+age
+plasticity.
+
+2. TissueRegistry — RUST
+
+Criação, localização e lifecycle de tecidos.
+
+3. TissueOrganization — RUST
+
+Absorve:
+
+Adaptive Tissues
+tissue_organization.
+
+Responsável por:
+
+membership
+reassignment
+specialization
+formation.
+
+4. TissueAffinity — RUST/WGPU
+
+Responsável por calcular:
+
+compatibilidade
+afinidade
+similaridade
+potencial de associação.
+
+GPU apenas para matemática.
+
+5. TissueBridge — RUST
+
+Responsável por:
+
+inter-tissue links
+bridge lifecycle
+bridge activity
+cross-tissue routing.
+
+6. TissueAdaptation — RUST
+
+Responsável por:
+
+reorganizar tecidos existentes.
+
+Não confundir com morfogênese global.
+
+7. TissueHomeostasis — RUST
+
+Regulação mesoscópica de:
+
+energia
+densidade
+capacidade
+atividade.
+
+8. TissueRouter — RUST
+
+Roteamento entre tecidos.
+
+Absorve parte de:
+
+Cognitive Routes
+Spatial Regions Manager.
+
+9. TopDownFeedback — RUST
+
+Este é obrigatório.
+
+Implementa:
+
+L3 → L2.
+
+Entrada:
+
+AdaptationRequest.
+
+Saída:
+
+TissueAdaptationResult.
+
+Nunca mais:
+
+feedback recebido=16
+admitido=0
+
+sem reason explícito.
+
+10. BottomUpProjection — RUST
+
+Implementa:
+
+L2 → L3.
+
+Produz representações agregadas dos tecidos.
+
+11. TissueSpecialization — RUST + LUA POLICY
+
+Rust mantém mecanismo.
+
+Lua pode definir:
+
+thresholds
+pressure
+specialization policies.
+
+12. TissueEventBus — T, NÃO L2
+
+Embora suporte tecidos, é infraestrutura.
+
+Vai para:
+
+T/runtime/event_bus.
+
+L3 = COGNIÇÃO LOCAL / REPRESENTAÇÃO
+
+L3 transforma dinâmica em conteúdo representacional.
+
+É onde aparece:
+
+“isto representa alguma coisa”.
+
+Módulos canônicos:
+
+1. SemanticRepresentation — RUST
+
+Absorve:
+
+Semantic Grounding
+Semantic Emergence
+Semantic Concept
+Semantic Coherence.
+
+Responsabilidades:
+
+representation
+concept
+grounding
+coherence
+activation.
+
+2. SemanticBinding — RUST
+
+Absorve:
+
+Semantic Binding
+SymbolicBinding.
+
+Responsável por ligar:
+
+representações
+conceitos
+contextos
+significados.
+
+3. ConceptStore — RUST
+
+Estado canônico dos conceitos.
+
+Não confundir armazenamento com módulo cognitivo.
+
+4. SymbolicProjection — RUST
+
+Absorve:
+
+Symbolic Projection
+Symbol State Mapper.
+
+Função:
+
+representação interna → símbolo abstrato.
+
+5. LocalAbstraction — RUST
+
+Composição de representações locais.
+
+Abstração global fica em L4.
+
+6. OntogeneticMemory — RUST
+
+Absorve:
+
+Ontogenetic Memory
+Cognitive Memory Space
+parte de `memory`.
+
+Responsável por memória ligada à experiência local/desenvolvimento.
+
+7. LocalRetrieval — RUST
+
+Busca de memória relevante local.
+
+8. LocalAttention — RUST
+
+Absorve:
+
+Attention System Controller
+attention
+Predictive Attention
+Cognitive Salience Engine em sua parte local.
+
+Responsável por:
+
+salience
+competition
+local selection.
+
+9. PredictiveSemantic — RUST
+
+Absorve:
+
+Predictive Semantic Engine
+predictive_semantic
+Predictive Cluster Activation
+Predictive Memory em sua parte local.
+
+Responsável por:
+
+predição semântica local
+novelty
+local error.
+
+10. SemanticRouterLocal — RUST
+
+Somente roteamento local.
+
+O Semantic Router global atual migra para L4.
+
+11. MetaestabilityLocal — RUST
+
+Absorve:
+
+Metaestability Controller.
+
+Função:
+
+detectar estabilidade/atratores locais.
+
+Não é metacognição apenas por possuir “meta” no nome.
+
+12. LocalSelfRepresentation — RUST
+
+Absorve a parte local de:
+
+Self Model.
+
+Representa estados do próprio sistema percebidos localmente.
+
+A reflexão sobre si fica em L5.
+
+13. TemporalRepresentation — RUST
+
+Liga estados temporais recorrentes a representações.
+
+Conecta:
+
+HOTM/Reservoir
+→ semântica.
+
+Essa ponte é fundamental.
+
+14. LanguageIntegration — EXTENSÃO L3
+
+Mapeamento funcional:
+
+Linguistic Decoder
+Language Integration
+Generative Decoder.
+
+Mas eu não colocaria isso no core inicial do novo Rust.
+
+Destino:
+
+extensions/language/l3/.
+
+L4 = COGNIÇÃO GLOBAL / INTEGRAÇÃO
+
+Este é atualmente o nível mais crítico do Triad.
+
+Na Run 1800, L3 executa muito mais que L4, e vários elementos globais foram suspensos juntos. Global Workspace, Causal Graph, Cognitive Field, Cross-Module Resonance, Semantic Router e Unified Identity foram suspensos pela Auto Adaptation no step 31. :chatgpt-content-reference{index="4"}
+
+A nova arquitetura deve impedir que L4 seja uma coleção de módulos independentes que podem desaparecer simultaneamente.
+
+1. GlobalIntegration — RUST
+
+Novo agregador funcional.
+
+Absorve mecanismos hoje espalhados por:
+
+Cognitive Field
+Cross-Module Resonance
+Attention Binding
+Semantic Router global.
+
+Internamente:
+
+router.rs
+attention.rs
+competition.rs
+resonance.rs
+context.rs.
+
+Não criar cinco “cérebros globais”.
+
+2. GlobalWorkspace — RUST
+
+Responsabilidades:
+
+candidate intake
+competition
+selection
+workspace state
+broadcast.
+
+Deve possuir modos:
+
+FULL
+DEGRADED
+MINIMAL.
+
+Nunca simples OFF durante crise normal.
+
+3. GlobalAttention — RUST
+
+Absorve:
+
+Attention Vector Binding
+attention_binding.
+
+Seleciona conteúdo global.
+
+4. SemanticRouterGlobal — RUST
+
+Roteia representações globais entre regiões.
+
+5. WorldModel — RUST
+
+Essencial.
+
+Responsabilidades:
+
+state estimation
+prediction
+simulation
+prediction error
+model update.
+
+Na Run atual é a única entidade E5, mas mantém erro preditivo alto, portanto sua implementação nova precisa incluir calibração explícita. :chatgpt-content-reference{index="5"} :chatgpt-content-reference{index="6"}
+
+6. CausalModel — RUST
+
+Absorve:
+
+Causal Graph
+Causal Cycle
+parte cognitiva de Causal Ecology.
+
+Subcomponentes:
+
+graph
+inference
+episode
+counterfactual
+credit trace.
+
+`CausalCycle` não precisa continuar como grande módulo independente.
+
+7. EpisodicIntegration — RUST
+
+Absorve:
+
+Episodic Buffer
+Allocortex
+Memory Consolidation
+Memory Reconsolidation
+reconsolidation.
+
+Responsável por integrar memória ao estado global.
+
+8. MemoryIntegrator — RUST
+
+Faz:
+
+retrieve
+→ consume
+→ prediction/decision effect.
+
+Memória recuperada sem consumidor não conta como uso cognitivo.
+
+9. GlobalAbstraction — RUST
+
+Absorve:
+
+Symbolic Abstraction
+Hierarchy
+Dimensional Stack em sua função cognitiva.
+
+10. DecisionEngine — RUST
+
+Novo domínio explícito.
+
+Subcomponentes:
+
+proposal
+competition
+selection
+commit.
+
+Essa área não pode continuar diluída.
+
+A fronteira historicamente mais fraca do sistema é justamente Workspace→Decision; na Run 1800 F2 é somente 6,7%. :chatgpt-content-reference{index="7"}
+
+11. ActionInterface — RUST
+
+Subcomponentes:
+
+request
+execution
+outcome
+feedback.
+
+Decisão e execução devem ser entidades diferentes.
+
+12. GlobalSelfModel — RUST
+
+Absorve:
+
+Self-Model Controller
+self_model_ctrl.
+
+Integra representação de si em escala global.
+
+13. UnifiedIdentity — RUST
+
+Absorve:
+
+Unified Identity
+Identity Temporal Controller
+parte de CognitiveIdentity.
+
+Responsável por:
+
+continuidade
+core identity
+temporal integration.
+
+A reflexão sobre identidade pertence a L5.
+
+14. ThalamicRouter — RUST
+
+Absorve:
+
+thalamic_network.
+
+Função:
+
+roteamento global
+gating
+prioridade.
+
+Seu governor fica em L5.
+
+15. FutureNavigator — RUST
+
+Absorve:
+
+HOTM Future Navigator.
+
+Não substitui World Model.
+
+É um gerador de trajetórias futuras baseado na dinâmica recorrente.
+
+16. ResonanceStabilizer — MERGE
+
+Não deve continuar como módulo independente.
+
+Vai para:
+
+GlobalIntegration/resonance.
+
+17. CognitiveField — MERGE
+
+Não deve continuar como grande módulo independente.
+
+Vai para:
+
+GlobalIntegration/context_field.
+
+18. CrossModuleResonance — MERGE
+
+Vai para:
+
+GlobalIntegration/resonance.
+
+19. SemanticRouter — MERGE
+
+Vai para:
+
+GlobalIntegration/router.
+
+20. Linguagem global — EXTENSÃO
+
+Mapeamento:
+
+Inner Speech
+Emergent Language
+Linguistic Feedback
+Linguistic Prediction
+Predictive Language
+Emergent Language Refined.
+
+Destino:
+
+extensions/language/l4/.
+
+Não necessário para provar primeiro o neocórtex funcional.
+
+21. LimbicSystem/Paleocortex — EXTENSÃO FULL-BRAIN
+
+Atualmente participam da arquitetura.
+
+Mas, para o novo core focado em neocórtex:
+
+extensions/full_brain/limbic
+extensions/full_brain/paleocortex.
+
+Não precisam ser obrigatórios inicialmente.
+
+L5 = METACOGNIÇÃO, GOVERNANÇA COGNITIVA E ADAPTAÇÃO
+
+L5 não deve microcontrolar o organismo.
+
+Seu papel é:
+
+observar
+avaliar
+propor
+arbitrar
+validar.
+
+Na implementação atual há muitos controladores simultâneos. Na nova versão, eu os reduziria.
+
+1. SelfModel — RUST
+
+Parte metacognitiva.
+
+Responsável por:
+
+observar o próprio estado
+comparar self previsto x observado
+manter confidence
+registrar história do self.
+
+2. MetaReflection — RUST
+
+Absorve:
+
+Recursive Self-Model
+Meta-awareness
+Meta-reflection.
+
+Deve produzir observações.
+
+Não controlar diretamente clusters.
+
+3. IdentityGovernor — RUST
+
+Absorve:
+
+Identity Persistence Under Chaos
+Identity Chaos Controller.
+
+Responsável por proteger invariantes da identidade.
+
+4. MetaLearning — RUST + LUA POLICY
+
+Absorve:
+
+Meta-Learning
+Historical Meta Learner
+Predictive Emergence.
+
+Rust:
+
+histórico
+estatística
+aplicação validada.
+
+Lua:
+
+estratégia
+exploration/exploitation policy.
+
+5. MetaController — RUST + LUA
+
+Este deve substituir vários módulos atuais:
+
+Auto Adaptive
+Meta Regulator
+Architecture Governor
+Architecture Cortex
+parte de Self Engineering
+Governance Orchestrator.
+
+Responsabilidade:
+
+bottleneck detection
+proposal
+policy arbitration
+effect validation.
+
+6. ResourceGovernor — RUST + LUA
+
+Absorve:
+
+Cognitive Economy
+Cognitive Energy Model
+Scarcity Profile
+Predictive Compute Scaling
+Predictive Dimensional Selection
+parte de Attention Economy.
+
+Responsabilidades:
+
+energy budget
+compute budget
+attention budget
+memory budget
+degradation
+recovery.
+
+7. DevelopmentGovernor — RUST + LUA
+
+Controla:
+
+embryogenesis
+corticalization
+maintenance
+regeneration.
+
+Ele decide se morfogênese pode acordar.
+
+8. ThalamusGovernor — RUST + LUA
+
+Política para:
+
+routing
+priority
+crisis routing
+recovery.
+
+Pode futuramente ser incorporado ao ResourceGovernor se ficar redundante.
+
+9. PhaseMonitor — RUST
+
+Absorve:
+
+Phase Transition Detector.
+
+Se apenas observa:
+
+T/telemetry.
+
+Se sua saída altera regime:
+
+L5.
+
+10. AttractorAnalyzer — RUST
+
+Mesma regra.
+
+Se apenas calcula:
+
+T/observability.
+
+Se influencia policy:
+
+L5.
+
+11. CausalGovernor — RUST
+
+Absorve:
+
+Causal Graph Cortex.
+
+Usa informação causal para modificar políticas.
+
+Não duplicar o CausalModel L4.
+
+12. SelfEngineering — RUST + LUA
+
+Deve virar um fluxo explícito:
+
+observation
+→ proposal
+→ validation
+→ application
+→ effect.
+
+Não pode modificar arquitetura diretamente.
+
+13. MetaGoals — RUST + LUA
+
+Objetivos internos de longo prazo.
+
+Não devem controlar diretamente L1.
+
+14. EntropicBalance — RUST
+
+Se regula o sistema global:
+
+L5.
+
+Se apenas mede entropia:
+
+T/telemetry.
+
+15. CognitiveGenome — L5/O5
+
+Não deve rodar agressivamente a cada step.
+
+Responsabilidades:
+
+variation
+inheritance
+fitness
+selection.
+
+Execução preferencial:
+
+janela longa
+episode boundary
+cross-run.
+
+16. ConfidenceCarryover — L5 + T persistence
+
+Semântica cognitiva:
+
+L5.
+
+Armazenamento:
+
+T.
+
+17. ForgettingPolicy — L5/LUA
+
+O mecanismo real de forgetting fica no sistema de learning.
+
+L5 apenas define política.
+
+18. MetaHomeostasis — L5
+
+Apesar de hoje poder aparecer em pipelines inferiores, sua função é global/metarregulatória.
+
+Absorver no ResourceGovernor quando possível.
+
+19. NeuralProcessor — ELIMINAR COMO MÓDULO GENÉRICO
+
+Se “neural processor” decide política:
+
+L5.
+
+Se altera edges:
+
+L1/L2 actuator.
+
+Dividir responsabilidades.
+
+Não manter um módulo genérico que atravessa tudo.
+
+T = TRANSVERSAL
+
+T é tão importante quanto as camadas, mas não é cognição.
+
+`cognitive_layer = NONE`.
+
+T deve ser dividido em famílias.
+
+T/RUNTIME
+
+1. Scheduler — RUST
+
+eligibility
+interval
+priority
+dependencies.
+
+2. Executor — RUST
+
+executa tarefas.
+
+3. EventBus — RUST
+
+eventos tipados.
+
+4. ModuleRegistry — RUST
+
+descritores canônicos.
+
+5. LifecycleManager — RUST
+
+estado operacional dos módulos:
+
+ACTIVE
+DEGRADED
+QUIESCENT
+SUSPENDED
+RECOVERING.
+
+6. TypedContext — RUST
+
+Substitui `_ctx` frouxo.
+
+Todo valor:
+
+value
+status
+source
+step
+version
+provenance.
+
+7. TraceEngine — RUST
+
+trace_id
+span_id
+parent_event.
+
+É daqui que cascatas são reconstruídas.
+
+8. SyncController — T
+
+Não é metacognição.
+
+É runtime synchronization.
+
+T/COMPUTE
+
+1. WGPU backend — RUST + WGSL.
+
+2. CPU backend — RUST + Rayon.
+
+3. BufferArena.
+
+4. KernelRegistry.
+
+5. Math primitives.
+
+Aqui entram:
+
+L2-Norm Sampling
+SVD
+Johnson-Lindenstrauss
+RandLA
+compression
+cosine
+pairwise
+metrics
+centroid
+affinity.
+
+Essas técnicas não são L1–L5.
+
+São algoritmos matemáticos.
+
+T/DEVELOPMENT
+
+1. EmbryogenesisEngine.
+
+2. Morphogenesis.
+
+3. Division.
+
+4. Fusion.
+
+5. Pruning.
+
+6. Repair.
+
+7. StructuralNoise.
+
+8. EntropicInjection.
+
+9. TemporalDrift de desenvolvimento.
+
+10. EmergentSpecialization.
+
+Esses mecanismos atuam sobre L1/L2.
+
+Mas não pertencem cognitivamente a L1/L2.
+
+Na fase cortical:
+
+STANDBY/EVENT_DRIVEN.
+
+T/GOVERNANCE
+
+1. LawEngine — RUST + LUA soft rules.
+
+Absorve:
+
+law_enforcer.
+
+Hard laws em Rust.
+
+Soft policies em Lua.
+
+2. FederationEngine — RUST + LUA.
+
+Absorve:
+
+federation_hub.
+
+Federação deve ser protocolo:
+
+need
+→ proposal
+→ agreement
+→ transfer
+→ effect.
+
+3. EcologyEngine — RUST + LUA.
+
+Absorve:
+
+ecology
+ecologies_hub
+ecology_observer em parte
+Binding Ecology engine
+Symbol Ecology engine
+Causal Ecology engine.
+
+Um único motor ecológico genérico.
+
+Adapters específicos fornecem populations.
+
+4. ArbitrationEngine — RUST.
+
+Novo.
+
+Responsável por:
+
+controller conflicts
+actuator ownership
+priority
+conflict resolution.
+
+5. ControllerConflictGraph — RUST.
+
+Fundamental para O3.
+
+T/LEARNING
+
+Learning é transversal às camadas.
+
+Eu criaria crate separado:
+
+prediction_error
+credit_assignment
+update
+validation
+transfer
+forgetting.
+
+Ele conecta:
+
+L4 Outcome
+→ L3/L2/L1 update.
+
+O1–O5 atravessam esse sistema.
+
+T/PERSISTENCE
+
+1. Checkpointer.
+
+2. CrossRunPersistence.
+
+3. Snapshot.
+
+4. Journal.
+
+5. Restore.
+
+6. Migration.
+
+7. Lineage.
+
+`Checkpointer` e `cross_run_persistence` não são L5.
+
+São infraestrutura.
+
+T/OBSERVABILITY
+
+1. TelemetryRegistry.
+
+2. TelemetryHealth.
+
+3. DeepTelemetry.
+
+4. EventLineage.
+
+5. CausalProvenance.
+
+6. StateTransitions.
+
+7. DeltaTelemetry.
+
+8. PerformanceResource.
+
+9. Compression telemetry.
+
+10. Aggregator.
+
+11. WorkspaceDecision trace.
+
+12. DivisionFusionLineage.
+
+13. ClusterTemporal.
+
+14. Counterfactual telemetry.
+
+15. CausalAction telemetry.
+
+O arquivo atual já possui 16 módulos registrados especificamente para observabilidade, incluindo lineage, provenance, workspace decision e performance; isso deve continuar transversal e não ser confundido com cognição. :chatgpt-content-reference{index="8"}
+
+T/STORAGE
+
+database
+run metadata
+binary state storage
+config
+schemas.
+
+T/LUA POLICY ENGINE
+
+LuaPolicyRuntime.
+
+Responsabilidades:
+
+carregar script
+versionar script
+hash
+sandbox
+executar policy
+retornar Proposal.
+
+Lua não deve possuir estado cognitivo canônico.
+
+T/EXTENSIONS
+
+Tudo que não é necessário para fechar o neocórtex inicialmente:
+
+language
+dream
+chat_system_sync
+generative_pipeline
+generative_engine
+full_brain modules
+experimental Chladni
+advanced symbolic experiments.
+
+CLASSIFICAÇÃO DIRETA DOS MÓDULOS ATUAIS
+
+Para eliminar ambiguidade durante a migração:
+
+L1:
+energy_homeostasis
+harmonic_engine
+temporal_dynamics
+HOTM
+Reservoir
+local Hebbian
+cluster state/lifecycle.
+
+L2:
+tissue_organization
+adaptive_tissues
+tissue affinity
+bridges
+tissue adaptation
+spatial regions em sua parte mesoscópica.
+
+L3:
+attention
+memory
+metaestability
+semantic_concept
+semantic_coherence
+semantic_emergence
+semantic_binding
+semantic_grounding
+ontogenetic_memory
+symbolic_projection
+symbol_state_mapper
+predictive_semantic
+local salience
+local self representation.
+
+L4:
+attention_binding
+causal_graph
+causal_cycle
+cognitive_field
+cross_module_resonance
+episodic_buffer
+global_workspace
+hotm_future_navigator
+reconsolidation
+resonance_stabilizer
+self_model_ctrl
+semantic_router
+symbolic_abstraction
+hierarchy
+unified_identity
+world_model
+thalamic_network
+allocortex.
+
+L5:
+architecture_cortex
+architecture_governor
+auto_adaptive
+causal_graph_cortex
+cognitive_economy
+cognitive_energy_model
+cognitive_genome
+confidence_carryover
+governance_orchestrator
+historical_meta_learner
+meta_goals
+meta_homeostasis
+meta_learning
+meta_regulator
+self_engineering
+scarcity_profile
+thalamus_governor
+identity_chaos
+phase_detector quando regulatório
+attractor_analyzer quando regulatório
+entropic_balance quando regulatório.
+
+T:
+checkpointer
+cross_run_persistence
+deep_telemetry
+chat_system_sync
+generative_pipeline
+tissue_event_bus
+law_enforcer
+federation_hub
+ecologies_hub
+ecology
+ecology_observer
+sync_controller
+structural_noise
+periodic_decay enquanto mecanismo
+morphogenesis
+division
+fusion
+pruning
+repair
+GPU
+WGPU
+WGSL
+scheduler
+database
+logging
+config
+telemetry
+SVD
+JL
+RandLA
+L2 sampling.
+
+EXTENSÕES, COM TAG DE CAMADA MAS FORA DO CORE:
+
+L3-language:
+linguistic_decoder
+language_integration
+generative_decoder.
+
+L4-language:
+inner_speech
+emergent_language
+linguistic_feedback
+linguistic_prediction
+predictive_language.
+
+L4/L5 experimental:
+consolidation_dream
+nocturnal_consolidation.
+
+Full-brain:
+limbic_system
+paleocortex.
+
+ORDENS CIBERNÉTICAS NA NOVA ARQUITETURA
+
+Não criar um segundo conjunto de módulos cognitivos para O1–O5.
+
+O1 = mecanismo de controle.
+
+Presente em:
+
+L1 homeostasis
+L2 tissue regulation
+L3 attention
+L4 decision
+L5 resource control.
+
+O2 = adaptação dos controladores.
+
+Principalmente:
+
+learning
+TissueAdaptation
+MetaLearning.
+
+O3 = coordenação entre controladores.
+
+Principalmente:
+
+ArbitrationEngine
+ControllerConflictGraph
+FederationEngine
+ResourceGovernor.
+
+O4 = auto-observação.
+
+Principalmente:
+
+SelfModel
+MetaReflection
+SelfEngineering
+Telemetry/provenance.
+
+O5 = evolução.
+
+Principalmente:
+
+CognitiveGenome
+EcologyEngine
+selection
+retention
+cross-run validation.
+
+Logo um módulo deve ter:
+
+layer = L1/L2/L3/L4/L5/NONE
+
+e separadamente:
+
+cybernetic_orders = [O1,O2,...].
+
+Nunca codificar uma coisa dentro da outra.
+
+ESTRUTURA RUST FINAL
+
+Eu recomendo:
+
+crates/
+  foundation/
+  contracts/
+  runtime/
+
+  l1_substrate/
+    cluster/
+    graph/
+    energy/
+    recurrent/
+    plasticity/
+    inhibition/
+
+  l2_tissue/
+    tissue/
+    affinity/
+    bridge/
+    routing/
+    adaptation/
+    feedback/
+
+  l3_local/
+    semantic/
+    binding/
+    concept/
+    memory/
+    attention/
+    prediction/
+    self_representation/
+
+  l4_global/
+    integration/
+    workspace/
+    world_model/
+    causal/
+    episodic/
+    abstraction/
+    decision/
+    action/
+    identity/
+    routing/
+
+  l5_meta/
+    self_model/
+    reflection/
+    meta_learning/
+    meta_controller/
+    resource_governor/
+    development_governor/
+    causal_governor/
+
+  learning/
+
+  cybernetics/
+    o1/
+    o2/
+    o3/
+    o4/
+    o5/
+
+  governance/
+    laws/
+    federation/
+    ecology/
+    arbitration/
+
+  development/
+    embryogenesis/
+    corticalization/
+    maintenance/
+    regeneration/
+
+  platform/
+    gpu/
+    persistence/
+    telemetry/
+    storage/
+    math/
+
+  extensions/
+    language/
+    dream/
+    full_brain/
+    experimental/
+
+LUA
+
+lua/
+
+policies/
+  resource.lua
+  attention.lua
+  learning.lua
+  forgetting.lua
+  crisis.lua
+  recovery.lua
+  corticalization.lua
+  regeneration.lua
+
+governance/
+  federation.lua
+  ecology.lua
+  soft_laws.lua
+
+evolution/
+  selection.lua
+  mutation.lua
+  fitness.lua
+
+experiments/
+  ablations/
+  counterfactuals/
+
+REGRA RUST/LUA
+
+Rust sempre é responsável por:
+
+estado canônico
+memória
+clusters
+tecidos
+grafos
+HOTM/Reservoir
+World Model
+Workspace
+decision
+learning mechanism
+lifecycle
+event bus
+GPU
+persistência
+invariantes.
+
+Lua somente decide políticas como:
+
+qual threshold usar?
+quanto reduzir compute?
+quando permitir growth?
+qual estratégia federativa?
+qual política de forgetting?
+qual exploration rate?
+
+Lua retorna Proposal.
+
+Rust decide se é válido e aplica.
+
+MODULE DESCRIPTOR CANÔNICO
+
+Todo módulo novo deveria registrar algo conceitualmente equivalente a:
+
+id
+entity_kind
+cognitive_layer
+support_layer
+domain
+cybernetic_orders
+state_owner
+inputs
+outputs
+actuators
+execution_backend
+criticality
+dependencies
+evidence_requirement
+recovery_policy.
+
+Isso resolve o problema que existe hoje de tentar inferir a camada pelo scheduler/pipeline. A telemetria atual já mostra por que essa inferência é inadequada. :chatgpt-content-reference{index="9"}
+
+CADEIA COGNITIVA FINAL
+
+A nova organização deve conseguir mostrar explicitamente:
+
+L1:
+Cluster/RecurrentDynamics
+
+↓
+
+L2:
+TissueOrganization
+
+↓
+
+L3:
+SemanticRepresentation
+
+↓
+
+L4:
+GlobalWorkspace
+
+↓
+
+WorldModel/CausalModel
+
+↓
+
+Decision
+
+↓
+
+Action
+
+↓
+
+Outcome
+
+↓
+
+Learning
+
+↓
+
+L5:
+MetaEvaluation quando necessário
+
+↓
+
+feedback
+
+↓
+
+L4/L3/L2/L1.
+
+E paralelamente:
+
+O1 controla.
+
+O2 adapta.
+
+O3 coordena.
+
+O4 observa o próprio sistema.
+
+O5 seleciona mudanças através do tempo.
+
+CONCLUSÃO
+
+A maior mudança que eu faria na versão Rust/Lua não é apenas trocar Python por Rust.
+
+É eliminar a ambiguidade arquitetural.
+
+L1 deve possuir apenas substrato e dinâmica.
+
+L2 apenas organização tecidual.
+
+L3 apenas representação/cognição local.
+
+L4 apenas integração global, previsão, decisão e ação.
+
+L5 apenas auto-observação, adaptação e governança cognitiva.
+
+T deve absorver tudo que hoje parece “cognitivo” apenas porque executa em `meta_pipeline`: GPU, persistência, telemetria, laws, federações, ecologias, scheduler, desenvolvimento e matemática.
+
+E vários dos atuais 60–90 componentes não devem ser reescritos 1:1. Devem ser fundidos em aproximadamente 20–25 sistemas canônicos com responsabilidade única.
+
+Esse desenho preserva tudo que é funcionalmente necessário para o Triad_AEE continuar a caminho de um neocórtex consolidado, enquanto remove a maior fonte atual de complexidade artificial: módulos que são diferentes nominalmente, mas executam funções parcialmente sobrepostas.

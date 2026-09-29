@@ -20,6 +20,11 @@ pub struct WorkspaceCfg {
     pub broadcast_interval_steps: u64,
     /// Perdas tipadas por fronteira (candidate→…→broadcast).
     pub loss_typing_required: bool,
+    /// Habituação (GWT/novelty): vencedor repetido perde força
+    /// exponencial — `saliência_efetiva = saliência × rate^streak`.
+    /// 1.0 = sem habituação; 0.5 = cada vitória halvera a próxima;
+    /// 0.0 = uma vitória zera o conteúdo até ele perder e resetar.
+    pub habituation_rate: f32,
 }
 
 impl Default for WorkspaceCfg {
@@ -30,6 +35,7 @@ impl Default for WorkspaceCfg {
             competition_rounds: 2,
             broadcast_interval_steps: 1,
             loss_typing_required: true,
+            habituation_rate: 0.5,
         }
     }
 }
@@ -93,7 +99,10 @@ impl Default for MemoryIntegrationCfg {
     fn default() -> Self {
         Self {
             enabled: true,
-            integration_interval_steps: 250,
+            // Espelha o TOML calibrado (seção 16.2): cada confirmação
+            // reforça imediatamente; a janela limita a RECONSOLIDAÇÃO
+            // do mesmo rótulo, não a primeira gravação.
+            integration_interval_steps: 1,
             reconsolidation_enabled: true,
         }
     }

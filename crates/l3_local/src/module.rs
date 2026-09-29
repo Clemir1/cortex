@@ -16,9 +16,10 @@ use std::sync::{Arc, Mutex};
 
 use triad_contracts as tc;
 use triad_foundation as tf;
+use triad_l1_substrate as l1;
 use triad_l2_tissue as l2;
 use triad_runtime as rt;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::attention::{AttentionCfg, AttentionField, AttentionFoci};
 use crate::prediction::{Prediction, PredictionCfg, Predictor};
@@ -118,6 +119,27 @@ pub struct L3Module {
     best_coherence: Mutex<Option<f64>>,
     /// Último recibo da leitura L2 (auditoria da ponte).
     last_receipt: Mutex<Option<tc::l2::L2ReadReceipt>>,
+    /// Fonte do sinal Chladni (ponte read-only ao L1 — ADR-0007):
+    /// a atenção L3 realimenta a saliência com a harmonia do substrato.
+    /// None = recursão desligada (comportamento A/A anterior).
+    chladni_source: Option<Arc<l1::ClusterModule>>,
+    /// Ticks com bônus de ressonância APLICADO (telemetria honesta).
+    chladni_bonus_ticks: Mutex<u64>,
+    /// Ticks sem bônus (sem fonte, sinal não-VALUE ou sem tecidos) —
+    /// denominador sempre visível, nunca zero fantasma.
+    chladni_absent_ticks: Mutex<u64>,
+    /// Memória episódica local REAL (seção 16.2): consumidora dos
+    /// reforços confirmados do ciclo L4 — o L3 é o DONO do estado.
+    memory: Mutex<crate::memory::LocalMemory>,
+    /// Inbox de reforços L4→L3 (fila no dono; o L4 apenas submete).
+    reinforce_inbox: Mutex<Vec<crate::reinforcement::Reinforcement>>,
+    /// Último recibo de reforço aplicado (auditoria da trilha).
+    reinforce_receipt: Mutex<Option<crate::reinforcement::ReinforcementReceipt>>,
+    /// Reforços aplicados / reconsolidados / descartados por overflow
+    /// (telemetria honesta com denominador).
+    reinforce_applied: Mutex<u64>,
+    reinforce_reconsolidated: Mutex<u64>,
+    reinforce_dropped: Mutex<u64>,
     state: Mutex<rt::ModuleState>,
 }
 
@@ -171,6 +193,31 @@ impl L3Module {
         m
     }
 
+    /// Liga a RECURSÃO Chladni (ADR-0007): a atenção L3 passa a
+    /// consumir o sinal de harmonia do substrato por ponte read-only
+    /// (o scheduler cria um contexto por módulo — o sinal trafega por
+    /// handle, padrão das pontes L1→L2→L3→L4 do projeto).
+    pub fn with_chladni_source(mut self, l1: Arc<l1::ClusterModule>) -> Self {
+        self.chladni_source = Some(l1);
+        self
+    }
+
+    /// Telemetria da recursão Chladni: (ticks com bônus, ticks sem).
+    /// Ausência de fonte/sinal conta como "sem bônus" — denominador
+    /// sempre visível (ausência ≠ zero).
+    pub fn chladni_stats(&self) -> (u64, u64) {
+        (
+            *self
+                .chladni_bonus_ticks
+                .lock()
+                .unwrap_or_else(|p| p.into_inner()),
+            *self
+                .chladni_absent_ticks
+                .lock()
+                .unwrap_or_else(|p| p.into_inner()),
+        )
+    }
+
     fn with_l2(l2: Option<Arc<l2::TissueModule>>) -> Self {
         Self {
             descriptor: tc::ModuleDescriptor {
@@ -189,8 +236,85 @@ impl L3Module {
             proposals_total: Mutex::new(0),
             best_coherence: Mutex::new(None),
             last_receipt: Mutex::new(None),
+            chladni_source: None,
+            chladni_bonus_ticks: Mutex::new(0),
+            chladni_absent_ticks: Mutex::new(0),
+            memory: Mutex::new(crate::memory::LocalMemory::new()),
+            reinforce_inbox: Mutex::new(Vec::new()),
+            reinforce_receipt: Mutex::new(None),
+            reinforce_applied: Mutex::new(0),
+            reinforce_reconsolidated: Mutex::new(0),
+            reinforce_dropped: Mutex::new(0),
             state: Mutex::new(rt::ModuleState::Active),
         }
+    }
+
+    /// TRILHA L4→L3 (seção 16.2): submete um reforço confirmado do
+    /// ciclo de aprendizado à fila do DONO (o L4 nunca escreve estado
+    /// alheio). Overflow = descarte contado com razão, nunca silencioso.
+    pub fn submit_reinforcement(&self, reinforcement: crate::reinforcement::Reinforcement) {
+        let mut inbox = self.reinforce_inbox.lock().unwrap_or_else(|p| p.into_inner());
+        if inbox.len() >= crate::reinforcement::INBOX_CAPACITY {
+            *self.reinforce_dropped.lock().unwrap_or_else(|p| p.into_inner()) += 1;
+            tracing::warn!(
+                rotulo = %reinforcement.label,
+                capacidade = crate::reinforcement::INBOX_CAPACITY,
+                "reforco descartado por inbox cheio (contado, nao silencioso)"
+            );
+            return;
+        }
+        inbox.push(reinforcement);
+    }
+
+    /// Drena a fila de reforços NO TICK L3 (o dono aplica): cada reforço
+    /// grava/reconsolida o episódio na memória episódica real, emite
+    /// recibo e publica evento por ocorrência.
+    fn drain_reinforcements(&self, tick: u64, out: &mut Vec<tc::EventEnvelope>) {
+        let inbox: Vec<crate::reinforcement::Reinforcement> =
+            std::mem::take(&mut *self.reinforce_inbox.lock().unwrap_or_else(|p| p.into_inner()));
+        if inbox.is_empty() {
+            return;
+        }
+        let mut memory = self.memory.lock().unwrap_or_else(|p| p.into_inner());
+        for r in inbox {
+            let reconsolidated = memory.reinforce(&r.label, r.step, r.reconsolidate);
+            *self.reinforce_applied.lock().unwrap_or_else(|p| p.into_inner()) += 1;
+            if reconsolidated {
+                *self.reinforce_reconsolidated.lock().unwrap_or_else(|p| p.into_inner()) += 1;
+            }
+            let receipt = crate::reinforcement::ReinforcementReceipt {
+                label: r.label.clone(),
+                applied_step: tick,
+                reconsolidated,
+            };
+            *self.reinforce_receipt.lock().unwrap_or_else(|p| p.into_inner()) = Some(receipt);
+            out.push(rt::envelope(
+                "l3.memory",
+                tick,
+                tc::EventType::Learning,
+                tc::Priority::Normal,
+            ));
+        }
+    }
+
+    /// Recall qualificado da memória episódica (auditoria da trilha —
+    /// ausência ≠ zero: sem episódio = NO_DATA com razão).
+    pub fn memory_recall(&self, label: &str, current_step: u64) -> tc::Qualified<f32> {
+        self.memory
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .recall(label, current_step, self.descriptor.module_id.clone(), tf::StepId::new())
+    }
+
+    /// Telemetria da trilha L4→L3: (aplicados, reconsolidados,
+    /// descartados por overflow, fila pendente).
+    pub fn reinforcement_stats(&self) -> (u64, u64, u64, usize) {
+        (
+            *self.reinforce_applied.lock().unwrap_or_else(|p| p.into_inner()),
+            *self.reinforce_reconsolidated.lock().unwrap_or_else(|p| p.into_inner()),
+            *self.reinforce_dropped.lock().unwrap_or_else(|p| p.into_inner()),
+            self.reinforce_inbox.lock().unwrap_or_else(|p| p.into_inner()).len(),
+        )
     }
 
     /// Fotografia corrente dos focos de atenção.
@@ -246,9 +370,26 @@ impl L3Module {
     /// pesos da ÚLTIMA fotografia, predição corrente e sinais
     /// estruturais. Sem fonte L2 os campos ficam vazios — ausência
     /// nunca vira valor fabricado.
+    /// Bônus de ressonância Chladni corrente (ADR-0007): a ressonância
+    /// da última observação do substrato, se a ponte está ligada e o
+    /// sinal é VALUE — ausência é `None`, nunca 0 fantasma.
+    fn chladni_bonus(&self) -> Option<f32> {
+        self.chladni_source
+            .as_ref()?
+            .last_chladni()
+            .resonance
+            .as_ref_value()
+            .copied()
+    }
+
     pub fn read_for_l4(&self) -> L3Snapshot {
         // Focos com pesos: reprocessa as views correntes com a mesma
-        // saliência do tick (fotografia é derivada, não mutada).
+        // saliência do tick (fotografia é derivada, não mutada) — e,
+        // com a recursão Chladni LIGADA (ADR-0007), soma o bônus de
+        // ressonância com o peso de `[l3.attention]`. Sem fonte
+        // chladni o resultado é IDÊNTICO ao anterior (A/A preservado);
+        // a harmonia só entra quando a ponte existe.
+        let chladni_bonus = self.chladni_bonus();
         let mut foci: Vec<(tf::id::ConceptId, f32)> = Vec::new();
         let (coherence_mean, coverage) = match &self.l2 {
             Some(l2) => {
@@ -257,7 +398,11 @@ impl L3Module {
                 let mut concepts = self.concepts.lock().unwrap_or_else(|p| p.into_inner());
                 for v in &views {
                     let concept = concepts.concept_of(v.tissue_id);
-                    foci.push((concept, Self::salience_of(v)));
+                    let mut salience = Self::salience_of(v);
+                    if let Some(bonus) = chladni_bonus {
+                        salience += bonus * self.attention_cfg.chladni_bonus_weight;
+                    }
+                    foci.push((concept, salience));
                 }
                 drop(concepts);
                 match snapshot {
@@ -402,6 +547,28 @@ impl rt::CognitiveModule for L3Module {
         // (2) Atenção: saliência REAL dos tecidos vivos. Campo novo a
         // cada tick (fotografia corrente, sem acúmulo de fantasma) com
         // a política de `[l3.attention]` injetada.
+        //
+        // ADR-0007 — RECURSÃO CHLADNI: bônus de ressonância na
+        // saliência (legado: attention += bonus * 0.15). O sinal vem
+        // da ponte read-only ao L1 (última observação DESTE tick — o
+        // L1 ticka antes do L3). Ausência (sem fonte ligada, sinal
+        // não-VALUE ou sem tecidos) ou peso 0 = SEM efeito — contada
+        // com denominador visível, nunca zero fantasma.
+        let chladni_bonus = self.chladni_bonus();
+        let bonus_aplicado = chladni_bonus
+            .filter(|_| valid && self.attention_cfg.chladni_bonus_weight > 0.0);
+        if bonus_aplicado.is_some() {
+            *self
+                .chladni_bonus_ticks
+                .lock()
+                .unwrap_or_else(|p| p.into_inner()) += 1;
+            trace!(bonus = ?bonus_aplicado, "atenção l3: bônus de ressonância chladni aplicado");
+        } else {
+            *self
+                .chladni_absent_ticks
+                .lock()
+                .unwrap_or_else(|p| p.into_inner()) += 1;
+        }
         let mut field = AttentionField::with_config(tick, self.attention_cfg.clone());
         if valid {
             let views = match &self.l2 {
@@ -411,7 +578,11 @@ impl rt::CognitiveModule for L3Module {
             let mut concepts = self.concepts.lock().unwrap_or_else(|p| p.into_inner());
             for v in &views {
                 let concept = concepts.concept_of(v.tissue_id);
-                field.salient(concept, Self::salience_of(v));
+                let mut salience = Self::salience_of(v);
+                if let Some(bonus) = bonus_aplicado {
+                    salience += bonus * self.attention_cfg.chladni_bonus_weight;
+                }
+                field.salient(concept, salience);
             }
         }
         let foci = field.snapshot();
@@ -468,7 +639,11 @@ impl rt::CognitiveModule for L3Module {
             self.maybe_propose(s);
         }
 
-        // (6) Evento pequeno do tick L3.
+        // (6) TRILHA L4→L3: drena reforços confirmados para a memória
+        // episódica real (o dono aplica; recibo + evento por ocorrência).
+        self.drain_reinforcements(tick, out);
+
+        // (7) Evento pequeno do tick L3.
         out.push(rt::envelope(
             "l3.local",
             tick,
@@ -501,6 +676,28 @@ mod tests {
             Self { l1, l2, l3 }
         }
 
+        /// Ciclo com a recursão Chladni LIGADA (ponte read-only ao L1).
+        fn with_chladni(seed: u64, population: usize) -> Self {
+            let l1 = Arc::new(l1::ClusterModule::new(seed, population));
+            let l2 = Arc::new(l2::TissueModule::new(l1.shared_runner(), seed));
+            let l3 = Arc::new(
+                L3Module::new_with_substrate(Arc::clone(&l2))
+                    .with_chladni_source(Arc::clone(&l1)),
+            );
+            Self { l1, l2, l3 }
+        }
+
+        /// Ciclo com a recursão Chladni LIGADA e config L3 injetada.
+        fn with_l3_config(seed: u64, population: usize, cfg: L3Config) -> Self {
+            let l1 = Arc::new(l1::ClusterModule::new(seed, population));
+            let l2 = Arc::new(l2::TissueModule::new(l1.shared_runner(), seed));
+            let l3 = Arc::new(
+                L3Module::new_with_config(Arc::clone(&l2), cfg)
+                    .with_chladni_source(Arc::clone(&l1)),
+            );
+            Self { l1, l2, l3 }
+        }
+
         fn tick(&self) {
             let ctx = TypedContext::new(tf::LogicalClock::new());
             let mut out = Vec::new();
@@ -508,6 +705,20 @@ mod tests {
             self.l1.tick(&ctx, &mut out).expect("tick l1");
             self.l2.tick(&ctx, &mut out).expect("tick l2");
             self.l3.tick(&ctx, &mut out).expect("tick l3");
+        }
+
+        /// Focos COM PESOS por tick (via read_for_l4) — material do
+        /// experimento A/A do bônus de ressonância.
+        fn pesos_por_tick(
+            &self,
+            ticks: usize,
+        ) -> Vec<Vec<(tf::id::ConceptId, f32)>> {
+            let mut out = Vec::new();
+            for _ in 0..ticks {
+                self.tick();
+                out.push(self.l3.read_for_l4().foci);
+            }
+            out
         }
     }
 
@@ -613,5 +824,53 @@ mod tests {
             foci_a, foci_b,
             "mesma seed ⇒ tecidos, saliência e conceitos idênticos"
         );
+    }
+
+    #[test]
+    fn bonus_chladni_e_reproduzivel_e_deterministico() {
+        // ADR-0007 — experimento A/A do bônus: (1) com a recursão
+        // ligada, o EFEITO é reproduzível (duas runs bit-idênticas);
+        // (2) contra o L3 sem recursão, os pesos DIFEREM — o bônus
+        // não é teatral; (3) telemetria com denominador visível.
+        let com_a = Ciclo::with_chladni(42, 24);
+        let com_b = Ciclo::with_chladni(42, 24);
+        let sem = Ciclo::new(42, 24);
+        let pa = com_a.pesos_por_tick(25);
+        let pb = com_b.pesos_por_tick(25);
+        let ps = sem.pesos_por_tick(25);
+        assert_eq!(pa, pb, "mesma seed + recursão ligada ⇒ bit-idêntico");
+        let difere = pa.iter().zip(ps.iter()).any(|(a, b)| a != b);
+        assert!(difere, "o bônus de ressonância muda os pesos de saliência");
+        // Os pesos COM bônus são maiores (bônus aditivo, nunca negativo).
+        let (w_com, w_sem) = (pa[0][0].1, ps[0][0].1);
+        assert!(
+            w_com > w_sem,
+            "saliência com bônus ({w_com}) > sem ({w_sem})"
+        );
+        let (bonus_ticks, _) = com_a.l3.chladni_stats();
+        assert!(bonus_ticks >= 20, "bônus aplicado na maioria dos ticks: {bonus_ticks}");
+    }
+
+    #[test]
+    fn peso_zero_mantem_aa_bit_identico_ao_sem_fonte() {
+        // Política A/A do peso: chladni_bonus_weight = 0 com a fonte
+        // ligada == L3 sem recursão (efeito zero é zero de verdade).
+        let cfg0 = L3Config {
+            attention: AttentionCfg {
+                chladni_bonus_weight: 0.0,
+                ..AttentionCfg::default()
+            },
+            ..L3Config::default()
+        };
+        let zero = Ciclo::with_l3_config(42, 24, cfg0);
+        let sem = Ciclo::new(42, 24);
+        let pz = zero.pesos_por_tick(25);
+        let ps = sem.pesos_por_tick(25);
+        assert_eq!(
+            pz, ps,
+            "peso 0 ⇒ idêntico ao L3 sem recursão (política desligável)"
+        );
+        let (bonus, _) = zero.l3.chladni_stats();
+        assert_eq!(bonus, 0, "peso 0 nunca aplica bônus (contadores honestos)");
     }
 }

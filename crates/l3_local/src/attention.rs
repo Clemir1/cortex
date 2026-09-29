@@ -15,6 +15,11 @@ pub const ATTENTION_THRESHOLD: f32 = 0.35;
 /// Capacidade máxima de focos simultâneos — default congelado.
 pub const MAX_FOCI: usize = 128;
 
+/// Peso do bônus de ressonância Chladni na saliência (ADR-0007) —
+/// espelho do `attention_weight` do legado (0.15) e de
+/// `[chladni].attention_weight`; o valor real vem do TOML central.
+pub const CHLADNI_BONUS_WEIGHT: f32 = 0.15;
+
 /// `[l3.attention]` — política do campo de atenção.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -25,6 +30,10 @@ pub struct AttentionCfg {
     pub max_candidates: usize,
     /// Ganho aplicado ao peso ao registrar (`gain`).
     pub gain: f32,
+    /// Peso do bônus de ressonância Chladni na saliência
+    /// (`chladni_bonus_weight`, ADR-0007): 0 = sem recursão
+    /// (comportamento A/A anterior); 0.15 = legado.
+    pub chladni_bonus_weight: f32,
 }
 
 impl Default for AttentionCfg {
@@ -33,6 +42,7 @@ impl Default for AttentionCfg {
             salience_threshold: ATTENTION_THRESHOLD,
             max_candidates: MAX_FOCI,
             gain: 1.0,
+            chladni_bonus_weight: CHLADNI_BONUS_WEIGHT,
         }
     }
 }
@@ -115,6 +125,7 @@ mod tests {
             salience_threshold: 0.5,
             max_candidates: 2,
             gain: 1.0,
+            ..AttentionCfg::default()
         };
         let mut field = AttentionField::with_config(0, cfg);
         field.salient(ConceptId::new(), 0.4); // abaixo do limiar 0.5
@@ -132,8 +143,12 @@ mod tests {
         assert!((d.salience_threshold - 0.35).abs() < 1e-6);
         assert_eq!(d.max_candidates, 128);
         assert!((d.gain - 1.0).abs() < 1e-6);
+        assert!(
+            (d.chladni_bonus_weight - 0.15).abs() < 1e-6,
+            "peso do bônus espelha o legado (ADR-0007)"
+        );
         // [l3.attention] do default.toml carrega por Deserialize.
-        let text = "salience_threshold = 0.35\nmax_candidates = 128\ngain = 1.0\n";
+        let text = "salience_threshold = 0.35\nmax_candidates = 128\ngain = 1.0\nchladni_bonus_weight = 0.15\n";
         let from_toml: AttentionCfg = toml::from_str(text).expect("[l3.attention]");
         assert_eq!(from_toml.max_candidates, 128);
     }

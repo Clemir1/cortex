@@ -152,6 +152,9 @@ require_consume_for_validity = true  # sem Consume não é memória útil (cadei
 salience_threshold = 0.35
 max_candidates = 128
 gain = 1.0
+# ADR-0007 — recursão Chladni: peso do bônus de ressonância na
+# saliência (legado: 0.15). 0 = recursão desligada (A/A).
+chladni_bonus_weight = 0.15
 
 [l3.prediction]
 horizon_steps = 5
@@ -188,6 +191,7 @@ capacity = 7                     # conteúdo simultâneo clássico do workspace
 competition_rounds = 2
 broadcast_interval_steps = 1
 loss_typing_required = true       # perdas tipadas por fronteira (candidate→…→broadcast)
+habituation_rate = 0.5           # vencedor repetido perde força ×0.5 (novelty do GWT)
 
 [l4.world_model]
 mode = "FULL"
@@ -200,9 +204,9 @@ graph_prune_interval_steps = 1000
 confirm_tolerance = 0.2          # |observado − esperado| que confirma o efeito
 
 [l4.memory_integration]
-enabled = true                   # working/episodic/semantic/retrieval/reconsolidation
-integration_interval_steps = 250
-reconsolidation_enabled = true
+enabled = true                   # trilha L4→L3: ciclo confirmado reforça a memória episódica real
+integration_interval_steps = 1   # janela mínima de reconsolidação POR RÓTULO (1 = cada confirmação)
+reconsolidation_enabled = true   # episódio prévio do rótulo é reconsolidado (força combinada)
 
 [l4.decision]
 # proposal→competition→selection→commit — gargalo histórico F2; sempre ativo.
@@ -221,8 +225,14 @@ outcome_timeout_steps = 10
 
 [l5.self_model]
 enabled = true
-update_interval_steps = 100
+update_interval_steps = 20            # refresh dentro da vida observável (65 ticks ⇒ 3)
 identity_required = true         # contexto de identidade em toda decisão (contrato)
+
+[l5.limbic]
+# Histerese do estado límbico: crise muda POLÍTICA, nunca suspende (Lei 4).
+stress_enter = 0.75              # entra em ALERT acima disto
+stress_exit = 0.60                # sai do ALERT abaixo disto (histerese real)
+reserve_fraction = 0.5           # fração da reserva liberada (metade é sobrevivência)
 
 [l5.meta_controller]
 # Ciclo canônico: observe→propose→validate→apply→observe_effect→keep/revert.

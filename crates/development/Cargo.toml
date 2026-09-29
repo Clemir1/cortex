@@ -8,6 +8,7 @@ triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
 triad-runtime = { path = "../runtime" }
 triad-chladni = { path = "../chladni" }
+triad-l1-substrate = { path = "../l1_substrate" }
 tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }

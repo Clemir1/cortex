@@ -1,12 +1,18 @@
 //! Ponte da L4 para o runtime: workspace, decisão, ação e ciclo de
 //! aprendizado integrados sobre dados REAIS do L3.
 //!
-//! REAL (P1 da análise 13-0): os candidatos do workspace vêm da
-//! fotografia L3 (focos com saliência, predição, coerência/cobertura)
-//! — zero candidatos manufaturados. Cada decisão commitida abre um
-//! `LearningEnvelope`; o outcome é observado em t+1 e o ciclo só
-//! fecha com `verified_future_effect` (Lei 5). Envelope sem outcome
-//! até o timeout NÃO fecha (contado, nunca escondido).
+//! REAL (P1 da análise 13-0 + correção da seção 15): os candidatos do
+//! workspace vêm da fotografia L3 (focos com saliência, predição,
+//! coerência/cobertura) — zero candidatos manufaturados. A seleção
+//! usa SALIÊNCIA EFETIVA com habituação (GWT/novelty — o spotlight
+//! circula; confiança de predição não é saliência de conteúdo).
+//! Cada decisão commitada abre um `LearningEnvelope` cujo outcome é
+//! verificado em t+1 NO MESMO CONTEÚDO (comensurável — active
+//! inference: prediction error entre grandezas iguais) contra um
+//! SHAM DE DERIVA (baseline contrafactual local: o valor que
+//! persistiria sem efeito atribuível à ação — Lei 5/E5). O ciclo só
+//! fecha com `verified_future_effect`; razões tipadas explicam cada
+//! verificação (nunca só um float).
 
 use std::sync::{Arc, Mutex};
 use tracing::{debug, warn};
@@ -20,7 +26,7 @@ use crate::causal::CausalTracker;
 use crate::config::L4Config;
 use crate::decision::decide_best;
 use crate::degraded::DegradedMode;
-use crate::workspace::GlobalWorkspace;
+use crate::workspace::{GlobalWorkspace, WorkspaceEntry};
 use crate::world_model::WorldModel;
 use crate::{ActionRecord, PendingDecision};
 
@@ -29,14 +35,42 @@ use crate::{ActionRecord, PendingDecision};
 struct OpenCycle {
     /// Envelope com `verified_future_effect = None` até fechar.
     envelope: tc::LearningEnvelope,
-    /// Valor numérico esperado (saliência do vencedor no broadcast).
-    expected_value: f32,
+    /// CONTEÚDO que a ação promete manter/elevar (o vencedor do
+    /// broadcast) — a expectativa é medida NELE (comensurável).
+    content_key: String,
+    /// Sham de deriva (baseline contrafactual local): valor do
+    /// conteúdo no tick do commit — o que aconteceria por
+    /// persistência, sem efeito atribuível à ação (Lei 5/E5).
+    sham: f32,
     /// Causa tipada para o rastreador causal.
     cause: String,
-    /// Tick em que a decisão foi commitida.
+    /// Tick em que a decisão foi commitada.
     decided_tick: u64,
     /// Tick limite para o outcome chegar (depois: expira contado).
     timeout_tick: u64,
+}
+
+/// Razão tipada do resultado da verificação — nunca só um float
+/// (instrumentação da seção 15).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VerificationReason {
+    /// Efeito líquido dentro da tolerância ou melhor (confirmado).
+    Confirmed,
+    /// Conteúdo saiu do foco antes de t+1 (não-confirmado).
+    ContentGone,
+    /// Conteúdo vivo, mas degradou além da tolerância (não-confirmado).
+    DegradedBeyondTolerance,
+}
+
+impl VerificationReason {
+    /// Nome canônico da razão (auditoria).
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Confirmed => "CONFIRMED",
+            Self::ContentGone => "CONTENT_GONE",
+            Self::DegradedBeyondTolerance => "DEGRADED_BEYOND_TOLERANCE",
+        }
+    }
 }
 
 /// Telemetria honesta do L4 — taxas sempre com denominador.
@@ -51,6 +85,20 @@ pub struct L4Stats {
     pub envelopes_closed: u64,
     pub envelopes_expired: u64,
     pub world_updates: u64,
+    /// Ações de exploração commitadas (para o self-model do L5).
+    pub explorations: u64,
+    /// Vencedores distintos já broadcastizados (diversidade do
+    /// spotlight — insumo da identidade L5, com denominador em
+    /// `broadcasts`).
+    pub distinct_broadcasts: u64,
+    /// Verificações confirmadas (efeito líquido ≥ −tolerância).
+    pub confirmed: u64,
+    /// Reforços L4→L3 submetidos à memória episódica (seção 16.2).
+    pub memory_submissions: u64,
+    /// Não-confirmadas: conteúdo saiu do foco (razão tipada).
+    pub content_gone: u64,
+    /// Não-confirmadas: degradação além da tolerância (razão tipada).
+    pub degraded_beyond_tolerance: u64,
 }
 
 /// Módulo L4: workspace, modelo do mundo, causal e decisão integrados.
@@ -68,6 +116,11 @@ pub struct L4Module {
     deferred: Mutex<Vec<(PendingDecision, u64, u64)>>,
     /// Ciclos abertos aguardando outcome (Lei 5).
     open: Mutex<Vec<OpenCycle>>,
+    /// Conteúdos distintos que já venceram broadcast (diversidade).
+    distinct: Mutex<std::collections::HashSet<String>>,
+    /// Último passo de reforço por rótulo (throttle da trilha L4→L3:
+    /// o MESMO conteúdo não reconsolida mais que 1× por janela).
+    reinforcement_throttle: Mutex<std::collections::HashMap<String, u64>>,
     stats: Mutex<L4Stats>,
     state: Mutex<rt::ModuleState>,
 }
@@ -108,6 +161,8 @@ impl L4Module {
             degraded: Mutex::new(DegradedMode::new()),
             deferred: Mutex::new(Vec::new()),
             open: Mutex::new(Vec::new()),
+            distinct: Mutex::new(std::collections::HashSet::new()),
+            reinforcement_throttle: Mutex::new(std::collections::HashMap::new()),
             config,
             l3,
             stats: Mutex::new(L4Stats::default()),
@@ -115,15 +170,26 @@ impl L4Module {
         }
     }
 
-    /// Telemetria corrente (auditoria).
+    /// Telemetria corrente (auditoria); a diversidade de vencedores é
+    /// preenchida do conjunto distinto no instante da leitura.
     pub fn stats(&self) -> L4Stats {
-        self.stats.lock().unwrap_or_else(|p| p.into_inner()).clone()
+        let mut s = self.stats.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        s.distinct_broadcasts =
+            self.distinct.lock().unwrap_or_else(|p| p.into_inner()).len() as u64;
+        s
     }
 
     /// Taxa de ciclos fechados com denominador; sem ciclos = None.
     pub fn closed_rate(&self) -> Option<tf::Rate> {
         let s = self.stats();
         tf::Rate::from_ratio(s.envelopes_closed, s.envelopes_opened)
+    }
+
+    /// Taxa de confirmação causal COM DENOMINADOR (hits/total de
+    /// verificações); sem verificações = None (ausência ≠ zero).
+    pub fn confirm_rate(&self) -> Option<tf::Rate> {
+        let s = self.stats();
+        tf::Rate::from_ratio(s.confirmed, s.confirmed + s.content_gone + s.degraded_beyond_tolerance)
     }
 
     /// Percentual causal global com denominador; sem observações = None.
@@ -144,7 +210,14 @@ impl L4Module {
 
     /// Fecha os ciclos cujo outcome chegou (t+1) e expira os que
     /// estouraram o prazo — o ciclo NUNCA fecha sem verificação.
-    fn close_cycles(&self, tick: u64, snapshot: &triad_l3_local::L3Snapshot) -> Vec<tc::LearningEnvelope> {
+    /// COMENSURÁVEL (seção 15): o outcome é o valor do MESMO
+    /// conteúdo da promessa, medido na fotografia t+1; o efeito
+    /// líquido é comparado ao SHAM DE DERIVA (valor no commit).
+    fn close_cycles(
+        &self,
+        tick: u64,
+        snapshot: &triad_l3_local::L3Snapshot,
+    ) -> Vec<tc::LearningEnvelope> {
         let mut open = self.open.lock().unwrap_or_else(|p| p.into_inner());
         let mut stats = self.stats.lock().unwrap_or_else(|p| p.into_inner());
         let tolerance = self.config.causal.confirm_tolerance;
@@ -153,41 +226,99 @@ impl L4Module {
         while i < open.len() {
             // Clone owned: o braço que fecha/expira remove o ciclo da fila.
             let cycle = open[i].clone();
-            // Outcome: saliência média corrente dos focos do L3.
-            let actual = mean_salience(snapshot);
-            match actual {
-                Some(a) if tick > cycle.decided_tick => {
-                    let error = (cycle.expected_value - a).abs();
+            if tick <= cycle.decided_tick {
+                i += 1;
+                continue; // outcome só existe em t+1 (não no mesmo tick)
+            }
+            // Outcome COMENSURÁVEL: valor do conteúdo prometido em t+1.
+            match content_value(&cycle.content_key, snapshot) {
+                Some(actual) => {
+                    // Sham de deriva: efeito líquido acima do baseline
+                    // contrafactual local (persistência sem a ação).
+                    let net_effect = actual - cycle.sham;
+                    let reason = if net_effect >= -tolerance {
+                        VerificationReason::Confirmed
+                    } else {
+                        VerificationReason::DegradedBeyondTolerance
+                    };
+                    let confirmed = reason == VerificationReason::Confirmed;
                     let mut envelope = cycle.envelope.clone();
-                    envelope.actual_outcome = format!("saliencia_media={a:.3}");
-                    envelope.error = Some(error);
+                    envelope.actual_outcome = format!(
+                        "{}={actual:.3} (efeito líquido {net_effect:+.3} vs sham {:.3})",
+                        cycle.content_key, cycle.sham
+                    );
+                    envelope.error = Some(net_effect.abs());
                     envelope.verified_future_effect = Some(tc::VerifiedEffect {
                         observed_step: tf::id::StepId::new(),
                         description: format!(
-                            "saliencia observada {a:.3} vs esperada {:.3} em t+1",
-                            cycle.expected_value
+                            "{} [{}] em t+1",
+                            reason.as_str(),
+                            cycle.content_key
                         ),
-                        // E4: efeito consumido pelo próprio L4 no tempo.
-                        // E5 (validação com sham pareado) é degrau futuro.
+                        // E4: efeito consumido pelo próprio L4 no tempo;
+                        // E5 (gêmea bit-idêntica com sham pareado) é
+                        // degrau futuro DECLARADO, não inflado.
                         evidence: tf::evidence::EvidenceLevel::E4Consumed,
                     });
-                    let confirmed = error <= tolerance;
                     self.causal
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
-                        .observe(&cycle.cause, "saliencia_mantida", confirmed);
+                        .observe(&cycle.cause, "conteudo_mantido", confirmed);
+                    match reason {
+                        VerificationReason::Confirmed => stats.confirmed += 1,
+                        VerificationReason::ContentGone => stats.content_gone += 1,
+                        VerificationReason::DegradedBeyondTolerance => {
+                            stats.degraded_beyond_tolerance += 1
+                        }
+                    }
                     stats.envelopes_closed += 1;
+                    // TRILHA L4→L3 (seção 16.2): o ciclo CONFIRMADO
+                    // reforça o conceito na memória episódica do L3 —
+                    // fila no DONO, o L4 apenas submete; janela de
+                    // reconsolidação por rótulo da config.
+                    if confirmed && self.config.memory_integration.enabled {
+                        let interval = self
+                            .config
+                            .memory_integration
+                            .integration_interval_steps
+                            .max(1);
+                        let mut throttle =
+                            self.reinforcement_throttle.lock().unwrap_or_else(|p| p.into_inner());
+                        let last = throttle.get(&cycle.content_key).copied().unwrap_or(0);
+                        let due = tick.saturating_sub(last) >= interval;
+                        if due {
+                            throttle.insert(cycle.content_key.clone(), tick);
+                        }
+                        drop(throttle);
+                        if due {
+                            if let Some(l3) = &self.l3 {
+                                l3.submit_reinforcement(
+                                    triad_l3_local::reinforcement::Reinforcement {
+                                        label: cycle.content_key.clone(),
+                                        step: tick,
+                                        net_effect,
+                                        reconsolidate: self
+                                            .config
+                                            .memory_integration
+                                            .reconsolidation_enabled,
+                                    },
+                                );
+                                stats.memory_submissions += 1;
+                            }
+                        }
+                    }
                     debug!(
                         decisao = %envelope.action,
-                        erro = error,
-                        confirmado = confirmed,
-                        "ciclo decisão→outcome→learning FECHADO"
+                        efeito_liquido = net_effect,
+                        razao = reason.as_str(),
+                        "ciclo decisão→outcome→learning FECHADO (comensurável + sham)"
                     );
                     closed.push(envelope);
                     open.remove(i);
                 }
                 None if tick >= cycle.timeout_tick => {
-                    // Sem outcome até o prazo: expira contado, não fecha.
+                    // Conteúdo sumiu do foco e o prazo esgotou: expira
+                    // contado, não fecha (Lei 5).
                     warn!(
                         decisao = %cycle.envelope.action,
                         prazo = cycle.timeout_tick,
@@ -196,7 +327,32 @@ impl L4Module {
                     stats.envelopes_expired += 1;
                     open.remove(i);
                 }
-                _ => i += 1,
+                None => {
+                    // Conteúdo sumiu do foco: razão tipada imediata.
+                    let mut envelope = cycle.envelope.clone();
+                    envelope.actual_outcome = format!(
+                        "{} saiu do foco antes de t+1 (CONTENT_GONE)",
+                        cycle.content_key
+                    );
+                    envelope.verified_future_effect = Some(tc::VerifiedEffect {
+                        observed_step: tf::id::StepId::new(),
+                        description: format!("CONTENT_GONE [{}]", cycle.content_key),
+                        evidence: tf::evidence::EvidenceLevel::E4Consumed,
+                    });
+                    self.causal
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner())
+                        .observe(&cycle.cause, "conteudo_mantido", false);
+                    stats.content_gone += 1;
+                    stats.envelopes_closed += 1;
+                    debug!(
+                        decisao = %envelope.action,
+                        razao = "CONTENT_GONE",
+                        "ciclo fechado com razão tipada: conteúdo saiu do foco"
+                    );
+                    closed.push(envelope);
+                    open.remove(i);
+                }
             }
         }
         closed
@@ -217,7 +373,11 @@ impl L4Module {
             let (pending, born, deadline) = &deferred[i];
             match decide_best(pending) {
                 Ok(option) if option.confidence.value() >= self.config.decision.commit_threshold => {
-                    let record = self.commit(&option, tick, snapshot, out);
+                    // O alvo é o conteúdo prometido pela própria opção
+                    // (comensurável); o sham é o valor corrente dele.
+                    let content_key = content_key_of(&option.action);
+                    let sham = content_value(&content_key, snapshot).unwrap_or(0.0);
+                    let record = self.commit(&option, tick, content_key, sham, snapshot, out);
                     executed.push(record);
                     deferred.remove(i);
                 }
@@ -238,11 +398,15 @@ impl L4Module {
     }
 
     /// Commita a opção vencedora: executa a ação e abre o ciclo de
-    /// aprendizado (envelope sem verificação ainda — Lei 5).
+    /// aprendizado com expectativa COMENSURÁVEL (valor corrente do
+    /// conteúdo prometido = sham de deriva) — Lei 5.
+    #[allow(clippy::too_many_arguments)]
     fn commit(
         &self,
         option: &tc::DecisionOption,
         tick: u64,
+        content_key: String,
+        sham: f32,
         snapshot: &triad_l3_local::L3Snapshot,
         out: &mut Vec<tc::EventEnvelope>,
     ) -> ActionRecord {
@@ -258,7 +422,9 @@ impl L4Module {
                 .map(|p| format!("{} (t+{}, conf {:.2})", p.expected, p.horizon, p.confidence))
                 .unwrap_or_else(|| "sem predição (NO_DATA)".into()),
             action: option.action.clone(),
-            expected_outcome: format!("saliencia {}", option.predicted_value.value()),
+            // Expectativa comensurável: manter/elevar o valor do
+            // conteúdo prometido (o sham é a linha de base).
+            expected_outcome: format!("{content_key} >= {sham:.3}"),
             actual_outcome: "aguardando outcome".into(),
             error: None,
             credit_assignment: self
@@ -273,7 +439,8 @@ impl L4Module {
         };
         let cycle = OpenCycle {
             envelope,
-            expected_value: option.predicted_value.value(),
+            content_key,
+            sham,
             cause: format!("decisao:{}", option.action),
             decided_tick: tick,
             timeout_tick: tick + self.config.action.outcome_timeout_steps,
@@ -286,9 +453,12 @@ impl L4Module {
             let mut stats = self.stats.lock().unwrap_or_else(|p| p.into_inner());
             stats.decisions_committed += 1;
             stats.actions += 1;
+            if option.action.starts_with("explorar") {
+                stats.explorations += 1;
+            }
             stats.envelopes_opened += 1;
         }
-        debug!(acao = %record.action, "l4.acao executada e ciclo aberto");
+        debug!(acao = %record.action, "l4.acao executada e ciclo aberto (comensurável)");
         out.push(rt::envelope(
             "l4.action",
             tick,
@@ -306,12 +476,48 @@ impl Default for L4Module {
     }
 }
 
-/// Saliência média dos focos; sem focos = None (ausência ≠ zero).
-fn mean_salience(snapshot: &triad_l3_local::L3Snapshot) -> Option<f32> {
-    if snapshot.foci.is_empty() {
-        return None;
+/// Conteúdo-alvo da ação (comensurável): "explorar:X" promete
+/// operar sobre X; "consolidar:E" sobre a predição de E; "manter:coesao"
+/// sobre o sinal de coerência.
+fn content_key_of(action: &str) -> String {
+    if let Some(rest) = action.strip_prefix("explorar:") {
+        rest.to_string()
+    } else if let Some(ev) = action.strip_prefix("consolidar:") {
+        format!("predicao:{ev}")
+    } else if action.starts_with("manter:") {
+        "sinal:coesao".to_string()
+    } else {
+        action.to_string()
     }
-    Some(snapshot.foci.iter().map(|(_, s)| *s).sum::<f32>() / snapshot.foci.len() as f32)
+}
+
+/// Valor COMENSURÁVEL de um conteúdo na fotografia L3: foco pela
+/// identidade do conceito, predição pelo evento previsto, sinal de
+/// coerência pelo valor corrente. Conteúdo ausente = None (a razão
+/// tipada CONTENT_GONE cuida da ausência — nunca vira zero).
+fn content_value(key: &str, snapshot: &triad_l3_local::L3Snapshot) -> Option<f32> {
+    if let Some(foco) = key.strip_prefix("foco:") {
+        return snapshot
+            .foci
+            .iter()
+            .find(|(concept, _)| format!("foco:{concept:?}") == key)
+            .map(|(_, s)| *s)
+            .or_else(|| {
+                let _ = foco;
+                None
+            });
+    }
+    if let Some(ev) = key.strip_prefix("predicao:") {
+        return snapshot
+            .prediction
+            .as_ref()
+            .filter(|p| p.expected == ev)
+            .map(|p| p.confidence);
+    }
+    if key == "sinal:coesao" {
+        return snapshot.coherence_mean.map(|c| c as f32);
+    }
+    None
 }
 
 impl rt::CognitiveModule for L4Module {
@@ -388,7 +594,8 @@ impl rt::CognitiveModule for L4Module {
                 .prune(3);
         }
 
-        // (6) Workspace: candidatos REAIS competem por broadcast.
+        // (6) Workspace: candidatos REAIS competem por broadcast com
+        // SALIÊNCIA EFETIVA (habituação — o spotlight circula).
         if self.config.decision.enabled
             && tick % self.config.workspace.broadcast_interval_steps.max(1) == 0
         {
@@ -406,11 +613,15 @@ impl rt::CognitiveModule for L4Module {
             if let Some(c) = snapshot.coherence_mean {
                 workspace.submit(crate::WorkspaceStage::Sensory, "sinal:coesao", c as f32);
             }
-            let winner = workspace.broadcast();
+            let winner: Option<WorkspaceEntry> = workspace.broadcast();
             drop(workspace);
 
             if let Some(winner) = winner {
                 self.stats.lock().unwrap_or_else(|p| p.into_inner()).broadcasts += 1;
+                self.distinct
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .insert(winner.content.clone());
                 debug!(
                     saliencia = winner.salience,
                     conteudo = %winner.content,
@@ -477,7 +688,7 @@ impl rt::CognitiveModule for L4Module {
                         source_module: module_id,
                     }),
                     limbic_modulation: None,
-                    expected_outcome: format!("saliencia {:.3}", winner.salience),
+                    expected_outcome: format!("{} >= {:.3}", winner.content, winner.salience),
                 };
                 ctx.set(
                     "l4.decision.pending",
@@ -493,7 +704,13 @@ impl rt::CognitiveModule for L4Module {
                             tc::Priority::Normal,
                         ));
                         if option.confidence.value() >= self.config.decision.commit_threshold {
-                            let record = self.commit(&option, tick, &snapshot, out);
+                            // Expectativa comensurável: o valor corrente
+                            // do conteúdo que a ação promete operar.
+                            let content_key = content_key_of(&option.action);
+                            let sham = content_value(&content_key, &snapshot)
+                                .unwrap_or(winner.salience);
+                            let record =
+                                self.commit(&option, tick, content_key, sham, &snapshot, out);
                             ctx.set(
                                 "l4.action.executed",
                                 tc::Qualified::value(record, module_id, step),
@@ -581,9 +798,9 @@ mod tests {
     }
 
     #[test]
-    fn ciclo_real_l1_l2_l3_l4_fecha_envelope_com_evidencia() {
+    fn ciclo_real_l1_l2_l3_l4_fecha_envelope_comensuravel_e_sham() {
         let mut ciclo = Ciclo::new(42, 24);
-        for _ in 0..6 {
+        for _ in 0..8 {
             ciclo.tick();
         }
         let stats = ciclo.l4.stats();
@@ -596,7 +813,27 @@ mod tests {
         assert!(stats.envelopes_closed <= stats.envelopes_opened);
         let rate = ciclo.l4.closed_rate().expect("taxa com denominador");
         assert!(rate.value() > 0.0);
-        // Causal global com denominador (algum par observado).
+        // Comensurável + sham: organismo estável mantém os conteúdos
+        // ⇒ verificações confirmadas existem e são maioria.
+        assert!(
+            stats.confirmed >= 1,
+            "efeito líquido dentro da tolerância (sham de deriva)"
+        );
+        // TRILHA L4→L3 (16.2): confirmações viram reforços na memória
+        // episódica real do L3 (o dono aplica no tick seguinte).
+        assert!(
+            stats.memory_submissions >= 1,
+            "ciclo confirmado submete reforço à memória L3"
+        );
+        let (aplicados, _reconsolidados, _descartados, _pendentes) =
+            ciclo.l3.reinforcement_stats();
+        assert!(aplicados >= 1, "o L3 drenou e aplicou os reforços");
+        let confirm = ciclo
+            .l4
+            .confirm_rate()
+            .expect("taxa de confirmação com denominador");
+        assert!(confirm.value() > 0.5, "conteúdos estáveis confirmam");
+        // Causal global com denominador (pares observados).
         assert!(ciclo.l4.causal_pct().is_some());
     }
 
@@ -617,7 +854,38 @@ mod tests {
         assert_eq!(stats.decisions_committed, 0);
         assert_eq!(stats.envelopes_opened, 0);
         assert!(l4.closed_rate().is_none(), "sem ciclos = sem taxa");
+        assert!(l4.confirm_rate().is_none(), "sem verificações = sem taxa");
         // O tick L4 continua publicando o evento próprio (ativo).
         assert!(total_eventos >= 4);
+    }
+
+    #[test]
+    fn content_key_e_valores_comensuraveis_da_fotografia() {
+        let snapshot = triad_l3_local::L3Snapshot {
+            foci: Vec::new(),
+            prediction: Some(l3::Prediction {
+                horizon: 5,
+                expected: "cobertura_organizacional".into(),
+                confidence: 0.9,
+                step: 3,
+            }),
+            coherence_mean: Some(0.8),
+            coverage: Some(1.0),
+            step: 3,
+        };
+        // Chave derivada da ação aponta para o conteúdo prometido.
+        assert_eq!(
+            content_key_of("consolidar:cobertura_organizacional"),
+            "predicao:cobertura_organizacional"
+        );
+        assert_eq!(content_key_of("manter:coesao"), "sinal:coesao");
+        // Valor comensurável na fotografia; foco ausente = None.
+        assert!(content_value("predicao:cobertura_organizacional", &snapshot).is_some());
+        let v = content_value("sinal:coesao", &snapshot).expect("coerência viva");
+        assert!((v - 0.8).abs() < 1e-6);
+        assert!(
+            content_value("foco:inexistente", &snapshot).is_none(),
+            "ausência ≠ zero (CONTENT_GONE tipa a razão)"
+        );
     }
 }

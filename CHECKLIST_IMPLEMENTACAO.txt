@@ -296,3 +296,110 @@ SECAO 14 -- L4 GLOBAL REAL: WORKSPACE/DECISAO/WORLD MODEL CAUSAL +
   workspace 166 verdes, house_laws 5/5, 65 ticks "sem violar as leis da
   casa" com trilha chladni por tick, grafo 2801 nos/4480 arestas.
   AUDITORIA.md: secao "Cadeia Chladni" com o mapa completo.
+
+----------------------------------------------------------------------
+SECAO 15 -- CORRECAO DO MODELO CAUSAL DO L4: COMENSURABILIDADE +
+           SHAM DE DERIVA + HABITUACAO (SESSAO 7, diretriz do dono --
+           investigacao com fontes externas: GWT Baars/Dehaene,
+           free energy principle/active inference Friston)
+----------------------------------------------------------------------
+[x] [7] 15.1 Diagnostico com sonda real: vencedor ETERNO
+         "predicao:cobertura" com saliencia=confianca=1.0 (bug:
+         confianca de predicao nao e saliencia de conteudo);
+         expected (cobertura 1.0) vs actual (saliencia media 0.39)
+         = grandezas INCOMENSURAVEIS -> erro 0.61 constante
+[x] [7] 15.2 Modelo comensuravel (active inference): expected e
+         actual na MESMA grandeza, medida no CONTEUDO ESPECIFICO que
+         a acao promete afetar (saliencia do foco X / coerencia),
+         em t+1; conteudo sumiu = razao tipada CONTENT_GONE
+[x] [7] 15.3 Sham de deriva (Lei 5/E5 executavel): baseline
+         contrafactual local = valor do conteudo no tick do commit;
+         efeito liquido = actual - sham; confirmado quando dentro
+         da tolerancia ou melhora; atribuicao causal plena (E5 com
+         gemea bit-identica) permanece degrau futuro DECLARADO
+[x] [7] 15.4 Habitacao (GWT/novelty): vencedor repetido perde
+         forca exponencial (habituation_rate no TOML); conteudo
+         novo ganha forca total -> spotlight circula; decisoes
+         deixam de ser monotonicas
+[x] [7] 15.5 Instrumentacao: razoes tipadas de nao-confirmacao
+         (CONTENT_GONE / DEGRADED_BEYOND_TOLERANCE) no envelope e
+         contadas nos stats; TOML [l4.workspace] habituation_rate +
+         config/README; nunca so um float
+[x] [7] 15.6 Verificacao: testes novos (comensurabilidade, sham,
+         habituacao circula vencedor, razao tipada) + workspace
+         verde + house_laws + app RUN=0 com causal honesto > 0
+
+----------------------------------------------------------------------
+SECAO 16 -- ROTEIRO DO QUE FALTA (inventario vivo, a pedido do dono;
+            diretriz: sempre criar tarefas novas, sempre marcar as feitas)
+----------------------------------------------------------------------
+ESTADO: secoes 1-15 TODAS [x]. Abaixo, todo trabalho restante DECLARADO
+(fontes: 13-0 secoes 3-4; 14-0; 15-0 secao 5; config/README "aguardando").
+Donos sao PROPOSTAS: sessao 6 (orquestradora) redistribui se quiser.
+
+PROXIMA PRIORIDADE (P2 da analise 13-0 -- o núcleo L4 agora fecha o
+ciclo com evidencia honesta; falta a camada que OBSERVA o L4):
+[x] [7] 16.1 L5 REAL sobre dados do L4: L5Module consumindo
+         broadcast/causal/stats (focos de identidade, modulacao
+         limbica por estado, meta-politica por evento) + [l5.*] no
+         TOML de aguardando -> injetada + evento l5.meta + testes +
+         app RUN=0. Sem fabricar; observacao nao muta o dono
+[x] [7] 16.2 Consumidor real de [l4.memory_integration]: envelopes
+         FECHADOS do L4 reforcam conceito na memoria L3 via ponte Arc
+         com recibo (14-0 declarou AGUARDANDO; nunca escrever no dono
+         sem recibo E4)
+[ ] [7] 16.3 Rollout raso do world model ([l4.world_model]
+         simulation_max_depth): simulacao deterministica de crencas
+         p/ contrafactual comparavel; sem fabricar (14-0 AGUARDANDO)
+
+INTEGRACAO DO MOTOR DE RESSONANCIA (13.2-13.5 ENTREGUES pela
+sessao 6; nota honesta DELA na secao 14: motor pronto p/ plugar):
+[x] [6] 16.4 ADR de promocao do bonus de atencao (peso 0.15) e da
+         similaridade de memoria por ressonancia: regra da casa
+         (necessidade demonstrada + efeito reproduzivel + consumidor
+         real). Caixa da sessao 6 (dona da integracao L3)
+
+CAMADAS DE PONTE RESTANTES (config/README: mecanismo real primeiro,
+config depois -- nada teatral):
+[ ] [7] 16.5 [learning] transversal real: CreditAssigner consumindo
+         envelopes fechados do L4 (credito por modulo COM denominador)
+[ ] [7] 16.6 [development] estagios reais (P3 da 13-0): banda por
+         estagio consumindo o sinal l1.substrate.chladni (JA
+         publicado aditivo pela sessao 6 em 13.5)
+[ ] [7] 16.7 [governance] com efeito observado (P5): Lei 6 revert
+         (intervencao sem observed_effect dentro do ttl reverte) +
+         [governance] injetada quando o mecanismo existir
+[ ] [7] 16.8 [cybernetics] O1-O4 reais sobre metricas vivas
+         (estabilidade com denominador) + [cybernetics] injetada
+[ ] [7] 16.9 [telemetry]/[lua]/[crisis] structs injetaveis quando as
+         camadas acima ganharem mecanismo (a chave nunca e apagada)
+
+PERSISTENCIA E ESCADA DE EVIDENCIA:
+[ ] [7] 16.10 Cross-run persistence (P4 da 13-0): ledgers/recibos/
+         envelopes fechados sobrevivendo entre execucoes (serde em
+         var/; replay com verificacao de procedencia)
+[ ] [6] 16.11 E5 com gemea bit-identica por decisao L4 (sham pareado
+         global; custo de duplicacao e politica da orquestradora) --
+         declarado no relatorio 15-0 secao 5
+
+FILA DE INVESTIGACAO DO LEGADO (13-0 secao 4 -- nenhum item bloqueia):
+[ ] [ ] 16.12 Os 8 itens da fila (ver relatorio 13-0 secao 4) -- livres;
+         executar quando o dono pedir, um de cada vez, com relatorio
+
+- SESSAO 6 (16.4 fechado, ADR-0007): recursao Chladni VIVA na cognicao.
+  Ponte read-only ClusterModule::last_chladni() (o scheduler cria UM
+  CONTEXTO POR MODULO -- o consumer da 13.4 via ctx.get_qualified
+  estava morto; CORRIGIDO para ponte, padrao L1->L2->L3->L4; idem no
+  development via with_chladni_source). Bonus de atencao L3: saliencia
+  + ressonancia*peso, peso em [l3.attention].chladni_bonus_weight
+  (default 0.15, espelho do legado); peso 0 = A/A bit-identico ao
+  anterior (testado); read_for_l4 soma o mesmo bonus -> o L4 ve a
+  harmonia (A/A das secoes 14/15 preservado sem fonte). Memoria:
+  episodios com ResonanceSignature (so de sinal VALUE) +
+  similar_by_resonance (banda x delta de ressonancia), herdeiro do
+  _compare_patterns do legado; consumidores: reforco 16.2 (sessao 7,
+  ja entregue) e estagios 16.6. Verificacao: L3 16 verdes (2 novos
+  A/A do bonus), workspace 190 verdes, house_laws 5/5, app 65 ticks
+  com bonus 65/65 taxa Some(1.0) "sem violar as leis da casa".
+  Proximo [6]: 16.11 gemea E5 + migrar SECAO 17 (escala 1.200->30K,
+  diretriz do dono) apos commit.

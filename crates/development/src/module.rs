@@ -1,9 +1,10 @@
 //! Módulo transversal de development: liga os subsistemas morfológicos ao runtime.
 
 use std::collections::HashSet;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use triad_contracts as tc;
 use triad_foundation as tf;
+use triad_l1_substrate as l1;
 use triad_runtime as rt;
 use tracing::{debug, trace};
 
@@ -53,6 +54,9 @@ impl Inner {
 pub struct DevelopmentModule {
     inner: Mutex<Inner>,
     descriptor: tc::ModuleDescriptor,
+    /// Fonte do sinal Chladni (ponte read-only ao L1 — ADR-0007).
+    /// None = ponte não ligada (ausência declarada no tick).
+    chladni_source: Option<Arc<l1::ClusterModule>>,
 }
 
 impl DevelopmentModule {
@@ -66,7 +70,16 @@ impl DevelopmentModule {
                 layer: tc::Layer::Transversal,
                 domain: "development".to_string(),
             },
+            chladni_source: None,
         }
+    }
+
+    /// Liga a ponte do sinal Chladni (ADR-0007): leitura read-only da
+    /// última observação do substrato — o scheduler cria um contexto
+    /// por módulo, então o sinal trafega por handle, não por contexto.
+    pub fn with_chladni_source(mut self, l1: Arc<l1::ClusterModule>) -> Self {
+        self.chladni_source = Some(l1);
+        self
     }
 }
 
@@ -128,20 +141,28 @@ impl rt::CognitiveModule for DevelopmentModule {
         );
         ctx.set("development.status", status);
 
-        // Harmonia (13.4): consome o sinal Chladni do substrato — leitura
-        // qualificada, ADITIVA. Ausência ≠ zero: sem sinal, trace com
-        // motivo; uso em POLÍTICA (peso de atenção) só via ADR, com
-        // necessidade demonstrada e consumidor real (regra de promoção).
-        let chladni = ctx.get_qualified::<triad_chladni::Observation>("l1.substrate.chladni");
-        if let Some(o) = chladni.as_ref_value() {
-            trace!(
-                banda = ?o.band,
-                amostra = o.sample_size,
-                ressonancia = ?o.resonance,
-                "development consumiu o sinal chladni do substrato"
-            );
-        } else {
-            trace!("development: sinal chladni ausente (ausência ≠ zero)");
+        // Harmonia (13.4/ADR-0007): consome o sinal Chladni do
+        // substrato por PONTE read-only — o scheduler cria um contexto
+        // por módulo, então a leitura por ctx.get_qualified nunca
+        // veria a chave (correção do débito da 13.4). ADITIVO: trilha
+        // apenas; uso em POLÍTICA (banda por estágio) é a 16.6.
+        match &self.chladni_source {
+            Some(src) => {
+                let obs = src.last_chladni();
+                if let Some(res) = obs.resonance.as_ref_value() {
+                    trace!(
+                        banda = ?obs.band,
+                        amostra = obs.sample_size,
+                        ressonancia = res,
+                        "development consumiu o sinal chladni do substrato"
+                    );
+                } else {
+                    trace!("development: sinal chladni ausente (ausência ≠ zero)");
+                }
+            }
+            None => {
+                trace!("development: ponte chladni não ligada (ausência ≠ zero)");
+            }
         }
         out.push(rt::envelope(
             "development",

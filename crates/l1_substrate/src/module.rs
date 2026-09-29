@@ -26,6 +26,10 @@ pub struct ClusterModule {
     /// Sinal Chladni da harmonia (13.4) — motor próprio, observação
     /// ADITIVA: não altera o passo físico nem os eventos publicados.
     chladni: Mutex<crate::chladni_signal::ChladniSignal>,
+    /// Última observação Chladni (ponte read-only p/ L3/development —
+    /// ADR-0007: o scheduler cria UM CONTEXTO POR MÓDULO, então o sinal
+    /// trafega por handle, padrão das pontes L1→L2→L3→L4).
+    last_chladni: Mutex<triad_chladni::Observation>,
     state: Mutex<rt::ModuleState>,
 }
 
@@ -58,6 +62,17 @@ impl ClusterModule {
             chladni: Mutex::new(crate::chladni_signal::ChladniSignal::new(
                 triad_chladni::ChladniConfig::default(),
             )),
+            // Antes do primeiro tick: ausência EXPLÍCITA (nunca zero).
+            last_chladni: Mutex::new(triad_chladni::Observation {
+                step: tf::StepId::new(),
+                resonance: tf::Qualified::no_data(
+                    "nenhum tick ainda",
+                    tf::ModuleId::new(),
+                    tf::StepId::new(),
+                ),
+                band: None,
+                sample_size: 0,
+            }),
             // Nasce ativo: Boot/Embryo não podem tickar no runtime.
             state: Mutex::new(rt::ModuleState::Active),
         }
@@ -68,6 +83,16 @@ impl ClusterModule {
     pub fn with_chladni_config(mut self, chladni: triad_chladni::ChladniConfig) -> Self {
         self.chladni = Mutex::new(crate::chladni_signal::ChladniSignal::new(chladni));
         self
+    }
+
+    /// Última observação Chladni do substrato (ponte read-only —
+    /// consumida pela atenção L3 e pelo development; observação
+    /// nunca muta o dono).
+    pub fn last_chladni(&self) -> triad_chladni::Observation {
+        self.last_chladni
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone()
     }
 
     /// Acesso compartilhado ao runner do substrato — para o L2 real
@@ -132,6 +157,9 @@ impl rt::CognitiveModule for ClusterModule {
         // físico, os eventos nem os testes A/A do substrato.
         let mut chladni = self.chladni.lock().unwrap_or_else(|p| p.into_inner());
         let obs = chladni.observe(&*runner, self.descriptor.module_id, step_id);
+        // Ponte read-only (ADR-0007): guarda a observação para os
+        // consumidores por handle (atenção L3, development).
+        *self.last_chladni.lock().unwrap_or_else(|p| p.into_inner()) = obs.clone();
         ctx.set("l1.substrate.chladni", obs);
         drop(chladni);
 

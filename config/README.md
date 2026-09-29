@@ -69,23 +69,24 @@ herdam o default. Merge é feito por `PlatformConfig::merged_with`.
 | `[l3.prediction]` | `l3_local::prediction::PredictionCfg` | horizonte e confiança mínima injetados; `error_tolerance` declarada p/ o avaliador de acerto (consumidor futuro: comparar \|observado−previsto\|) |
 | `[l3.semantic]` `[l3.memory]` | **AGUARDANDO CAMADA REAL** | semantic/memory da sessão 6 são estruturas mínimas sem esses parâmetros; as chaves descrevem o alvo documentado (teto de vocabulário etc.) — injetar em estrutura sem o mecanismo seria teatral |
 | `[l3.adaptation]` | `l3_local::L3Policy` | cadência, pisos, banda, salto das propostas L3→L2 — injetado |
-| `[l4.workspace]` | `l4_global::config::WorkspaceCfg` | capacidade (7 clássico), rodadas, intervalo de broadcast, perdas tipadas — injetado no `L4Module` real (P1) |
+| `[l4.workspace]` | `l4_global::config::WorkspaceCfg` | capacidade (7 clássico), rodadas, intervalo de broadcast, perdas tipadas, `habituation_rate` (novelty do GWT) — injetado no `L4Module` real (P1) |
 | `[l4.world_model]` | `l4_global::config::WorldModelCfg` | intervalo de atualização injetado; `simulation_max_depth` AGUARDANDO mecanismo de rollout (declarada, não teatral) |
 | `[l4.causal]` | `l4_global::config::CausalCfg` | rastreamento, poda por intervalo, `confirm_tolerance` — injetado (hipóteses hits/total com denominador) |
-| `[l4.memory_integration]` | `l4_global::config::MemoryIntegrationCfg` | AGUARDANDO consumidor real no `memory.rs` (declaração honesta) |
+| `[l4.memory_integration]` | `l4_global::config::MemoryIntegrationCfg` | **INJETADA** (seção 16.2): ciclo confirmado do L4 reforça a memória episódica real do L3 (fila no dono, recibo, janela de reconsolidação por rótulo, `reconsolidation_enabled`) |
 | `[l4.decision]` | `l4_global::config::DecisionCfg` | commit_threshold (commit/defer), prazo de proposta — injetado |
 | `[l4.action]` | `l4_global::config::ActionCfg` | `outcome_timeout_steps` — prazo do outcome do ciclo (Lei 5) — injetado |
 | `[l4.degradation]` | `l4_global::config::DegradationCfg` | modo degradado OBRIGATÓRIO consumido como invariante (`allow_suspension=false`); pisos MINIMAL/DEGRADED declarados |
 
 ### Camadas de ponte restantes e transversais — AGUARDANDO CAMADA REAL
 
-`[l5.*]`, `[learning]`, `[cybernetics]`, `[governance]`,
-`[development]`, `[telemetry]`, `[lua]`, `[crisis]` estão declaradas no
-default.toml como CONTRATO DO ALVO (o documento é a especificação do
-organismo completo). Os módulos atuais dessas camadas são pontes mínimas
-— injetar config em esqueleto sem mecanismo seria teatral. **Cada uma
-ganha injeção no momento em que o mecanismo real existir; a chave nunca
-é apagada.** Decisão de conflito: sessão 6 (dona dessas camadas).
+- `[l5.*]` (`self_model`/`limbic`/`meta_controller`/`resource_governor`/`development_governor`) → **INJETADA** no `L5Module` real (seção 16.1): identidade derivada das taxas do L4, histerese límbica, metacontrolador com TTL individual (Lei 6), wake por causa declarada. `resource_governor`/`development_governor` seguem declaradas para os mecanismos de auditoria de orçamento e morphogênese (consumidores futuros: `16.6`/governança) — a chave nunca é apagada.
+- `[learning]`, `[cybernetics]`, `[governance]`,
+  `[development]`, `[telemetry]`, `[lua]`, `[crisis]` estão declaradas no
+  default.toml como CONTRATO DO ALVO (o documento é a especificação do
+  organismo completo). Os módulos atuais dessas camadas são pontes mínimas
+  — injetar config em esqueleto sem mecanismo seria teatral. **Cada uma
+  ganha injeção no momento em que o mecanismo real existir; a chave nunca
+  é apagada.** Decisão de conflito: sessão 6 (dona dessas camadas).
 
 ## Auditoria
 
