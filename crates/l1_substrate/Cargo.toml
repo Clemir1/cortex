@@ -1,0 +1,29 @@
+# =============================================================================
+# triad-l1-substrate — substrato computacional L1 (núcleo mínimo)
+#
+# Fisiologia dos clusters: estado 97D, energia/homeostase O1, survival com
+# histerese, lifecycle, plasticidade (Hebbian real), grafo local,
+# HOTM/reservoir com readout, matriz de estados versionada e contrato
+# temporal de 4 fases com ledger de passagem.
+#
+# FORA de escopo (doc/architecture/overview.md §2): conceitos, identidade,
+# World Model, linguagem, metacognição, tecidos (L2), leis.
+# =============================================================================
+
+[package]
+name = "triad-l1-substrate"
+edition.workspace = true
+version.workspace = true
+license-file.workspace = true
+
+[dependencies]
+triad-foundation = { workspace = true }
+triad-runtime = { path = "../runtime" }
+triad-contracts = { workspace = true }
+rand = { workspace = true }
+uuid = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+toml = "0.8"

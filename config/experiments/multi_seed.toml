@@ -1,0 +1,23 @@
+# =============================================================================
+# config/experiments/multi_seed.toml — EXPERIMENTO (não é delta de runtime).
+# Nenhuma configuração experimental é codificada dentro de módulos
+# cognitivos. Benefício multi-seed é condição de promoção de módulo ou
+# extensão ao core (estrutura_diretorios.md §3).
+# RESULTADOS vão sempre para var/runs/<run_id>/ — nunca para o diretório
+# do experimento.
+# =============================================================================
+
+[experiment]
+name = "multi_seed"
+description = "Robustez cross-seed: o efeito deve sustentar-se entre seeds independentes"
+seeds = [11, 23, 37, 41, 59, 77, 91, 113]
+repetitions_per_seed = 1
+baseline_profile = "research"      # telemetria científica completa + determinismo auditável
+results_dir = "var/runs"
+output_policy = "var_runs_only"
+
+[experiment.variables]
+min_seeds = 8                      # tamanho da amostra cross-seed
+aggregates = ["mean", "std", "min", "max", "effect_size"]  # estatísticas por seed e globais
+cross_seed_consistency_required = true   # efeito inconsistente entre seeds não promove nada
+paired_sham = true                 # braço sham pareado quando houver mudança comportamental

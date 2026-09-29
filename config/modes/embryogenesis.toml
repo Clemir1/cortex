@@ -1,0 +1,22 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/embryogenesis.toml — MODO EMBRYOGENESIS
+# Fase de formação inicial do organismo (gênese de substrato e tecidos).
+# Crescimento estrutural ativo, sem atuação no mundo externo.
+# =============================================================================
+
+[mode]
+name = "embryogenesis"
+morphogenesis = "on"        # fase de formação: crescimento estrutural ativo
+learning = "on"             # aprendizado básico desde a gênese (nunca em standby)
+actuation = "off"           # organismo em formação não atua no mundo
+
+[mode.gains]
+attention = 0.5             # atenção mínima necessária à formação
+plasticity = 1.5            # formação de substrato/tecidos
+metabolism = 1.2            # custo energético do crescimento
+consolidation = 0.8
+
+[mode.priorities]
+order = ["structural_growth", "homeostasis", "tissue_formation"]

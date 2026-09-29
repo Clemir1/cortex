@@ -1,0 +1,10 @@
+[package]
+name = "triad-l4-global"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+triad-runtime = { path = "../runtime" }
+tracing = "0.1"

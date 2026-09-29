@@ -1,0 +1,22 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+# Sobrescreve [platform.gpu] quando selecionado (ex.: --hardware opencl).
+#
+# config/hardware/opencl.toml — PERFIL OpenCL GENÉRICO
+# Dispositivo OpenCL arbitrário; prefira um perfil específico (rx580)
+# quando o hardware for conhecido. Limites reais são validados em runtime
+# via clGetDeviceInfo — nunca assumidos.
+# =============================================================================
+
+[gpu]
+backend = "opencl"
+vendor = "any"
+model = "any"
+device_hints = []                  # vazio = primeiro dispositivo OpenCL da plataforma
+compute_units = 0                 # 0 = consultar em runtime (clGetDeviceInfo)
+compute_threads = 0               # 0 = consultar em runtime
+default_workgroup_size = 64
+max_workgroup_size = 256
+preferred_workgroup_multiple = 32  # conservador: serve warp32 (NVIDIA) e wave64 (AMD)
+max_memory_mb = 4096
+reserved_memory_mb = 512

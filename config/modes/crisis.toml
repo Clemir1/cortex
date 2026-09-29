@@ -1,0 +1,24 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/crisis.toml — MODO CRISIS
+# Coerente com config/crisis.toml (perfil) e a máquina de crise §7:
+# altera políticas/gains, NUNCA desliga sistemas. Preservados por lei:
+# L1 homeostase, L2 tecidos, L3 memória/semântica, L4 Workspace MINIMAL +
+# World Model DEGRADED, decision, outcome, learning.
+# =============================================================================
+
+[mode]
+name = "crisis"
+morphogenesis = "off"       # morphogenesis↓: suspenso; dano ainda acorda [development.regeneration]
+learning = "on"             # preservado por lei
+actuation = "on"            # decision/outcome preservados por lei
+
+[mode.gains]
+attention = 0.7             # foco no essencial
+plasticity = 0.5            # mudança estrutural mínima
+metabolism = 0.8            # economia de energia
+consolidation = 0.6         # consolidação reduzida (nunca OFF)
+
+[mode.priorities]
+order = ["survival", "stabilization", "homeostasis", "cognition"]

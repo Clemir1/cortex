@@ -1,0 +1,23 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/sleep.toml — MODO SLEEP
+# EXTENSÃO FUTURA: sleep NÃO faz parte do núcleo mínimo; apenas AWAKE é
+# obrigatório na primeira versão (overview.md §7). Este arquivo é um
+# placeholder normativo — perfil válido, sem consumidor runtime ainda.
+# =============================================================================
+
+[mode]
+name = "sleep"
+morphogenesis = "standby"   # sem crescimento estrutural durante o sono
+learning = "on"             # consolidação continua (learning nunca desliga)
+actuation = "off"           # sem atuação no mundo externo
+
+[mode.gains]
+attention = 0.3             # saliência reduzida
+plasticity = 0.5
+metabolism = 0.6            # consumo basal reduzido
+consolidation = 2.0         # consolidação de memória priorizada
+
+[mode.priorities]
+order = ["memory_consolidation", "homeostasis", "maintenance"]

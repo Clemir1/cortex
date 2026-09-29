@@ -1,0 +1,12 @@
+D:\cortex\crates\bindings\lua\target\debug\deps\bitflags-36149c9da0cfcab8.d: C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\lib.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\iter.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\parser.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\traits.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\public.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\internal.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external\serde.rs
+
+D:\cortex\crates\bindings\lua\target\debug\deps\libbitflags-36149c9da0cfcab8.rmeta: C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\lib.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\iter.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\parser.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\traits.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\public.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\internal.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external\serde.rs
+
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\lib.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\iter.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\parser.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\traits.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\public.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\internal.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external\serde.rs:

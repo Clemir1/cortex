@@ -1,0 +1,15 @@
+[package]
+name = "triad"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-contracts = { path = "../contracts" }
+triad-foundation = { path = "../foundation" }
+triad-runtime = { path = "../runtime" }
+triad-platform = { path = "../platform" }
+triad-l1-substrate = { path = "../l1_substrate" }
+triad-l2-tissue = { path = "../l2_tissue" }
+triad-l3-local = { path = "../l3_local" }
+triad-l4-global = { path = "../l4_global" }
+triad-l5-meta = { path = "../l5_metacognition" }

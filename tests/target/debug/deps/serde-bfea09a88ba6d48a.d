@@ -1,0 +1,14 @@
+D:\cortex\tests\target\debug\deps\serde-bfea09a88ba6d48a.d: C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs D:\cortex\tests\target\debug\build\serde-9c8202d9fe2ae3da\out/private.rs
+
+D:\cortex\tests\target\debug\deps\libserde-bfea09a88ba6d48a.rlib: C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs D:\cortex\tests\target\debug\build\serde-9c8202d9fe2ae3da\out/private.rs
+
+D:\cortex\tests\target\debug\deps\libserde-bfea09a88ba6d48a.rmeta: C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs D:\cortex\tests\target\debug\build\serde-9c8202d9fe2ae3da\out/private.rs
+
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs:
+C:\Users\Clemir\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs:
+D:\cortex\tests\target\debug\build\serde-9c8202d9fe2ae3da\out/private.rs:
+
+# env-dep:OUT_DIR=D:\\cortex\\tests\\target\\debug\\build\\serde-9c8202d9fe2ae3da\\out

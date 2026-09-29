@@ -1,0 +1,7 @@
+# Delta sobre config/default.toml.
+# Chaves não citadas herdam o valor default; cite apenas o que muda.
+# Braços do experimento referenciam caminhos canônicos —
+# nunca invente chaves novas em módulos cognitivos.
+
+# [secao_existente]
+# chave_existente = "valor_do_delta"

@@ -1,0 +1,23 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/corticalization.toml — MODO CORTICALIZATION
+# Especialização → integração → estabilização (coerente com
+# config/corticalization.toml). O comportamento permanece medido durante a
+# reorganização para validar efeitos cognitivos (cadeia de desenvolvimento).
+# =============================================================================
+
+[mode]
+name = "corticalization"
+morphogenesis = "on"         # especialização/integração guiadas (temporário)
+learning = "on"              # valida efeitos estruturais (E5)
+actuation = "on"             # o circuito continua medido durante a reorganização
+
+[mode.gains]
+attention = 0.8
+plasticity = 1.3
+metabolism = 1.1
+consolidation = 1.1
+
+[mode.priorities]
+order = ["specialization", "integration", "stabilization", "cognition"]

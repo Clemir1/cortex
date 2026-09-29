@@ -1,0 +1,93 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/crisis.toml — PERFIL DE REGIME DE CRISE
+# Aplica o pacote de políticas do estado CRISIS (contratos_camadas.md §7).
+# Tudo aqui é REDUÇÃO DE POLÍTICA (fatores, períodos, níveis) — nenhum
+# sistema é desligado. Desligar L4/GW por energia baixa seria violação de
+# lei, não política (anti-padrão comprovado no legado: energia <0.3
+# desligava GW e 13/18 módulos L5).
+#
+# Reduzidos: morphogenesis↓, division↓, telemetry pesada↓, persistência
+# pesada↓, O5↓, linguagem OFF, experimentos OFF.
+# Preservados (lei): L1 homeostase, L2 tecidos, L3 memória/semântica,
+# L4 Workspace MINIMAL + World Model DEGRADED, decision, outcome, learning.
+# =============================================================================
+
+[organism]
+initial_state = "CRISIS"     # máquina de crise inicia já no estado CRISIS
+
+[l1.morphogenesis]
+state = "STANDBY"            # morphogenesis↓ (permanece suspenso)
+max_divisions_per_step = 0   # division↓: divisão suspensa (dano ainda acorda [development.regeneration])
+
+[l1.homeostasis]
+enabled = true               # L1 homeostase preservada — sempre (lei)
+
+[l2.adaptation]
+min_interval_steps = 50     # adaptação estrutural mais conservadora em crise
+
+[l3.attention]
+max_candidates = 32          # menos candidatos — Workspace MINIMAL
+gain = 0.8
+
+[l3.memory]
+forgetting_rate = 0.0005     # L3 memória/semântica preservada (lei) — esquecimento já é suave
+
+[l4.workspace]
+mode = "MINIMAL"             # piso obrigatório (nunca OFF)
+
+[l4.world_model]
+mode = "DEGRADED"            # piso obrigatório (nunca OFF)
+simulation_max_depth = 1
+
+[l4.decision]
+enabled = true               # decision nunca desliga (lei)
+commit_threshold = 0.4       # decisões mais rápidas sob pressão
+
+[l4.action]
+enabled = true               # outcome nunca desliga (lei)
+
+[learning]
+enabled = true               # transversal: nunca desliga, mesmo em crise
+
+[cybernetics.o5_evolution]
+enabled = false              # O5↓: evolução de políticas suspensa até RECOVERY
+
+[telemetry]
+default_evidence_level = "E2"   # telemetry pesada↓: coleta mínima fora do circuito fechado
+
+[telemetry.modules]
+# O circuito fechado (L4 decision/outcome + learning) preserva E5 — efeito
+# validado mesmo em crise; o resto reduz para E2/E3.
+l4_global = "E5"
+learning = "E5"
+l1_substrate = "E3"
+l2_tissue = "E3"
+l3_local = "E3"
+l5_meta = "E2"
+cybernetics = "E2"
+governance = "E3"
+development = "E2"
+platform = "E2"
+
+[telemetry.heavy]
+enabled = false
+payload_capture = false
+per_step_state_hash = false
+
+[platform.persistence]
+checkpoint_interval_steps = 2000        # persistência pesada↓ (lineage permanece obrigatória — lei)
+compact_journal_interval_steps = 2000
+
+[extensions]
+enabled = false              # linguagem OFF (extensão) + dream/full_brain OFF
+language = false
+dream = false
+full_brain = false
+
+[lua]
+experiments_enabled = false  # experimentos OFF em crise
+
+[lua.sandbox]
+script_timeout_ms = 25      # janela de política menor por script

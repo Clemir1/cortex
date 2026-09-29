@@ -1,0 +1,22 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+# Sobrescreve [platform.gpu] quando selecionado (ex.: --hardware rx580).
+#
+# config/hardware/rx580.toml — PERFIL AMD RADEON RX 580 (OpenCL)
+# Polaris/gfx803: 36 CUs, 2304 stream processors, 8 GB GDDR5,
+# wavefront de 64 threads (wave64). Workgroups dimensionados ao wave64:
+# 64 = exatamente 1 wave (ideal); múltiplos de 64 evitam ondas parciais.
+# =============================================================================
+
+[gpu]
+backend = "opencl"
+vendor = "amd"
+model = "Radeon RX 580"
+device_hints = ["gfx803", "Ellesmere", "Polaris"]   # hints/regex de seleção de dispositivo
+compute_units = 36                # 36 CUs — dimensiona o batch dos kernels
+compute_threads = 2304            # stream processors (referência de paralelismo)
+default_workgroup_size = 64       # 1 wave64 — tamanho ideal no GCN/Polaris
+max_workgroup_size = 256           # 4 waves64 — teto típico OpenCL do dispositivo
+preferred_workgroup_multiple = 64  # wave64: múltiplos de 64 evitam ondas parciais
+max_memory_mb = 7168              # 8 GB GDDR5 menos reserva de vídeo/sistema
+reserved_memory_mb = 1024         # VRAM reservada a display/sistema

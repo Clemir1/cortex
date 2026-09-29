@@ -1,0 +1,529 @@
+# =============================================================================
+# Triad_AEE / Cortex — Núcleo mínimo L1–L5 (Rust + Lua)
+# config/default.toml — CONFIGURAÇÃO BASE do organismo
+#
+# Perfis (research.toml, crisis.toml, corticalization.toml), modos
+# (config/modes/*) e perfis de hardware (config/hardware/*) são DELTAS sobre
+# este arquivo: chaves não citadas herdam default. Experimentos são
+# declarados apenas em config/experiments/ — nenhuma configuração
+# experimental é codificada dentro de módulos cognitivos.
+#
+# Notas normativas (doc/architecture/):
+#   - Camadas do núcleo: l1_substrate, l2_tissue, l3_local, l4_global,
+#     l5_meta + transversais (learning, cybernetics, governance,
+#     development, runtime, platform). O núcleo NÃO tem as 12 regiões
+#     cerebrais como crates — elas são extensões futuras em
+#     extensions/full_brain/ (portanto não existem seções [regions.*]).
+#   - Componentes L4 têm modo degradado OBRIGATÓRIO: nunca desligados por
+#     energia baixa; crise altera políticas/gains/budgets, nunca desliga.
+#   - Learning é transversal e NUNCA fica em standby.
+#   - Lua só ajusta políticas (PolicySnapshot → PolicyProposal); nunca é
+#     dono de estado canônico, persistência ou buffers GPU.
+#   - Chaves em inglês snake_case; comentários em pt-br; TOML válido.
+# =============================================================================
+
+[organism]
+# Identidade e estado inicial do organismo.
+name = "cortex"                # nome canônico do organismo
+seed = 42                      # seed única do perfil base (perfis multi-seed sobrescrevem)
+initial_state = "NORMAL"       # estado inicial da máquina de crise (overview.md §7)
+initial_mode = "awake"         # modo operacional inicial (config/modes/awake.toml)
+
+[runtime]
+# Ciclo de execução, scheduler e orçamento por step (crates/runtime).
+tick_ms = 100                  # duração nominal de um tick (10 Hz)
+scheduler = "priority_deadline"  # ordena por prioridade + deadline do envelope de eventos
+max_events_per_tick = 2048     # teto de eventos processados por tick (excedente é adiado)
+step_budget_ms = 80            # orçamento de CPU por step (20 ms de folga no tick)
+lua_window_ms = 5              # janela de políticas Lua por step (fora do hot path L1/L3)
+require_declared_termination = true  # recursões legítimas (HOTM, Workspace, WM, Learning, Meta, Cross-run) exigem terminação declarada
+
+[l1]
+# L1 Substrato — fisiologia computacional: clusters, energia, atividade,
+# lifecycle, plasticidade, grafo local, HOTM/Reservoir.
+# Fora de escopo: conceitos, identidade, World Model, metacognição, leis.
+
+[l1.energy]
+# Energia normalizada 0..1 — base da homeostase (O1 atua sobre isto).
+initial_level = 1.0            # nível na gênese
+target_level = 0.8             # setpoint homeostático
+pressure_floor = 0.40          # abaixo disso (sustentado) a máquina de crise entra em PRESSURE
+critical_floor = 0.20          # abaixo disso entra em CRISIS — NUNCA desliga L4 (lei)
+decay_per_step = 0.0004         # consumo basal por step
+recharge_per_step = 0.0012     # recarga por step em regime normal
+
+[l1.homeostasis]
+enabled = true                 # homeostase sempre preservada (lei de crise)
+check_interval_steps = 10      # cadência de avaliação
+adaptation_gain = 0.05          # corretor lento — sem microgestão
+band = [0.6, 0.9]              # faixa aceitável; fora dela o corretor age
+
+[l1.plasticity]
+enabled = true
+hebbian_rate = 0.01            # potenciação hebbiana por step
+homeostatic_scaling = 0.005    # escalonamento anti-runaway
+weight_decay = 0.0001          # decaimento estrutural de pesos
+max_weight_change = 0.05       # limite de mudança por step (estabilidade primeiro)
+
+[l1.reservoir]
+# HOTM/Reservoir — recursão legítima com terminação declarada.
+enabled = true
+population_size = 512           # neurônios por reservoir
+spectral_radius = 0.9           # borda da estabilidade
+leak_rate = 0.1                 # suavização temporal
+input_scaling = 0.5
+recycle_steps = 50              # horizonte de reciclagem de estados
+termination_declared = true     # exigido por lei do runtime
+
+[l1.morphogenesis]
+# Morfogênese de substrato em STANDBY por default; acorda por dano, falta de
+# capacidade, fragmentação ou sobrecarga persistente. O DevelopmentGovernor
+# ([l5.development_governor]) decide; o substrato executa.
+state = "STANDBY"
+# NOTA DE SEMÂNTICA (resolução da divergência 8-6): no substrato REAL a
+# chave abaixo é a ENERGIA DO CLUSTER acima da qual a divisão é autorizada
+# (cluster.rs can_divide) — não "ocupação". 0.85 = crescimento conservador:
+# só divide cluster em energia alta ("sob demanda, nunca explosivo").
+division_threshold = 0.85      # energia do cluster que autoriza a divisão
+fusion_threshold = 0.15        # distância média |Δstate| que autoriza fusão
+min_cluster_size = 16
+max_cluster_size = 256
+max_divisions_per_step = 1     # crescimento sob demanda — nunca explosivo
+max_population = 1024          # teto populacional do substrato (A3)
+
+[l1.survival]
+# Sobrevivência dos clusters: histerese de emergência/dormência e quorum.
+# Valores = comportamento ATUAL do código (A/A); ajuste de política vem por perfil.
+emergency_energy = 0.3         # energia por cluster que sinaliza emergência ao quorum
+collective_fraction = 0.3      # fração de clusters em emergência que ativa o coletivo
+dormancy_min_sleep = 5         # ticks mínimos dormindo antes de poder acordar
+dormancy_min_awake = 10        # ticks mínimos acordado antes de poder dormir
+dormancy_cooldown = 8          # ticks de espera após acordar antes de re-dormir
+repair_wave_guard = 15         # ticks de guarda após sair de repair (anti-onda)
+
+[l2]
+# L2 Tecidos — organização mesoscópica; ponte bidirecional L1↔L2↔L3.
+# Especialização emerge como dado; decisão e representação ficam fora.
+
+[l2.tissues]
+initial_count = 8              # tecidos na gênese (embryogenesis)
+max_count = 32                 # teto estrutural
+min_members = 3
+max_members = 64
+coherence_target = 0.5
+capacity_margin = 0.2          # folga antes de sinalizar falta de capacidade
+
+[l2.affinity]
+enabled = true
+threshold = 0.25               # afinidade mínima para membership (1 − dist média/2)
+update_rate = 0.02             # velocidade de re-vinculação: 1/0.02 = 50 steps de histerese
+rebind_margin = 0.1            # re-vincula só se o outro tecido for melhor por mais que isto (anti ping-pong)
+dissolve_grace_steps = 5        # carência de gênese antes de poder dissolver
+bridge_enabled = true          # pontes inter-tecido (bridges)
+bridge_max_per_tissue = 4
+bridge_min_edges = 2           # arestas inter-tecido mínimas (no grafo L1) para decretar bridge
+
+[l2.adaptation]
+# Feedback estrutural L3→L2 via AdaptationRequest — DEFAULT ON (decisão D2).
+# No legado este elo existia e estava inerte; aqui é first-class.
+feedback_enabled = true
+hysteresis_band = 0.1          # CouplingArbiter aplica banda/histerese (não é gate de existência)
+min_interval_steps = 20        # cadência mínima entre requisições por tecido
+max_delta_per_request = 0.1
+
+[l3]
+# L3 Cognição local — apenas 4 domínios: semantic, memory, attention,
+# prediction. Sem crescimento semântico ilimitado; sem decisão global.
+
+[l3.semantic]
+max_concepts = 4096            # teto do vocabulário conceitual
+binding_threshold = 0.4
+similarity_threshold = 0.3
+reuse_bonus = 0.15              # preferência por representações reutilizáveis
+
+[l3.memory]
+episodic_capacity = 1024
+working_capacity = 64
+consolidation_interval_steps = 500
+forgetting_rate = 0.001
+require_consume_for_validity = true  # sem Consume não é memória útil (cadeia canônica 2)
+
+[l3.attention]
+salience_threshold = 0.35
+max_candidates = 128
+gain = 1.0
+
+[l3.prediction]
+horizon_steps = 5
+min_confidence = 0.2
+error_tolerance = 0.1
+
+[l3.adaptation]
+# Política de propostas estruturais L3→L2 (o gate L2 decide com
+# histerese — o L3 propõe, nunca escreve). Sondas reais mostram declínio
+# natural de coerência 0.98→0.85; a queda desde o pico da janela é o
+# gatilho cognitivo (tendência, não piso míope).
+proposal_interval_steps = 30    # cadência mínima entre propostas
+coherence_floor = 0.30         # piso absoluto da coerência média
+coherence_drop = 0.05          # queda desde o pico = deterioração
+coverage_floor = 0.80          # piso de cobertura organizacional
+proposal_delta = 0.2            # salto proposto (o gate clampa ao teto real)
+
+[l4]
+# L4 Cognição global — integrar e decidir (alvo principal).
+# MODO DEGRADADO OBRIGATÓRIO (contratos_camadas.md §7): componentes L4 nunca
+# são desligados por energia baixa — crise altera política (gains, budgets,
+# períodos), nunca desliga sistemas. Suspensão de L4 sem razão explícita é
+# VIOLAÇÃO DE LEI, não política (o legado desligava GW com energia <0.3).
+
+[l4.degradation]
+policy = "MANDATORY"             # modo degradado obrigatório
+min_workspace_mode = "MINIMAL"   # piso do Workspace sob pressão (nunca OFF)
+min_world_model_mode = "DEGRADED"  # piso do World Model sob pressão (nunca OFF)
+allow_suspension = false         # L4 suspensa = violação de lei
+
+[l4.workspace]
+mode = "FULL"
+capacity = 7                     # conteúdo simultâneo clássico do workspace
+competition_rounds = 2
+broadcast_interval_steps = 1
+loss_typing_required = true       # perdas tipadas por fronteira (candidate→…→broadcast)
+
+[l4.world_model]
+mode = "FULL"
+update_interval_steps = 1
+simulation_max_depth = 3         # rollouts de simulação
+
+[l4.causal]
+enabled = true
+graph_prune_interval_steps = 1000
+
+[l4.memory_integration]
+enabled = true                   # working/episodic/semantic/retrieval/reconsolidation
+integration_interval_steps = 250
+reconsolidation_enabled = true
+
+[l4.decision]
+# proposal→competition→selection→commit — gargalo histórico F2; sempre ativo.
+enabled = true
+proposal_timeout_steps = 3
+commit_threshold = 0.5
+
+[l4.action]
+enabled = true
+outcome_timeout_steps = 10
+
+[l5]
+# L5 Metacognição — 3 governadores + Self Model/Identity.
+# Objetivo-mestre: deixar de controlar demais; observar, orquestrar,
+# arbitrar, corrigir. Nada de dezenas de reguladores.
+
+[l5.self_model]
+enabled = true
+update_interval_steps = 100
+identity_required = true         # contexto de identidade em toda decisão (contrato)
+
+[l5.meta_controller]
+# Ciclo canônico: observe→propose→validate→apply→observe_effect→keep/revert.
+# Nunca aplica direto — intervenções via contrato com observed_effect.
+enabled = true
+proposal_interval_steps = 50
+intervention_ttl_steps = 50      # sem observed_effect dentro do ttl ⇒ reversão automática
+max_concurrent_interventions = 4
+require_reason = true            # proposta sem reason é rejeitada
+
+[l5.resource_governor]
+enabled = true
+audit_interval_steps = 25
+
+[l5.development_governor]
+enabled = true
+wake_conditions = ["damage", "capacity_shortage", "fragmentation", "persistent_overload"]
+morphogenesis_default = "STANDBY"  # acordar exige causa declarada
+
+[learning]
+# Transversal — NUNCA em standby (overview.md §3). Cadeia com terminação:
+# prediction→outcome→error→credit→update→future_behavior→validation.
+enabled = true
+standby_allowed = false           # lei: learning nunca entra em standby
+prediction_error_weight = 1.0
+credit_horizon_steps = 5
+validation_horizons = [1, 5]      # efeitos validados em t+1 e t+5
+e5_requires_observed_consequence = true   # lei: E5 só após consequência observada
+require_verified_future_effect = true     # sem verified_future_effect o ciclo NÃO conta como fechado
+forgetting_rate = 0.0005
+max_update_rate = 0.1             # limite de atualização por step (estabilidade)
+
+[cybernetics]
+# Ordens cibernéticas O1–O5 atravessam L1–L5 como protocolos SOBRE
+# componentes existentes — sem cópias de energia/Workspace/memória/tecidos.
+
+[cybernetics.o1_control]
+enabled = true                    # O1 sobre EnergyHomeostasis
+interval_steps = 10
+
+[cybernetics.o2_adaptation]
+enabled = true
+interval_steps = 25
+
+[cybernetics.o3_coordination]
+enabled = true                    # O3 sobre ResourceGovernor/DevelopmentGovernor
+interval_steps = 50
+
+[cybernetics.o4_self_observation]
+enabled = true                    # O4 sobre SelfModel/MetaController
+interval_steps = 100
+
+[cybernetics.o5_evolution]
+# O5 é LENTO: por episódio/janela longa/entre runs; genome fora do loop principal.
+enabled = true
+cadence = "between_episodes"
+min_interval_steps = 10000
+genome_in_main_loop = false
+
+[governance]
+# Leis hard em Rust (crates/governance/laws), soft em Lua (lua/policies).
+# Protegem invariantes de fronteira, não microcomportamento.
+
+[governance.laws]
+no_stale_as_value = true            # NO_DATA/STALE/INVALID nunca viram VALUE
+no_fallback_as_measured = true       # fallback nunca é publicado como valor medido
+no_actuation_without_ownership = true  # nenhum controlador altera actuator alheio
+learning_e5_gate = true              # learning só recebe E5 após consequência observada
+l4_degraded_mode_mandatory = true   # módulo crítico L4 nunca SUSPENDED sem razão explícita
+checkpoint_lineage_required = true
+typed_rates_with_denominator = true  # toda taxa publicada com denominador
+dream_never_factual_memory = true    # conteúdo de DREAM não vira memória factual
+
+[governance.arbitration]
+enabled = true
+policy = "priority_ttl"
+conflict_resolution = "governor_arbitrates"
+max_concurrent_interventions = 8
+
+[development]
+# Morfogênese em STANDBY por default (overview.md §3): acorda por dano,
+# falta de capacidade, fragmentação ou sobrecarga persistente.
+morphogenesis_state = "STANDBY"
+
+[development.embryogenesis]
+enabled = true                      # gênese inicial (fase de formação)
+duration_steps = 1000
+
+[development.corticalization]
+enabled = true
+specialization_target = 0.6        # alvo de especialização dos tecidos
+integration_target = 0.5
+stabilization_window_steps = 2000
+
+[development.maintenance]
+enabled = true
+interval_steps = 5000
+
+[development.regeneration]
+enabled = true
+wake_on_damage = true              # regeneração responde a dano mesmo em crise
+wake_on_fragmentation = true
+
+[extensions]
+# Extensões futuras — FORA do core (estrutura_diretorios.md §3). Promoção ao
+# core exige: necessidade demonstrada + efeito reproduzível + consumidor
+# real + benefício multi-seed + sem duplicação (ADR). As 12 regiões
+# cerebrais (brainstem etc.) vivem em extensions/full_brain/ — não há
+# seções [regions.*] em lugar algum desta configuração.
+enabled = false
+language = false
+dream = false
+full_brain = false
+
+[platform.gpu]
+# Backend padrão = CPU (o núcleo mínimo não depende de GPU). Perfis de
+# hardware (config/hardware/*.toml) sobrescrevem esta seção quando
+# selecionados na inicialização (ex.: --hardware rx580). Troca/fallback de
+# backend é sempre um evento observável — nunca silencioso.
+backend = "cpu"
+fallback_backend = "cpu"
+vendor = "none"
+model = "none"
+device_hints = []
+compute_units = 0                  # 0 = consultar em runtime
+compute_threads = 0                # 0 = todos os processadores/threads disponíveis
+default_workgroup_size = 64
+max_workgroup_size = 256
+preferred_workgroup_multiple = 32
+max_memory_mb = 2048
+reserved_memory_mb = 256
+
+[platform.persistence]
+# Estado mutável de execução sob var/ — NUNCA misturado com source.
+runs_dir = "var/runs"
+checkpoint_interval_steps = 1000
+journal_enabled = true
+compact_journal_interval_steps = 10000
+
+[platform.persistence.lineage]
+# Lineage obrigatória em todo checkpoint (mata o `latest` como única
+# verdade — contratos_camadas.md §5).
+require_parent_run_id = true
+require_checkpoint_hash = true
+require_state_hash = true
+require_schema_version = true
+schema_version = 1
+reject_checkpoint_without_lineage = true
+
+[telemetry]
+# Escada de evidência E0–E5 por módulo (overview.md §3;
+# contratos_camadas.md §6): E0 declared → E1 initialized → E2 executed →
+# E3 produced → E4 consumed → E5 effect_validated.
+enabled = true
+default_evidence_level = "E5"      # nível-alvo do núcleo: efeito validado
+ledger_enabled = true              # recibo producer→key→version→write_step→consumer→read_step
+emit_interval_steps = 10
+
+[telemetry.levels]
+E0 = "declared"
+E1 = "initialized"
+E2 = "executed"
+E3 = "produced"
+E4 = "consumed"
+E5 = "effect_validated"
+
+[telemetry.modules]
+# Nível por módulo (herda default_evidence_level quando ausente).
+l1_substrate = "E5"
+l2_tissue = "E5"
+l3_local = "E5"
+l4_global = "E5"
+l5_meta = "E5"
+learning = "E5"
+cybernetics = "E5"
+governance = "E5"
+development = "E5"
+platform = "E5"
+
+[telemetry.heavy]
+# Telemetria "pesada" (payloads completos, hash por step) — desligada no
+# perfil base para não taxar o hot path; research.toml liga.
+enabled = false
+payload_capture = false
+per_step_state_hash = false
+
+[telemetry.scientific]
+# Protocolo científico — exigido em promoções de elo e mudanças de política
+# (braço sham pareado quando houver mudança comportamental).
+paired_sham_arm = false
+sham_strategy = "bit_identical"    # mudança display-only exige A/A bit-idêntica
+pre_registered_verdicts = false    # veredito pré-registrado; sem calibração retroativa
+effect_check_horizons = [1, 5]
+
+[lua]
+# Rust é o dono do organismo; Lua só ajusta políticas via
+# PolicySnapshot → PolicyProposal (rust_lua_boundary.md). Sandbox rígido.
+enabled = true
+sandboxed = true
+policies_path = "lua/policies"
+governance_path = "lua/governance"
+development_path = "lua/development"
+experiments_path = "lua/experiments"
+experiments_enabled = true         # experimentos OFF apenas em regime de crise
+
+[lua.sandbox]
+allow_io = false
+allow_os = false
+allow_network = false
+allow_filesystem = false
+allow_threads = false
+script_timeout_ms = 50
+max_scripts_per_step = 16
+
+[paths]
+# Diretórios canônicos — var/ é estado mutável; assets/ e data/ são
+# entradas de leitura; nada disso se mistura com o código-fonte.
+var = "var"
+runs = "var/runs"
+logs = "var/logs"
+tmp = "var/tmp"
+assets = "assets"
+seeds = "assets/seeds"
+data = "data"
+
+[crisis]
+# Máquina de estados transversal (overview.md §7 / contratos_camadas.md §7):
+# NORMAL → PRESSURE → CRISIS → STABILIZATION → RECOVERY → REINTEGRATION.
+# Altera POLÍTICAS (gains, budgets, períodos) — NUNCA desliga sistemas.
+# Desligar L4/GW por energia baixa é violação de lei, não política.
+
+[crisis.machine]
+states = ["NORMAL", "PRESSURE", "CRISIS", "STABILIZATION", "RECOVERY", "REINTEGRATION"]
+initial_state = "NORMAL"
+sustain_steps = 50                # passos sustentados para confirmar transição (histerese)
+
+[crisis.thresholds]
+# Frações de energia (0..1) para as transições — recuperação exige níveis
+# mais altos que a entrada (histerese anti-oscilação).
+pressure_enter = 0.40
+crisis_enter = 0.20
+stabilization_enter = 0.35
+recovery_enter = 0.55
+reintegration_enter = 0.75
+
+[crisis.preserve]
+# Preservado em TODOS os estados (lei de degradação — inegociável).
+l1_homeostasis = true
+l2_tissues = true
+l3_memory_semantic = true
+l4_workspace_minimal = true
+l4_world_model_degraded = true
+l4_decision = true
+l4_outcome = true
+learning = true
+
+[crisis.effects.pressure]
+# Fatores de política por estado (NORMAL = todos em 1.0/ON).
+morphogenesis_factor = 0.5        # morphogenesis↓
+division_factor = 0.5            # division↓
+telemetry_heavy = false           # telemetry pesada↓
+persistence_heavy = false         # persistência pesada↓ (checkpoints mais espaçados)
+o5_enabled = false                # O5↓
+recharge_factor = 1.2             # prioriza recarga de energia
+lua_window_ms = 5
+
+[crisis.effects.crisis]
+morphogenesis_factor = 0.1
+division_factor = 0.1
+telemetry_heavy = false
+persistence_heavy = false
+o5_enabled = false
+recharge_factor = 1.5
+attention_gain = 0.7              # foco em essenciais
+lua_window_ms = 2                 # menos janela de política por step
+
+[crisis.effects.stabilization]
+morphogenesis_factor = 0.25
+division_factor = 0.25
+telemetry_heavy = false
+persistence_heavy = true          # retoma checkpoints frequentes p/ auditoria da crise
+o5_enabled = false
+recharge_factor = 1.25
+attention_gain = 0.8
+lua_window_ms = 5
+
+[crisis.effects.recovery]
+morphogenesis_factor = 0.5
+division_factor = 0.5
+telemetry_heavy = true             # retoma rastro completo para validar recuperação
+persistence_heavy = true
+o5_enabled = true                  # O5 volta a avaliar políticas após a crise
+recharge_factor = 1.1
+attention_gain = 0.9
+lua_window_ms = 5
+
+[crisis.effects.reintegration]
+morphogenesis_factor = 1.0         # políticas voltam ao nominal
+division_factor = 1.0
+telemetry_heavy = true
+persistence_heavy = true
+o5_enabled = true
+recharge_factor = 1.0
+attention_gain = 1.0
+lua_window_ms = 5

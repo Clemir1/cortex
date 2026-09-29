@@ -1,0 +1,204 @@
+=====================================================================
+ TRIAD_AEE — CHECKLIST DE IMPLEMENTAÇÃO
+ Coordenação: SESSÃO 6 (orquestradora) e SESSÃO 7 (colaboradora)
+=====================================================================
+
+COMO USAR (sessões 6 e 7 — leia antes de editar)
+- Cada tarefa tem DUAS caixas:  [ ] [ ]
+- 1ª caixa: marque [x] SOMENTE quando a tarefa estiver 100% concluída.
+- 2ª caixa: escreva o número da sessão responsável (6 ou 7) ANTES de
+  começar a tarefa. Isso evita trabalho duplicado.
+- Tarefas com 2ª caixa VAZIA estão livres: pegue escrevendo [6] ou [7].
+- Nunca desmarque ou edite caixas da outra sessão.
+- Se duas sessões conflitarem, a sessão 6 decide (é a orquestradora).
+- Atualize este arquivo ao concluir cada tarefa.
+- Arquivo de instruções completo: AGENTS.md
+
+---------------------------------------------------------------------
+SEÇÃO 1 — INFRAESTRUTURA RAIZ
+---------------------------------------------------------------------
+[x] [6] 1.1  Cargo.toml workspace + rust-toolchain.toml
+[x] [6] 1.2  README, LICENSE, CONTRIBUTING, SECURITY, CHANGELOG
+[x] [6] 1.3  config/ — 20 TOML (máquina de crise com histerese)
+[x] [6] 1.4  extensions/ — 19 READMEs (12 regiões em extensions/full_brain/)
+[x] [6] 1.5  tools/ (xtask: check/arch/tree/help) + 4 READMEs
+[x] [6] 1.6  migrations/ — 6 READMEs
+[x] [6] 1.7  assets/, data/, var/, experiments/, legacy/ (14 arquivos)
+
+---------------------------------------------------------------------
+SEÇÃO 2 — ESQUEMAS (schemas/)
+---------------------------------------------------------------------
+[x] [6] 2.1  12 schemas JSON validados (comum, eventos, estado, telemetria, versão)
+
+---------------------------------------------------------------------
+SEÇÃO 3 — CRATES NÚCLEO (crates/)
+---------------------------------------------------------------------
+[x] [6] 3.1  foundation — Qualified, TriadError, clock, ids, unidades (11/11 testes)
+[x] [6] 3.2  contracts — envelopes, eventos, estado, mensagens, evidência (11/11 testes)
+[x] [6] 3.3  runtime — ModuleState, CognitiveModule, TypedContext, EventBus, Scheduler
+[x] [6] 3.4  l1_substrate — clusters, EnergyHomeostasis, Plasticity, Reservoir (38/38 testes)
+[x] [6] 3.5  l2_tissue — TissueBridge, AdaptationCoordinator, FeedbackRouter, TopologyManager
+[x] [6] 3.6  l3_local — Semantic, Memory, Attention, Prediction, Goals + ponte L3Module
+[x] [6] 3.7  l4_global — GlobalWorkspace, WorldModel, Causal, Decision, Action + ponte L4Module
+[x] [6] 3.8  l5_meta — Identity, LimbicGovernor, MetaController, Wake + ponte L5Module
+
+---------------------------------------------------------------------
+SEÇÃO 4 — CRATES TRANSVERSAIS
+---------------------------------------------------------------------
+[x] [6] 4.1  learning — LearningEnvelope, CreditAssigner, LearningPolicy (crise nunca suspende)
+[x] [6] 4.2  cybernetics — O1-O4, Homeostat, estabilidade, métricas com denominador
+[x] [6] 4.3  governance — HardLaw (7 leis), SoftLaw (exige ADR), Arbiter (empate sem mudança), Federation (6 fases)
+[x] [6] 4.4  development — Embryogenesis, Corticalization, Maintenance, Regeneration, Morphogenesis
+
+---------------------------------------------------------------------
+SEÇÃO 5 — CRATES PLATAFORMA
+---------------------------------------------------------------------
+[x] [6] 5.1  platform — PlatformConfig, Telemetry (Qualified com denominador), chaves de contexto
+[x] [6] 5.2  triad — CortexApp: sobe L1-L5, 10 ticks, 5 módulos executando, barramento drenado
+[x] [6] 5.3  bindings/lua — PolicyHost, PolicyProposal, decode com Qualified (ausência não é zero)
+
+---------------------------------------------------------------------
+SEÇÃO 6 — POLÍTICAS LUA (lua/)
+---------------------------------------------------------------------
+[x] [6] 6.1  init.lua (registro via pcall) + policies/{energy,attention,learning,crisis,recovery}.lua
+[x] [6] 6.2  governance/{federation,ecology}.lua + development/{corticalization,regeneration}.lua
+[x] [6] 6.3  experiments/README.md
+
+---------------------------------------------------------------------
+SEÇÃO 7 — TESTES
+---------------------------------------------------------------------
+[x] [6] 7.1  tests/ — Cargo.toml standalone, house_laws.rs (5/5: leis da casa, ids, clock, Qualified)
+[x] [6] 7.2  benches/ — README.md + .gitkeep
+
+---------------------------------------------------------------------
+SEÇÃO 8 — INTEGRAÇÃO E VERIFICAÇÃO (tarefas livres para a SESSÃO 7)
+---------------------------------------------------------------------
+[x] [6] 8.1  Correções cross-crate (nomes/assinaturas divergentes) + cargo check limpo
+[x] [7] 8.2  Verificação da árvore completa contra doc/estrutura_diretorios.md
+[x] [7] 8.3  Revisão de consistência: schemas/ × crates/contracts (eventos batem?)
+[x] [7] 8.4  Revisão de consistência: config/ × crates (crise/histerese parametrizadas)
+[x] [6] 8.5  Remover arquivo interno _scaffold_contrato.md ao final de tudo
+
+OBSERVAÇÕES
+- Workspace cargo falha até crates/bindings/lua/Cargo.toml existir — comportamento
+  conhecido, não é bloqueio.
+- Ratificação de ADR-0005/0006: decisão do USUÁRIO (não é tarefa de sessão).
+- Status final (sessão 6): cargo check --workspace limpo; cargo check standalone
+  ok para bindings/lua e tests/; 65 testes verdes (11 foundation + 11 contracts +
+  38 l1 + 5 house_laws); app `triad` executa 10 ticks com os 5 módulos L1-L5 ativos.
+- [SESSÃO 7] Verificação final independente em var/verificacao/8-6: 65 testes
+  confirmados, triad.exe exit 0, EventEnvelope unificado; pendências registradas
+  (loader TOML, schemas órfãos, [l1.survival] no TOML).
+- [SESSÃO 6] Auditoria: graphifyy 0.9.71 na .venv/ da raiz (Python 3.14); grafo
+  do projeto em graphify-out/ (2183 nós, 2981 arestas, 208 comunidades); receitas
+  em AUDITORIA.md; .gitignore cobre /.venv/ e graphify-out gerado (memory e
+  reflections versionados).
+- [SESSÃO 6] Instrumentação L1: tracing nas 10 cadeias do substrato (runner,
+  contract, cluster, energy, survival, reservoir, state_matrix, graph, metrics,
+  module); níveis warn/debug/trace; app em nível debug mostra a trilha por tick
+  (ledger, passos, ciclo de vida, quorum de emergência). cargo check limpo.
+- [SESSÃO 6] Instrumentação L3+L4: tracing em TODAS as cadeias locais (semantic,
+  memory, attention, prediction, goals, module) e globais (workspace, world_model,
+  causal, decision, action, memory, degraded, integration). Rejeições de decisão
+  e modo degradado em warn. AUDITORIA.md com os mapas L1/L3/L4; grafo graphifyy
+  sincronizado; cargo check --workspace limpo; app mostra trilha L3/L4 por tick.
+- [SESSÃO 7] L2 completo + pontes instrumentadas (seção 9): 97 testes verdes no
+  workspace (11 foundation + 17 contracts + 38 l1 + 31 l2) + 5 house_laws;
+  app: 30 ticks, 30 recibos E4 no L1Ledger (L1→L2), 3 tecidos emergentes com
+  144 clusters vinculados (cobertura 1.00), 3 bridges, A/A bit-idêntico.
+  Divergência p/ sessão 6 decidir: contracts ganhou módulo novo `l2.rs`
+  (aditivo); TissueModule reescrito como módulo REAL (new(l1_shared, seed));
+  main.rs integrado com handles tipados.
+- [SESSÃO 6] Transversais completas + 100% instrumentadas (diretriz do dono):
+  learning (EffectValidator com ttl/reversão, ForgettingEngine, envelope,
+  credit, policy — crise REDUZ, nunca suspende), cybernetics (O3 Governador
+  com budget, O5 Horizonte com tendência qualificada, Genome::
+  evaluate_offline FORA do loop — lei 7, homeostat, estabilidade, métricas,
+  O4 com denominador), governance (EcologyEngine com nichos e extinção
+  sinalizada, HardLaw/SoftLaw/Arbiter/Federation), development (embryo,
+  cortical, maintenance, regeneration, morphogenesis). TODO arquivo com
+  lógica tem tracing warn/debug/trace (lib.rs são só declarações).
+  Mapas de cadeias em AUDITORIA.md; cargo check -p por crate limpo.
+- [SESSÃO 6] Piloto config central [l1.survival] ENTREGUE (pendência da
+  verificação 8-6 da sessão 7: RESOLVIDA): SurvivalConfig tipada (serde,
+  default A/A espelhando l1/config.rs) + injeção via construtores
+  (SurvivalState::with_config, CollectiveEmergency::with_config) + seção
+  TOML com 6 chaves + 3 testes novos (default espelha constantes, injeção
+  muda histerese de verdade, quorum via config). Loader canônico =
+  platform/config.rs da sessão 7 (config_loader.rs duplicado REMOVIDO;
+  4 erros de compilação corrigidos pela sessão 6; 5/5 testes loader).
+- [SESSÃO 6] Verificação final transversais: cargo check --workspace limpo;
+  115 testes verdes no workspace (+ house_laws 5/5 standalone); app 65
+  ticks, 618 eventos drenados no barramento, recibos E3/E4 nos dois
+  ledgers, encerra "sem violar as leis da casa"; grafo graphifyy
+  sincronizado (2560 nós, 3886 arestas, 227 comunidades). L1 energy/
+  homeostasis/morphogenesis e L3 attention/prediction ficam com a
+  sessão 7 (seção 12, caixas dela).
+
+---------------------------------------------------------------------
+SEÇÃO 9 — L2 COMPLETO + INSTRUMENTAÇÃO DAS PONTES (SESSÃO 7, a pedido do dono)
+---------------------------------------------------------------------
+[x] [7] 9.1  Contrato temporal L2: TissueSnapshot versionado (contracts/l2.rs)
+[x] [7] 9.2  L2Ledger com POST_TISSUE, recibos E3→E4 e ausência classificada
+[x] [7] 9.3  Ponte L1→L2: tecidos reais por afinidade, recibo no L1Ledger
+[x] [7] 9.4  Ponte L2→L3: visão tecidual consumível + FeedbackRouter com histerese
+[x] [7] 9.5  TopologyManager: conexões, bridges, fragmentação (estado como dado)
+[x] [7] 9.6  Runner L2: step integrado ao L1, métricas 1/5/20/50/100
+[x] [7] 9.7  Testes: unitários + A/A bit-idêntico + no_stale_as_value + app verde
+
+---------------------------------------------------------------------
+SEÇÃO 10 — CICLO L3 REAL: CONSUMO DO L2 + FEEDBACK L3→L2 (SESSÃO 7)
+---------------------------------------------------------------------
+[x] [7] 10.1 TissueModule: read_for_l3 com recibo E4, tissue_views,
+         inbox de adaptação (submit + drain no tick L2)
+[x] [7] 10.2 L3 real: atenção com saliência de tecidos (conceitos
+         determinísticos), predição com evidência viva, recibo guardado
+[x] [7] 10.3 L3→L2: política por tendência (pico da janela, sondas
+         0.98→0.85) com cadência 30; propor, nunca escrever
+[x] [7] 10.4 App: ciclo completo L1→L2→L3→L2 (65 ticks) com recibos
+         E4 contados nos dois ledgers e decisão do gate impressa
+[x] [7] 10.5 Testes: recibo E4 por tick, focos/predição reais,
+         proposta+gate decidida, sem fonte nada fabricado, A/A focos
+[x] [7] 10.6 Verificação final: 102 testes workspace + 5 house_laws +
+         app RUN=0 sem violar as leis da casa
+
+---------------------------------------------------------------------
+SEÇÃO 11 — MODULAR + CONFIG CENTRALIZADA + ORIENTAÇÃO A EVENTOS
+         (SESSÃO 7, diretriz do dono)
+---------------------------------------------------------------------
+[x] [7] 11.1 Loader TOML real em platform/config.rs: default + perfis
+         delta (research/crisis/corticalization), seção ausente herda
+         default COM razão registrada, arquivo ausente = erro de boot
+[x] [7] 11.2 Configs das camadas como structs injetáveis: L2 (tissues/
+         affinity/adaptation) e L3 (attention/prediction/adaptation) —
+         consts viram defaults congelados; L1 registrado como pendência
+         no config/README.md (mecânica do substrato: sessão 6 decide)
+[x] [7] 11.3 TOML central acertado ([l2.affinity] bridge_min_edges/
+         rebind_margin/dissolve_grace_steps; [l3.adaptation] nova) +
+         config/README.md com o contrato (política vs mecânica)
+[x] [7] 11.4 Orientação a eventos: EventBus com subscribe por
+         consumidor (fan-out, descarte contado), TissueModule
+         publicando mudanças estruturais, auditor de eventos no app
+[x] [7] 11.5 App carrega config/default.toml UMA vez e injeta em
+         L2/L3; seed e orçamento vêm do TOML; origem impressa no boot
+[x] [7] 11.6 Testes (loader, merge de perfil, subscribe, from_config)
+         + workspace verde (112) + house_laws + app RUN=0
+
+---------------------------------------------------------------------
+SEÇÃO 12 — FECHAMENTO TOTAL: ZERO PENDÊNCIAS, ZERO DÉBITOS
+         (SESSÃO 7, diretriz do dono)
+---------------------------------------------------------------------
+[ ] [7] 12.1 [l3.attention] e [l3.prediction] injetados nos módulos
+         internos do L3 (limiar, capacidade, horizonte, confiança)
+[ ] [7] 12.2 [l1.energy]/[l1.homeostasis]/[l1.morphogenesis] injetados
+         no substrato; semântica de division_threshold resolvida e
+         documentada no TOML (energia que autoriza divisão)
+[ ] [7] 12.3 Chaves não aplicáveis declaradas COM RAZÃO (piscina
+         global, crise transversal, reservoir, plasticity) — nada
+         ambíguo, nada escondido
+[ ] [7] 12.4 EventAuditor como componente do runtime (app magro,
+         auditor reutilizável com relatório ordenado)
+[ ] [7] 12.5 config/README.md com o status de TODAS as seções:
+         injetada / não aplicável / aguardando camada real
+[ ] [7] 12.6 Verificação final: workspace verde, house_laws 5/5,
+         app RUN=0 com config L1+L2+L3 viva e auditor funcional

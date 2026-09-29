@@ -1,0 +1,9 @@
+[package]
+name = "triad-cybernetics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+tracing = "0.1"

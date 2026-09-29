@@ -1,0 +1,25 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/dream.toml — MODO DREAM
+# EXTENSÃO FUTURA: dream NÃO faz parte do núcleo mínimo; apenas AWAKE é
+# obrigatório na primeira versão (overview.md §7). Este arquivo é um
+# placeholder normativo — perfil válido, sem consumidor runtime ainda.
+# Lei hard: conteúdo de DREAM nunca vira memória factual
+# (governance.laws.dream_never_factual_memory).
+# =============================================================================
+
+[mode]
+name = "dream"
+morphogenesis = "standby"
+learning = "on"             # reprocessamento offline continua (nunca desliga)
+actuation = "off"           # sem atuação no mundo externo
+
+[mode.gains]
+attention = 0.5
+plasticity = 1.2            # replay fortalece traços existentes
+metabolism = 0.8
+consolidation = 1.5
+
+[mode.priorities]
+order = ["replay", "memory_consolidation", "homeostasis"]

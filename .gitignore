@@ -1,0 +1,37 @@
+# Triad_AEE / Cortex — regras de versionamento da raiz
+# Norma: doc/architecture/estrutura_diretorios.md §1 — var/ (estado mutável de
+# execução) nunca é misturado com source; Cargo.lock É versionado (workspace
+# de binários: builds reproduzíveis entre máquinas e runs).
+
+# Build Rust
+/target/
+
+# Venv Python do graphifyy (audit tooling) — nunca versionada
+/.venv/
+
+# Grafo graphifyy: gerado (rebuild via `graphify update .`), mas a memória
+# de auditoria (Q&A/lessons) é versionada.
+/graphify-out/*
+!/graphify-out/memory/
+!/graphify-out/reflections/
+
+# Estado mutável de execução (runs/, checkpoints, logs, telemetry) — nunca
+# versionado. Exceção: arquivos .gitkeep, em qualquer profundidade, preservam
+# a estrutura de diretórios.
+/var/**
+!/var/**/
+!/var/**/.gitkeep
+
+# Diretórios de trabalho temporário
+/tmp/
+
+# Logs em qualquer lugar
+*.log
+
+# IDE (cache local do Visual Studio/Rider)
+/.vs/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

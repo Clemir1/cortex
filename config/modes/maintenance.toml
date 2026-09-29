@@ -1,0 +1,22 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/maintenance.toml — MODO MAINTENANCE
+# Inspeção, limpeza e reparo leve — sem atuação no mundo externo, com
+# mudanças estruturais mínimas durante a janela.
+# =============================================================================
+
+[mode]
+name = "maintenance"
+morphogenesis = "standby"   # reparo estrutural pesado não roda na manutenção
+learning = "on"             # validação de efeitos da manutenção continua
+actuation = "off"          # manutenção não atua no mundo externo
+
+[mode.gains]
+attention = 0.5
+plasticity = 0.4           # mudanças mínimas durante inspeção/limpeza
+metabolism = 0.7
+consolidation = 1.0
+
+[mode.priorities]
+order = ["repair", "cleanup", "homeostasis"]

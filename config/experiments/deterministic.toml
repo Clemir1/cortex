@@ -1,0 +1,23 @@
+# =============================================================================
+# config/experiments/deterministic.toml — EXPERIMENTO (não é delta de
+# runtime). Nenhuma configuração experimental é codificada dentro de
+# módulos cognitivos.
+# RESULTADOS vão sempre para var/runs/<run_id>/ — nunca para o diretório
+# do experimento.
+# =============================================================================
+
+[experiment]
+name = "deterministic"
+description = "Replay bit-idêntico: mesma seed + mesmo input ⇒ mesmo hash de estado em todos os steps"
+seeds = [42]
+repetitions_per_seed = 2          # run original + réplica idêntica (A/A)
+baseline_profile = "research"      # exige telemetria pesada e rastro de eventos
+results_dir = "var/runs"
+output_policy = "var_runs_only"
+
+[experiment.variables]
+state_hash_per_step = true        # hash de estado em cada step (via [telemetry.heavy])
+event_trace_complete = true       # trace_id/parent_event_id/source/target/step em todo evento
+require_bit_identical = true      # divergência de hash entre repetições = bug de determinismo
+compare_metric = "state_hash"
+compare_horizons = [1, 5]         # comparação de efeito em t+1/t+5

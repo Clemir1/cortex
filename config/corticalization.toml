@@ -1,0 +1,57 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/corticalization.toml — PERFIL DE CORTICALIZAÇÃO
+# Regime de desenvolvimento guiado: ESPECIALIZAÇÃO → INTEGRAÇÃO →
+# ESTABILIZAÇÃO (cadeia canônica de desenvolvimento: CapacityProblem →
+# DevelopmentGovernor → RegenerationProposal → LawValidation →
+# Morphogenesis → StructuralEffect → CognitiveEffect → StopGrowth).
+# A morfogênese sai do STANDBY de forma controlada e temporária — termina
+# obrigatoriamente em StopGrowth com estabilização validada (E5).
+# =============================================================================
+
+[organism]
+initial_state = "NORMAL"
+
+[development]
+morphogenesis_state = "ACTIVE"    # crescimento guiado (temporário; termina em StopGrowth)
+
+[development.corticalization]
+enabled = true
+specialization_target = 0.75     # tecidos mais especializados que o default
+integration_target = 0.70        # mais pontes/bidirecionalidade L2↔L3
+stabilization_window_steps = 4000  # janela para consolidar antes do StopGrowth
+
+[l1.morphogenesis]
+state = "ACTIVE"
+max_divisions_per_step = 2        # crescimento permitido, ainda limitado
+
+[l1.plasticity]
+hebbian_rate = 0.02              # plasticidade elevada durante formação
+homeostatic_scaling = 0.008      # escalonamento acompanha para não desestabilizar
+
+[l2.affinity]
+update_rate = 0.05               # re-vinculação mais rápida (especialização)
+bridge_max_per_tissue = 6        # mais pontes durante integração
+
+[l2.tissues]
+max_count = 48                   # espaço para novos tecidos especializados
+
+[l2.adaptation]
+min_interval_steps = 10          # feedback L3→L2 mais responsivo no regime
+
+[l3.semantic]
+max_concepts = 2048              # vocabulário contido até a reorganização estabilizar
+
+[l5.development_governor]
+morphogenesis_default = "ACTIVE"  # governador acompanha o regime (eco de [development])
+
+[telemetry.heavy]
+enabled = true                   # efeitos estruturais exigem rastro completo
+payload_capture = false          # payloads completos continuam caros; hash por step basta
+
+[telemetry.modules]
+# Efeitos estruturais (L1/L2) precisam de E5 mesmo fora do circuito fechado.
+l1_substrate = "E5"
+l2_tissue = "E5"
+development = "E5"

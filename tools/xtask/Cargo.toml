@@ -1,0 +1,13 @@
+# xtask: utilitário de tarefas de desenvolvimento do projeto.
+# Crate standalone: nunca entra no glob do workspace.
+# Uso: cargo run --manifest-path tools/xtask/Cargo.toml <cmd>
+
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1"
+toml = "0.8"

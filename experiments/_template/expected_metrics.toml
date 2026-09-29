@@ -1,0 +1,9 @@
+# Métricas esperadas — pré-registradas antes da execução.
+
+[metrics]
+
+# [metrics.nome_da_metrica]
+# description = "PLACEHOLDER: o que mede."
+# denominator = "PLACEHOLDER: obrigatório para toda taxa (denominação explícita)."
+# window = "PLACEHOLDER: janela de medição (ex.: t+1, t+5)."
+# success_threshold = 0.0            # PLACEHOLDER: critério numérico pré-registrado.

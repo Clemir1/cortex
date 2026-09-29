@@ -1,0 +1,22 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/regeneration.toml — MODO REGENERATION
+# Reparo estrutural guiado por dano (wake_on_damage) ou fragmentação —
+# morfogênese reativa sob demanda, mesmo fora do regime de crescimento.
+# =============================================================================
+
+[mode]
+name = "regeneration"
+morphogenesis = "on"        # reparo guiado por dano (sob demanda)
+learning = "on"             # efeitos do reparo são validados (E5)
+actuation = "off"           # reparo estrutural; sem atuação externa
+
+[mode.gains]
+attention = 0.6
+plasticity = 1.4            # reconexão ativa na área afetada
+metabolism = 1.1            # custo energético do reparo
+consolidation = 0.9
+
+[mode.priorities]
+order = ["repair", "homeostasis", "reintegration"]

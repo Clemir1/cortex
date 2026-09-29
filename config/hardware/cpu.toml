@@ -1,0 +1,20 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+# Sobrescreve [platform.gpu] quando selecionado (ex.: --hardware cpu).
+#
+# config/hardware/cpu.toml — PERFIL CPU (backend de referência, sem GPU)
+# Kernels rodam em CPU (Rust/batch); workgroups pequenos e cache-friendly.
+# =============================================================================
+
+[gpu]
+backend = "cpu"                   # sem GPU — é também o fallback universal
+vendor = "none"
+model = "none"
+device_hints = []                  # sem seleção de dispositivo
+compute_units = 0                 # 0 = sem unidades de GPU (consultado em runtime)
+compute_threads = 0               # 0 = todos os núcleos lógicos disponíveis
+default_workgroup_size = 8        # CPU: blocos pequenos (cache-friendly)
+max_workgroup_size = 64
+preferred_workgroup_multiple = 8  # múltiplos da linha de cache/SIMD
+max_memory_mb = 4096              # orçamento de memória do organismo em CPU
+reserved_memory_mb = 512          # reserva para runtime/persistência

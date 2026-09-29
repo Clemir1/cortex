@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "triad-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../crates/foundation" }
+triad-contracts = { path = "../crates/contracts" }

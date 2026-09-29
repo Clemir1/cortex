@@ -1,0 +1,10 @@
+[package]
+name = "triad-l5-meta"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+triad-development = { path = "../development" }
+triad-runtime = { path = "../runtime" }

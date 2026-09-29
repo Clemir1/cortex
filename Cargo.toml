@@ -1,0 +1,66 @@
+# =============================================================================
+# Triad_AEE / Cortex — workspace raiz (núcleo mínimo L1–L5)
+#
+# Contrato deste arquivo (divergência exige ADR em doc/adr/):
+#   - members usa glob "crates/*": diretórios sem Cargo.toml são ignorados,
+#     então os crates nascem um por rodada sem quebrar o workspace;
+#   - as path deps internas de [workspace.dependencies] só são resolvidas
+#     quando um membro as referencia via `<dep>.workspace = true`;
+#   - árvore normativa: doc/architecture/estrutura_diretorios.md §1;
+#   - regras de dependência: doc/architecture/dependency_rules.md.
+# =============================================================================
+
+[workspace]
+resolver = "2"
+# members usa glob "crates/*": diretórios sem Cargo.toml são ignorados,
+# então os crates nascem um por rodada sem quebrar o workspace.
+# crates/bindings/ fica VAZIO até o bindings/lua existir (ADR-0003) —
+# preservado na árvore por decisão do dono, excluído do scan do glob.
+members = ["crates/*"]
+exclude = ["crates/bindings"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.78"
+license-file = "LICENSE"
+
+[workspace.dependencies]
+# --- Crates internos (path) -------------------------------------------------
+triad-foundation = { path = "crates/foundation" }
+triad-contracts = { path = "crates/contracts" }
+triad-runtime = { path = "crates/runtime" }
+triad-l1-substrate = { path = "crates/l1_substrate" }
+triad-l2-tissue = { path = "crates/l2_tissue" }
+triad-l3-local = { path = "crates/l3_local" }
+triad-l4-global = { path = "crates/l4_global" }
+triad-l5-meta = { path = "crates/l5_meta" }
+triad-learning = { path = "crates/learning" }
+triad-cybernetics = { path = "crates/cybernetics" }
+triad-governance = { path = "crates/governance" }
+triad-development = { path = "crates/development" }
+triad-platform = { path = "crates/platform" }
+triad-triad = { path = "crates/triad" }
+triad-bindings-lua = { path = "crates/bindings/lua" }
+
+# --- Dependências externas ---------------------------------------------------
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v7", "serde"] }
+mlua = { version = "0.10", features = ["lua54"] }
+dashmap = "6"
+parking_lot = "0.12"
+crossbeam-channel = "0.5"
+bitflags = "2"
+bytemuck = { version = "1", features = ["derive"] }
+rand = "0.8"
+rayon = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

@@ -1,0 +1,17 @@
+[package]
+name = "triad-l3-local"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+triad-runtime = { path = "../runtime" }
+triad-l2-tissue = { path = "../l2_tissue" }
+serde = { version = "1", features = ["derive"] }
+uuid = { version = "1" }
+tracing = "0.1"
+
+[dev-dependencies]
+triad-l1-substrate = { path = "../l1_substrate" }
+toml = "0.8"

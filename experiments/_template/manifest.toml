@@ -1,0 +1,13 @@
+# Manifest do experimento — copie _template/ e preencha os placeholders.
+
+[experiment]
+name = "NOME_DO_EXPERIMENTO"          # identificador único (kebab-case)
+hypothesis = "Resumo da hipótese em uma frase."
+author = "NOME_DO_AUTOR"
+created = "AAAA-MM-DD"
+status = "pre_registered"             # pre_registered | running | analyzed | concluded
+seeds = []                            # ex.: [1, 2, 3, 5, 8]
+repetitions = 0                       # repetições por semente
+config_file = "config.toml"
+expected_metrics_file = "expected_metrics.toml"
+results_dir = "var/runs"              # resultados vivem aqui, nunca no diretório do experimento

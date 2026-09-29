@@ -1,0 +1,24 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/awake.toml — MODO AWAKE (vigília operacional)
+# AWAKE É OBRIGATÓRIO na primeira versão do núcleo (overview.md §7);
+# sleep/dream são extensões futuras (extensions/) e não fazem parte do
+# núcleo mínimo. Este é o único modo com consumidor runtime garantido.
+# =============================================================================
+
+[mode]
+name = "awake"
+# Permissões: "on" | "standby" | "off"
+morphogenesis = "standby"   # crescimento sob demanda (default normativo)
+learning = "on"             # learning nunca entra em standby (lei)
+actuation = "on"            # decisão→ação→outcome ativo (circuito fechado)
+
+[mode.gains]
+attention = 1.0
+plasticity = 1.0
+metabolism = 1.0            # consumo energético nominal
+consolidation = 1.0
+
+[mode.priorities]
+order = ["homeostasis", "cognition", "development", "maintenance"]

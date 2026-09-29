@@ -1,0 +1,45 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/research.toml — PERFIL DE PESQUISA
+#   - multi-seed: o seed único do default é substituído por uma lista de
+#     seeds independentes (cada uma com lineage própria em var/runs/);
+#   - telemetria científica completa: E5 (effect_validated) em todos os
+#     módulos, com braço sham pareado quando houver mudança comportamental
+#     (gêmea A/B com origin_state_hash igual; A/A bit-idêntica para
+#     mudanças display-only);
+#   - determinismo auditável: rastro de eventos + hash de estado por step.
+# Resultados vão para var/runs/<run_id>/ — nunca para config/.
+# =============================================================================
+
+[organism]
+# Multi-seed: cada seed gera uma run independente.
+seed_mode = "multi"          # sobrescreve a semântica do seed único do default
+seeds = [11, 23, 37, 41, 59, 77, 91]
+
+[telemetry]
+default_evidence_level = "E5"   # nível máximo em TODOS os módulos
+emit_interval_steps = 1          # emissão a cada step (sem subamostragem)
+
+[telemetry.heavy]
+enabled = true
+payload_capture = true           # payloads completos nos eventos de fronteira
+per_step_state_hash = true       # hash de estado por step (auditabilidade)
+
+[telemetry.scientific]
+paired_sham_arm = true           # braço sham pareado p/ mudança comportamental
+sham_strategy = "bit_identical"  # mudança display-only exige A/A bit-idêntica
+pre_registered_verdicts = true   # veredito pré-registrado; sem calibração retroativa
+effect_check_horizons = [1, 5]   # efeito identificado em t+1/t+5
+
+[runtime.determinism]
+# Nova subseção de pesquisa — ausente no default (herdada como OFF).
+auditable = true
+record_event_trace = true        # trace_id/parent_event_id/source/target/step em todo evento
+fixed_seed_required = true       # run sem seed declarada é rejeitada
+replay_supported = true          # replay bit-idêntico a partir de checkpoint
+state_hash_interval_steps = 1
+
+[platform.persistence]
+checkpoint_interval_steps = 500       # checkpoints mais frequentes (pesquisa paga o custo)
+compact_journal_interval_steps = 50000  # compacta menos — journal completo fica para auditoria

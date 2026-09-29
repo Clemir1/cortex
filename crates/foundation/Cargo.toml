@@ -1,0 +1,21 @@
+# =============================================================================
+# triad-foundation — fundação de tipos do organismo (núcleo mínimo L1–L5)
+#
+# Este crate não conhece camadas: apenas tipos-base (id, status, value, time,
+# error, evidence, provenance, version, units). Árvore normativa:
+# doc/architecture/estrutura_diretorios.md §1.
+# =============================================================================
+
+[package]
+name = "triad-foundation"
+edition.workspace = true
+version.workspace = true
+license-file.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+# TriadError::Serialization envolve serde_json::Error (erro canônico de
+# serialização da fundação); disponível na raiz via workspace.dependencies.
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }

@@ -1,0 +1,7 @@
+# Triad_AEE / Cortex — toolchain Rust do workspace
+# Canal fixado em "stable" (MSRV 1.78, ver Cargo.toml → rust-version).
+# O toolchain é instalado automaticamente pelo rustup quando presente.
+
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

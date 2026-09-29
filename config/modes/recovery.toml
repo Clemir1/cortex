@@ -1,0 +1,22 @@
+# =============================================================================
+# Delta sobre default.toml; chaves não citadas herdam default.
+#
+# config/modes/recovery.toml — MODO RECOVERY / REINTEGRATION
+# Estados finais da máquina de crise: recuperação controlada com
+# reativação gradual de políticas (nada foi desligado — apenas reduzido).
+# =============================================================================
+
+[mode]
+name = "recovery"
+morphogenesis = "standby"   # crescimento ainda suspenso; reativação gradual
+learning = "on"             # valida os efeitos da recuperação (E5)
+actuation = "on"            # reintegração do circuito decisão→ação→outcome
+
+[mode.gains]
+attention = 0.9
+plasticity = 0.8
+metabolism = 0.9
+consolidation = 1.2         # re-consolida o que ficou em espera durante a crise
+
+[mode.priorities]
+order = ["stabilization", "homeostasis", "reintegration", "cognition"]

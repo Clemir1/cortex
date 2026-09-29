@@ -1,0 +1,2172 @@
+ANÁLISE CIRÚRGICA — NÚCLEO MÍNIMO DO TRIAD_AEE PARA SUPORTAR UM NEOCÓRTEX CONSOLIDADO
+
+A decisão arquitetural correta agora é reduzir o Triad_AEE sem empobrecê-lo.
+
+O objetivo não deve ser manter todos os sistemas desenvolvidos até hoje. Também não deve ser apagar tudo que ainda não demonstrou efeito. O objetivo é descobrir qual é o menor conjunto de mecanismos capaz de sustentar:
+
+substrato
+→ organização
+→ representação
+→ integração
+→ previsão
+→ decisão
+→ ação
+→ consequência
+→ aprendizagem
+→ reorganização
+→ continuidade.
+
+Tudo que não participar dessa cadeia, não proteger essa cadeia ou não permitir sua adaptação deve sair do caminho crítico.
+
+Como o projeto ainda pode futuramente evoluir de um neocórtex artificial para algo mais próximo de um cérebro completo, eu também não colocaria agora estruturas como cerebelo, hipotálamo, gânglios da base, tronco etc. como obrigatórias no núcleo. Devem permanecer como possibilidades futuras.
+
+A arquitetura principal agora deve ser funcional, modular e cortical.
+
+1. PRINCÍPIO FUNDAMENTAL
+
+Não criar um módulo para cada conceito.
+
+Esse é provavelmente o princípio mais importante da reestruturação.
+
+Hoje existem ideias como:
+
+federação;
+ecologia;
+cascata;
+recursão;
+lei;
+ordem cibernética;
+atenção;
+ressonância;
+campo cognitivo;
+metacognição.
+
+Nem todas precisam ser módulos independentes.
+
+Algumas são propriedades do sistema.
+
+Exemplo:
+
+“cascata” não precisa ser um módulo.
+
+Uma cascata é:
+
+evento A
+→ evento B
+→ evento C
+→ decisão D
+→ efeito E.
+
+O runtime apenas precisa rastrear essa propagação.
+
+Da mesma forma:
+
+“recursão” não deveria exigir um `recursion_module`.
+
+Recursão é uma propriedade de loops existentes.
+
+Isso sozinho pode eliminar uma quantidade significativa de complexidade artificial.
+
+2. O NÚCLEO DEVE TER CINCO CAMADAS FUNCIONAIS
+
+Manter:
+
+L1 — Substrato
+
+L2 — Organização tecidual
+
+L3 — Cognição local
+
+L4 — Cognição global
+
+L5 — Metacognição/governança
+
+E manter separado:
+
+Transversal — infraestrutura.
+
+As Cinco Ordens Cibernéticas O1–O5 continuam existindo, mas atravessam essas camadas.
+
+Não são:
+
+O1=L1
+O2=L2
+etc.
+
+3. L1 — O MÍNIMO NECESSÁRIO
+
+L1 deve responder:
+
+“Existe um substrato dinâmico capaz de sustentar processamento, memória temporal e plasticidade?”
+
+Manter apenas:
+
+ClusterState / ClusterBio
+
+energia
+
+atividade
+
+estado 97D ou representação equivalente
+
+lifecycle
+
+plasticidade local
+
+grafo local
+
+HOTM/Reservoir
+
+Hebbian
+
+homeostase
+
+divisão/fusão/regeneração sob demanda.
+
+L1 não precisa possuir:
+
+linguagem;
+
+identidade;
+
+World Model;
+
+metacognição;
+
+governança;
+
+ecologia semântica;
+
+federação;
+
+leis.
+
+Essas são responsabilidades superiores.
+
+4. MORFOGÊNESE DEVE DEIXAR DE SER UM SISTEMA CENTRAL
+
+Na fase atual, morfogênese deve migrar para:
+
+development/regeneration.
+
+Seu estado normal deve ser:
+
+STANDBY.
+
+Ela acorda somente quando existir:
+
+dano;
+
+falta comprovada de capacidade;
+
+fragmentação;
+
+sobrecarga persistente;
+
+necessidade de regeneração.
+
+Portanto:
+
+division/fusion/pruning/repair
+
+continuam existindo.
+
+Mas deixam de dominar o loop principal.
+
+5. ALGORITMOS MATEMÁTICOS NÃO SÃO COGNIÇÃO
+
+Mover:
+
+SVD
+
+JL
+
+RandLA
+
+L2 sampling
+
+kernels GPU
+
+compressão
+
+spatial hashing
+
+para:
+
+platform/math
+
+ou:
+
+platform/compute.
+
+Eles podem sustentar a cognição.
+
+Não devem aparecer no registro cognitivo como se fossem subsistemas mentais.
+
+6. L2 — TECIDOS É INDISPENSÁVEL
+
+L2 não pode ser simplificado demais.
+
+Manter:
+
+TissueRegistry
+
+TissueState
+
+membership
+
+affinity
+
+bridges
+
+local coherence
+
+specialization
+
+resource allocation local
+
+tissue adaptation
+
+L1→L2
+
+L2→L3
+
+L3→L2 feedback.
+
+Esse último é crítico.
+
+Atualmente a arquitetura possui evidência de feedback chegando à fronteira L3→L2 sem ser admitido. Portanto essa direção precisa se tornar uma prioridade estrutural da nova versão.
+
+Sem ela, o sistema aprende cognitivamente sem conseguir reorganizar adequadamente o substrato que o sustenta.
+
+7. NÃO PRECISAMOS DE DEZENAS DE TIPOS DE TECIDO NO CÓDIGO
+
+O tecido deve ser genérico.
+
+Algo como:
+
+Tissue {
+    id
+    specialization
+    members
+    energy
+    coherence
+    capacity
+    connections
+    state
+}
+
+A especialização pode emergir.
+
+Não criar:
+
+AttentionTissue
+MemoryTissue
+SemanticTissue
+PredictionTissue
+
+como classes rígidas, salvo quando existir diferença estrutural necessária.
+
+A especialização deve ser dado.
+
+Não arquitetura duplicada.
+
+8. L3 — COGNIÇÃO LOCAL
+
+Aqui começa a representação propriamente cognitiva.
+
+O núcleo mínimo deve possuir quatro domínios.
+
+Representação:
+
+semantic representation;
+concepts;
+grounding;
+binding.
+
+Memória local:
+
+retrieval;
+memory trace;
+association.
+
+Predição local:
+
+next-state;
+novelty;
+prediction error local.
+
+Seleção local:
+
+attention;
+salience;
+competition.
+
+Todo o restante deve ser subordinado a esses quatro.
+
+9. SEMANTIC EMERGENCE, SEMANTIC COHERENCE E SEMANTIC BINDING NÃO PRECISAM SER TRÊS SISTEMAS AUTÔNOMOS
+
+Podem ser partes de:
+
+l3_local_cognition/semantic/
+
+representation.rs
+concept.rs
+binding.rs
+coherence.rs
+grounding.rs
+emergence.rs
+
+Eles são mecanismos diferentes.
+
+Mas não precisam de seis controladores independentes, seis ciclos próprios e seis estados globais.
+
+Isso reduz conflito e custo de governança.
+
+10. SYMBOLIC PROJECTION TAMBÉM DEVE ENTRAR NA REPRESENTAÇÃO
+
+Separar:
+
+representation interna
+
+de:
+
+symbolic projection.
+
+Mas mantê-las dentro do mesmo domínio.
+
+Hierarquia:
+
+representação
+→ conceito
+→ binding
+→ composição
+→ abstração
+→ símbolo.
+
+Não transformar cada estágio em sistema independente.
+
+11. LINGUAGEM NÃO ENTRA NO CORE
+
+A linguagem continua tardia.
+
+Logo:
+
+linguistic_decoder
+
+language_predictor
+
+linguistic_feedback
+
+inner_speech
+
+emergent_language
+
+generative_decoder
+
+generative_pipeline
+
+não devem fazer parte do núcleo necessário para alcançar o neocórtex consolidado.
+
+Colocar em:
+
+extensions/language/
+
+ou manter fora da primeira reescrita.
+
+Primeiro provar:
+
+representação
+→ decisão
+→ ação
+→ aprendizagem.
+
+Depois linguagem usa essa cognição.
+
+12. L4 — ESTE É O NÚCLEO DA PRÓXIMA FASE
+
+A maior prioridade agora deve estar aqui.
+
+O mínimo necessário:
+
+Attention Integration
+
+Global Workspace
+
+World Model
+
+Causal Model
+
+Memory Integration
+
+Decision System
+
+Action/Outcome Interface.
+
+Esses componentes precisam permanecer ativos ou possuir modo degradado.
+
+Nunca simplesmente desaparecer quando existe pressão energética normal.
+
+13. GLOBAL WORKSPACE
+
+Deve ser pequeno e central.
+
+Responsabilidades:
+
+receber candidatos;
+
+competição;
+
+selecionar;
+
+manter estado global;
+
+broadcast;
+
+entregar conteúdo a decisão/memória/World Model.
+
+Não colocar nele:
+
+metacognição;
+
+memória completa;
+
+World Model;
+
+governança;
+
+linguagem.
+
+O Workspace integra.
+
+Não deve fazer tudo.
+
+14. ATTENTION BINDING E SEMANTIC ROUTER PODEM SER SUBSISTEMAS DO WORKSPACE
+
+Em vez de vários módulos independentes:
+
+attention_binding
+
+semantic_router
+
+cognitive_field
+
+cross_module_resonance
+
+global_workspace
+
+pode existir:
+
+l4_global/integration/
+
+router.rs
+attention.rs
+competition.rs
+workspace.rs
+broadcast.rs
+synchronization.rs
+
+Isso preserva as funções sem criar cinco centros concorrentes de integração.
+
+15. COGNITIVE FIELD PROVAVELMENTE NÃO PRECISA SER UM MÓDULO AUTÔNOMO
+
+Se `cognitive_field` é essencialmente uma representação derivada de:
+
+energia
+
+saliência
+
+semântica
+
+contexto,
+
+pode virar:
+
+GlobalStateField.
+
+Produzido pelo sistema de integração.
+
+Se não possui actuator próprio, não precisa ser um sistema cognitivo independente.
+
+16. CROSS-MODULE RESONANCE TAMBÉM PODE VIRAR MECANISMO
+
+Se sua função é medir/induzir sincronização entre componentes:
+
+integration/resonance.rs.
+
+Não precisa aparecer como “órgão” separado.
+
+17. WORLD MODEL PERMANECE ESSENCIAL
+
+Mas precisa ser reduzido a responsabilidades claras:
+
+state estimation
+
+prediction
+
+simulation
+
+prediction error
+
+model update.
+
+Não misturar:
+
+identidade;
+
+política;
+
+governança;
+
+memória completa;
+
+decisão.
+
+O World Model responde:
+
+“o que acredito que acontecerá?”
+
+Não:
+
+“o que devo fazer?”
+
+18. CAUSALIDADE
+
+Não manter vários sistemas causais sobrepostos sem necessidade.
+
+Hoje existem conceitos como:
+
+causal_graph
+
+causal_cycle
+
+causal_graph_cortex
+
+causal_ecology
+
+causal provenance.
+
+Na nova arquitetura:
+
+l4_global/causal/
+
+graph.rs
+inference.rs
+episode.rs
+credit.rs
+validation.rs
+
+E a proveniência fica transversal na telemetria.
+
+`CausalCycle` pode deixar de ser um grande objeto cognitivo e tornar-se uma máquina de acompanhamento de episódios:
+
+representation
+→ workspace
+→ decision
+→ execution
+→ outcome
+→ learning.
+
+19. DECISÃO PRECISA SER EXPLÍCITA
+
+Criar um domínio próprio dentro de L4:
+
+decision/
+
+proposal.rs
+competition.rs
+selection.rs
+commit.rs
+
+Hoje esse ponto é crítico porque F2 é o grande gargalo histórico do sistema.
+
+A cadeia precisa ser impossível de confundir:
+
+WorkspaceContent
+
+→ DecisionProposal
+
+→ DecisionSelected
+
+→ DecisionCommitted
+
+→ ActionRequest.
+
+20. AÇÃO NÃO DEVE FICAR ESCONDIDA EM DECISION
+
+Criar:
+
+action/
+
+request.rs
+execution.rs
+outcome.rs
+
+Mesmo se inicialmente “ação” for apenas alteração interna do Triad.
+
+Isso cria a fronteira:
+
+cognição
+→ atuação
+→ consequência.
+
+Sem essa fronteira, aprendizagem causal fica ambígua.
+
+21. MEMORY INTEGRATION
+
+Memória também precisa ser consolidada.
+
+Não precisamos manter muitos “cérebros de memória”.
+
+Criar um domínio:
+
+memory/
+
+working.rs
+episodic.rs
+semantic.rs
+retrieval.rs
+reconsolidation.rs
+consolidation.rs
+provenance.rs
+
+HOTM memory trace continua no L1 porque é dinâmica temporal do substrato.
+
+Memória cognitiva fica aqui.
+
+22. ALLOCORTEX NÃO PRECISA SER UMA ARQUITETURA INDEPENDENTE NESTE MOMENTO
+
+Se suas funções são:
+
+memórias
+
+esquemas
+
+mapas
+
+completions
+
+turning points,
+
+podem ser preservadas dentro de:
+
+memory/episodic/
+
+memory/schema/
+
+memory/context/.
+
+O nome `allocortex` pode continuar semanticamente, mas não precisa de todo um subsistema independente.
+
+23. L5 — REDUZIR DRASTICAMENTE O NÚMERO DE GOVERNADORES
+
+Esse é outro ponto crítico.
+
+Hoje existem muitos reguladores:
+
+Auto Adaptive
+
+Architecture Governor
+
+Architecture Cortex
+
+Meta Regulator
+
+Cognitive Economy
+
+Thalamus Governor
+
+Causal Graph Cortex
+
+Self Engineering
+
+etc.
+
+A nova arquitetura não deveria reproduzir isso.
+
+Eu usaria apenas três controladores globais.
+
+ResourceGovernor
+
+MetaController
+
+DevelopmentGovernor.
+
+24. RESOURCE GOVERNOR
+
+Absorver:
+
+Cognitive Economy
+
+Cognitive Energy Model
+
+Scarcity Profile
+
+parte do Thalamus Governor
+
+compute scaling
+
+resource budgets.
+
+Responsabilidades:
+
+energia
+
+compute
+
+attention budget
+
+memory budget
+
+criticality
+
+degradation
+
+recovery.
+
+Um único owner para recursos globais.
+
+25. META CONTROLLER
+
+Absorver:
+
+Auto Adaptive
+
+Meta Regulator
+
+Architecture Governor
+
+parte de Self Engineering.
+
+Responsabilidades:
+
+avaliar performance;
+
+detectar gargalos;
+
+propor ajustes;
+
+arbitrar políticas;
+
+validar resultado.
+
+Mas não modificar arbitrariamente estruturas diretamente.
+
+Sempre:
+
+observe
+→ propose
+→ validate
+→ apply
+→ observe effect.
+
+26. DEVELOPMENT GOVERNOR
+
+Controla:
+
+embryogenesis
+
+corticalization
+
+maintenance
+
+regeneration.
+
+Não governa pensamento.
+
+Governa mudança estrutural do organismo.
+
+27. SELF MODEL DEVE CONTINUAR SEPARADO DA GOVERNANÇA
+
+Self Model responde:
+
+“qual é meu estado?”
+
+Meta Controller responde:
+
+“o que devo modificar em mim?”
+
+Unified Identity responde:
+
+“o que permanece consistente através do tempo?”
+
+Esses três conceitos não devem ser misturados.
+
+Mas Unified Identity pode ser uma extensão do Self Model:
+
+l5_meta/self/
+
+state.rs
+identity.rs
+temporal.rs
+narrative.rs
+reflection.rs
+
+28. LEARNING NÃO PERTENCE APENAS A L5
+
+Learning é transversal.
+
+Criar:
+
+crates/learning/
+
+prediction_error.rs
+credit_assignment.rs
+update.rs
+validation.rs
+transfer.rs
+forgetting.rs.
+
+É essencial.
+
+Não colocar em standby.
+
+A cadeia precisa ser:
+
+prediction
+→ outcome
+→ error
+→ credit
+→ update
+→ future_behavior
+→ validation.
+
+Sem a última seta não existe evidência forte de aprendizagem.
+
+29. FORGETTING É PARTE DO LEARNING
+
+Não precisa existir um grande `ForgettingController` isolado.
+
+Fazer:
+
+learning/forgetting.rs
+
+com políticas vindas de Lua.
+
+Isso preserva:
+
+decay
+
+extinction
+
+unused concept reduction
+
+confidence decay.
+
+30. AS ORDENS CIBERNÉTICAS NÃO DEVEM CRIAR CINCO CÉREBROS PARALELOS
+
+Implementar as Cinco Ordens como capacidades.
+
+O1 — Controle
+
+sensor
+→ reference
+→ comparator
+→ actuator
+→ plant
+→ error.
+
+Exemplo:
+
+energia desejada
+→ energia observada
+→ diferença
+→ alteração de gasto.
+
+O2 — Adaptação do controlador
+
+erro histórico
+→ alterar threshold/gain/policy
+→ observar novo comportamento.
+
+O3 — Coordenação entre controladores
+
+controlador A
+↔ controlador B
+→ conflito
+→ arbitragem
+→ ownership.
+
+O4 — Auto-observação
+
+sistema observa:
+
+seu estado;
+suas políticas;
+seus erros;
+seus próprios controladores.
+
+Depois produz propostas de mudança.
+
+O5 — Evolução
+
+variação
+→ seleção
+→ retenção
+→ herança
+→ efeito futuro.
+
+31. ONDE COLOCAR O1–O5
+
+Criar:
+
+crates/cybernetics/
+
+o1_control/
+o2_adaptation/
+o3_coordination/
+o4_self_observation/
+o5_evolution/
+
+Mas esses diretórios devem conter protocolos e mecanismos.
+
+Não devem possuir cópias de:
+
+energia;
+
+Workspace;
+
+memória;
+
+tecidos.
+
+Exemplo:
+
+O1 trabalha sobre EnergyHomeostasis.
+
+O3 trabalha sobre ResourceGovernor e DevelopmentGovernor.
+
+O4 observa SelfModel e MetaController.
+
+O5 avalia políticas/genomas.
+
+32. O5 DEVE SER LENTO
+
+Evolução não precisa executar a cada step.
+
+O5 pode funcionar:
+
+a cada episódio;
+
+a cada janela longa;
+
+entre runs;
+
+durante manutenção;
+
+durante experimentos.
+
+Isso evita gastar recursos permanentemente com seleção evolutiva enquanto loops cognitivos básicos ainda estão abertos.
+
+33. COGNITIVE GENOME NÃO PRECISA ESTAR NO LOOP PRINCIPAL
+
+Manter:
+
+genome representation
+
+variation
+
+inheritance
+
+fitness record.
+
+Mas operar em baixa frequência.
+
+Colocar:
+
+cybernetics/o5_evolution/genome.rs.
+
+Não precisa ser um módulo cognitivo executado 80 vezes.
+
+34. FEDERAÇÃO DEVE VIRAR UM PROTOCOLO DE GOVERNANÇA
+
+Não precisamos de um grande `FederationHub` produzindo dezenas de métricas se sua função principal é negociar recursos.
+
+Criar:
+
+governance/federation/
+
+member.rs
+proposal.rs
+agreement.rs
+allocation.rs
+trade.rs
+
+Usado pelo ResourceGovernor.
+
+As “federações” podem ser agrupamentos temporários de componentes.
+
+Exemplo:
+
+memory federation
+
+semantic federation
+
+prediction federation.
+
+Mas não devem virar cinco subsistemas permanentes se não houver necessidade.
+
+35. O TESTE PARA UMA FEDERAÇÃO EXISTIR
+
+Só manter uma federação se existir:
+
+autonomia local
+
++
+
+recurso compartilhado
+
++
+
+conflito/cooperação
+
++
+
+negociação
+
++
+
+efeito posterior.
+
+Se apenas agrega métricas:
+
+não é federação.
+
+É telemetry aggregation.
+
+Remover do runtime cognitivo.
+
+36. LEIS
+
+Leis são essenciais, mas poucas.
+
+Criar:
+
+governance/laws/
+
+invariant.rs
+rule.rs
+violation.rs
+enforcement.rs
+validation.rs.
+
+Hard laws em Rust.
+
+Soft policies em Lua.
+
+Exemplos de leis essenciais:
+
+não tratar STALE como FRESH;
+
+não converter NO_DATA silenciosamente em zero;
+
+DREAM não pode virar memória factual externa;
+
+nenhum controlador pode alterar um actuator que não possui;
+
+learning só recebe E5 após consequência observada;
+
+checkpoint precisa ter lineage válida;
+
+módulo crítico não pode ficar permanentemente SUSPENDED sem reason explícito.
+
+Isso é suficiente inicialmente.
+
+37. NÃO CRIAR CENTENAS DE LEIS
+
+Lei deve proteger:
+
+invariantes.
+
+Não controlar microcomportamento.
+
+Senão o Law Engine vira outro supercontrolador.
+
+38. ECOLOGIA
+
+Ecologia também não precisa de:
+
+Ecology
+
+Ecology Observer
+
+Ecologies Hub
+
+Symbol Ecology
+
+Binding Ecology
+
+Causal Ecology
+
+cada um como grande subsistema independente.
+
+Criar um único motor genérico:
+
+governance/ecology/
+
+population.rs
+fitness.rs
+competition.rs
+selection.rs
+birth.rs
+decay.rs
+extinction.rs.
+
+Depois adaptadores:
+
+concept_ecology
+
+binding_ecology
+
+policy_ecology.
+
+39. QUANDO USAR ECOLOGIA
+
+Somente quando existirem:
+
+população;
+
+variação;
+
+competição;
+
+recursos limitados;
+
+seleção;
+
+morte/extinção.
+
+Se não houver esses elementos, não chamar de ecologia.
+
+Isso reduzirá bastante a complexidade conceitual.
+
+40. BINDING ECOLOGY PODE CONTINUAR
+
+Ela já possui:
+
+birth
+
+decay
+
+merge
+
+overwrite.
+
+Portanto faz sentido como população ecológica.
+
+Mas deve usar o motor genérico.
+
+Não possuir infraestrutura ecológica própria.
+
+41. CASCATAS NÃO DEVEM TER UM “CASCADE SYSTEM”
+
+A cascata deve nascer do EventBus.
+
+Cada evento:
+
+trace_id
+
+parent_event_id
+
+source
+
+target
+
+step
+
+payload_version.
+
+Então podemos reconstruir:
+
+A
+→B
+→C
+→D.
+
+Calcular:
+
+depth
+
+breadth
+
+latency
+
+dead_end
+
+effect.
+
+A cascata passa a ser observável sem criar outro controlador.
+
+42. RECURSÃO TAMBÉM NÃO PRECISA DE UM SISTEMA CENTRAL
+
+Eliminar a ideia de:
+
+“recursion engine” genérico
+
+se ele apenas observa outras recursões.
+
+As recursões importantes já serão:
+
+HOTM:
+state→state.
+
+Workspace:
+selection→broadcast→new candidates.
+
+World Model:
+state→prediction→error→update.
+
+Learning:
+outcome→update→future behavior.
+
+Meta:
+performance→policy→performance.
+
+Cross-run:
+experience→persistence→restore→reuse.
+
+Essas são as recursões verdadeiras.
+
+43. RECUSÃO PRECISA TER TERMINAÇÃO
+
+Cada loop deve possuir:
+
+iteration
+
+gain
+
+error
+
+improvement
+
+cost
+
+termination_reason.
+
+Evitar:
+
+recursão porque “mais profundidade parece mais cognitivo”.
+
+Profundidade sem ganho é desperdício.
+
+44. CRISE E RECUPERAÇÃO
+
+Não criar um cérebro separado para crise.
+
+Criar máquina de estado transversal:
+
+NORMAL
+PRESSURE
+CRISIS
+STABILIZATION
+RECOVERY
+REINTEGRATION.
+
+Ela modifica políticas.
+
+Não duplica sistemas.
+
+Durante crise:
+
+Morphogenesis ↓
+
+division ↓
+
+telemetry pesada ↓
+
+persistência pesada ↓
+
+O5 evolution ↓
+
+linguagem OFF
+
+experimentos OFF.
+
+Preservar:
+
+L1 homeostase
+
+L2 tecidos
+
+L3 memória/semântica
+
+L4 Workspace MINIMAL
+
+World Model DEGRADED
+
+decision
+
+outcome
+
+learning.
+
+45. SLEEP/DREAM NÃO PRECISAM ENTRAR NA PRIMEIRA REESCRITA
+
+Para alcançar primeiro um neocórtex funcional consolidado:
+
+AWAKE é obrigatório.
+
+SLEEP/DREAM podem permanecer como extensões futuras.
+
+Principalmente DREAM.
+
+Não vale aumentar novamente a superfície arquitetural antes de fechar:
+
+decision
+→ outcome
+→ learning.
+
+46. EVIDÊNCIA E0–E5 É ESSENCIAL
+
+Isso não é telemetria supérflua.
+
+Manter.
+
+Mas simplificar.
+
+Cada módulo deve possuir:
+
+declared
+initialized
+executed
+produced
+consumed
+effect_validated.
+
+Não criar dezenas de métricas de status paralelas.
+
+47. UMA REGRA IMPORTANTE PARA O NOVO TRIAD
+
+Nenhum módulo entra no core sem responder cinco perguntas:
+
+qual estado único ele possui?
+
+qual input único consome?
+
+qual output único produz?
+
+quem consome esse output?
+
+qual função desaparece se ele for removido?
+
+Se a quinta resposta for:
+
+“nenhuma”,
+
+o módulo provavelmente é redundante.
+
+48. OUTRA REGRA
+
+Se dois módulos:
+
+leem quase os mesmos dados;
+
+controlam o mesmo actuator;
+
+tentam otimizar a mesma variável;
+
+devem provavelmente ser fundidos.
+
+É isso que deve acontecer com grande parte da governança atual.
+
+49. NOVA ESTRUTURA DE DIRETÓRIOS MINIMALISTA
+
+Triad_AEE/
+
+Cargo.toml
+Cargo.lock
+rust-toolchain.toml
+README.md
+
+config/
+    default.toml
+    research.toml
+    crisis.toml
+    corticalization.toml
+
+crates/
+
+    foundation/
+        ids/
+        status/
+        time/
+        errors/
+        provenance/
+
+    contracts/
+        events/
+        state/
+        messages/
+        evidence/
+
+    runtime/
+        scheduler/
+        executor/
+        event_bus/
+        lifecycle/
+        typed_context/
+        tracing/
+
+    l1_substrate/
+        cluster/
+        graph/
+        energy/
+        lifecycle/
+        plasticity/
+        reservoir/
+
+    l2_tissue/
+        tissue/
+        registry/
+        affinity/
+        bridge/
+        adaptation/
+        feedback/
+
+    l3_local/
+        semantic/
+        memory/
+        attention/
+        prediction/
+
+    l4_global/
+        integration/
+        workspace/
+        world_model/
+        causal/
+        memory_integration/
+        decision/
+        action/
+
+    l5_meta/
+        self_model/
+        identity/
+        meta_controller/
+        resource_governor/
+        development_governor/
+
+    learning/
+        prediction_error/
+        credit/
+        update/
+        validation/
+        forgetting/
+
+    cybernetics/
+        o1_control/
+        o2_adaptation/
+        o3_coordination/
+        o4_self_observation/
+        o5_evolution/
+
+    governance/
+        laws/
+        federation/
+        ecology/
+        arbitration/
+
+    development/
+        embryogenesis/
+        corticalization/
+        maintenance/
+        regeneration/
+
+    platform/
+        gpu/
+        persistence/
+        telemetry/
+        storage/
+        math/
+
+    triad/
+        app/
+        boot/
+        simulation/
+
+lua/
+
+    policies/
+        energy/
+        attention/
+        learning/
+        crisis/
+        recovery/
+
+    governance/
+        federation/
+        ecology/
+
+    development/
+        corticalization/
+        regeneration/
+
+    experiments/
+
+schemas/
+
+tests/
+
+benches/
+
+docs/
+
+var/
+
+Isso é suficiente.
+
+50. O QUE NÃO ENTRARIA NO CORE AGORA
+
+Eu deixaria fora da primeira reescrita:
+
+language stack completo;
+
+generative pipeline;
+
+chat sync;
+
+dream;
+
+inner speech;
+
+linguistic prediction;
+
+linguistic feedback;
+
+generative decoder;
+
+nocturnal consolidation;
+
+sistemas específicos de cérebro completo;
+
+cerebellum artificial;
+
+brainstem artificial;
+
+basal ganglia artificial;
+
+paleocortex como módulo independente;
+
+symbol ecology separada;
+
+causal ecology separada;
+
+ecologies hub;
+
+architecture cortex;
+
+neural processor genérico;
+
+cognitive field independente;
+
+cross-module resonance independente;
+
+cognitive genome executando continuamente;
+
+structural noise contínuo;
+
+entropic injection contínua.
+
+Isso não significa apagar a pesquisa.
+
+Mover para:
+
+extensions/
+
+ou:
+
+legacy/research/.
+
+51. EXTENSIONS
+
+Eu criaria:
+
+extensions/
+
+language/
+
+dream/
+
+full_brain/
+
+experimental_ecologies/
+
+experimental_evolution/
+
+advanced_symbolics/
+
+Isso é muito importante.
+
+O core não precisa carregar tudo que o laboratório já investigou.
+
+52. CRITÉRIO PARA TRAZER UMA EXTENSÃO PARA O CORE
+
+Somente quando existir:
+
+necessidade demonstrada
+
++
+
+efeito reproduzível
+
++
+
+consumidor real
+
++
+
+benefício multi-seed
+
++
+
+nenhuma duplicação funcional.
+
+Então:
+
+extension → core.
+
+Não o contrário.
+
+53. O GRAFO DE DEPENDÊNCIAS
+
+A direção principal:
+
+foundation
+↓
+contracts
+↓
+L1
+↓
+L2
+↓
+L3
+↓
+L4
+↓
+L5
+
+Mas feedback não deve criar imports circulares.
+
+L5 não importa internamente L4 para alterar objetos.
+
+Ele publica:
+
+PolicyProposal.
+
+L4 recebe via contrato.
+
+Igualmente:
+
+L3→L2
+
+usa:
+
+AdaptationRequest.
+
+Não chamada direta arbitrária.
+
+54. FLUXO ASCENDENTE
+
+L1:
+
+ClusterState.
+
+↓
+
+L2:
+
+TissueState.
+
+↓
+
+L3:
+
+Representation.
+
+↓
+
+L4:
+
+WorkspaceContent.
+
+↓
+
+Decision.
+
+55. FLUXO DESCENDENTE
+
+L5:
+
+Policy.
+
+↓
+
+L4:
+
+attention/decision constraints.
+
+↓
+
+L3:
+
+salience/learning targets.
+
+↓
+
+L2:
+
+adaptation request.
+
+↓
+
+L1:
+
+plasticity/structural adjustment.
+
+Essa bidirecionalidade é obrigatória para consolidação.
+
+56. CADEIA COGNITIVA CANÔNICA
+
+A nova arquitetura deveria reconhecer somente uma cadeia principal de fechamento:
+
+Input
+
+→ L1State
+
+→ TissueState
+
+→ Representation
+
+→ WorkspaceCandidate
+
+→ WorkspaceSelection
+
+→ WorldPrediction
+
+→ DecisionProposal
+
+→ DecisionCommit
+
+→ Action
+
+→ Outcome
+
+→ PredictionError
+
+→ CreditAssignment
+
+→ LearningUpdate
+
+→ FutureBehavior.
+
+Qualquer módulo que não consiga dizer onde entra nessa cadeia precisa justificar sua existência.
+
+57. CADEIA DE MEMÓRIA
+
+Experience
+
+→ Encode
+
+→ Store
+
+→ Retrieve
+
+→ Consume
+
+→ Decision/Prediction Effect
+
+→ Reconsolidate.
+
+`MemoryRetrieved` sozinho não significa memória útil.
+
+A etapa:
+
+Consume
+
+é obrigatória.
+
+58. CADEIA DE METACOGNIÇÃO
+
+ObserveSystem
+
+→ DetectProblem
+
+→ GenerateProposal
+
+→ ValidateProposal
+
+→ Apply
+
+→ ObserveEffect
+
+→ Keep/Revert.
+
+Isso substitui vários controladores atuais.
+
+59. CADEIA DE DESENVOLVIMENTO
+
+CapacityProblem
+
+→ DevelopmentGovernor
+
+→ RegenerationProposal
+
+→ LawValidation
+
+→ Morphogenesis
+
+→ StructuralEffect
+
+→ CognitiveEffect
+
+→ StopGrowth.
+
+Assim embriogênese deixa de ser permanente.
+
+60. CADEIA DE FEDERAÇÃO
+
+Need
+
+→ Proposal
+
+→ Agreement
+
+→ ResourceTransfer
+
+→ Effect
+
+→ Settlement.
+
+Sem `Effect`, não contabilizar trade como sucesso.
+
+61. CADEIA DE LEI
+
+Invariant
+
+→ Observation
+
+→ Violation
+
+→ Enforcement
+
+→ Postcondition
+
+→ EffectValidated.
+
+Sem `Postcondition`, enforcement não está comprovado.
+
+62. CADEIA ECOLÓGICA
+
+Variation
+
+→ Competition
+
+→ Selection
+
+→ Survival/Extinction
+
+→ Retention
+
+→ FutureEffect.
+
+Sem extinção e efeito futuro:
+
+não chamar de evolução/ecologia funcional.
+
+63. MAIOR OBJETIVO PARA L1
+
+L1 deve ficar:
+
+estável;
+
+barato;
+
+previsível;
+
+plasticamente disponível.
+
+Não precisa ficar “mais inteligente”.
+
+64. MAIOR OBJETIVO PARA L2
+
+Transformar tecidos em verdadeira ponte bidirecional:
+
+L1 ↔ L2 ↔ L3.
+
+65. MAIOR OBJETIVO PARA L3
+
+Produzir representações reutilizáveis e suficientemente diversas sem crescimento semântico ilimitado.
+
+66. MAIOR OBJETIVO PARA L4
+
+Esse é o alvo principal:
+
+integração global.
+
+Principalmente:
+
+Workspace
+→ Decision.
+
+Enquanto F2 continuar sendo o gargalo, não há razão científica forte para multiplicar novos módulos cognitivos.
+
+67. MAIOR OBJETIVO PARA L5
+
+Deixar de controlar demais.
+
+L5 maduro deve:
+
+observar;
+
+orquestrar;
+
+arbitrar;
+
+corrigir.
+
+Não:
+
+microgerenciar todo step.
+
+Quanto mais consolidado o neocórtex, menos intervenção global deveria ser necessária em regime estável.
+
+68. O1
+
+Fechar homeostase.
+
+69. O2
+
+Fazer os controladores aprenderem parâmetros.
+
+70. O3
+
+Resolver conflitos entre controladores.
+
+71. O4
+
+Permitir que o sistema observe e modifique sua própria organização com segurança.
+
+72. O5
+
+Selecionar estruturas/políticas ao longo do tempo sem destruir continuidade.
+
+Essa sequência é muito mais importante que quantidade de módulos.
+
+73. O CORE DEVERIA CABER CONCEITUALMENTE EM CERCA DE 15–20 COMPONENTES RUNTIME IMPORTANTES
+
+Algo aproximadamente assim:
+
+1. Cluster substrate
+2. Energy homeostasis
+3. Reservoir/HOTM
+4. Tissue organization
+5. Tissue bridge/adaptation
+6. Semantic representation
+7. Cognitive memory
+8. Attention/salience
+9. Global Workspace
+10. World Model
+11. Causal Model
+12. Decision
+13. Action/Outcome
+14. Learning
+15. Self Model/Identity
+16. Resource Governor
+17. Meta Controller
+18. Development Governor
+19. Laws/Arbitration
+20. Persistence/Telemetry transversal.
+
+Isso é muito mais administrável que dezenas de sistemas parcialmente sobrepostos.
+
+74. A META FINAL NÃO É REDUZIR O NÚMERO POR ESTÉTICA
+
+Se amanhã aparecer evidência de que precisamos de 40 componentes distintos, usamos 40.
+
+Mas cada um precisa possuir:
+
+responsabilidade única;
+
+estado definido;
+
+contrato definido;
+
+efeito demonstrável.
+
+Modularidade não significa fragmentação.
+
+75. COMO FAZER A MIGRAÇÃO SEM PERDER FUNÇÃO
+
+Não apagar o Python inicialmente.
+
+Criar um inventário:
+
+old_component
+→ responsibility
+→ state_owner
+→ input
+→ output
+→ actuator
+→ new_component.
+
+Depois classificar:
+
+KEEP
+
+MERGE
+
+EXTENSION
+
+ARCHIVE.
+
+Somente depois reescrever.
+
+76. PRIMEIRO MARCO DA REESCRITA
+
+Eu não tentaria portar o sistema inteiro.
+
+Primeiro construir em Rust:
+
+foundation
+
+contracts
+
+runtime
+
+L1
+
+L2
+
+telemetry.
+
+E provar:
+
+mesmo estado inicial
+
+→ mesma evolução estrutural dentro dos limites numéricos esperados.
+
+77. SEGUNDO MARCO
+
+Portar:
+
+L3 semantics
+
+memory
+
+attention.
+
+Provar:
+
+representation
+→ memory
+→ reuse.
+
+78. TERCEIRO MARCO
+
+Portar:
+
+Workspace
+
+World Model
+
+Causal Model
+
+Decision
+
+Action/Outcome.
+
+Este provavelmente será o marco mais importante de todo o projeto.
+
+79. QUARTO MARCO
+
+Portar:
+
+learning
+
+Self Model
+
+Meta Controller
+
+Resource Governor.
+
+Então fechar:
+
+decision
+→ outcome
+→ learning
+→ future behavior.
+
+80. SOMENTE DEPOIS TRAZER O5, LINGUAGEM E SISTEMAS MAIS EXPERIMENTAIS
+
+Essa ordem evitará gastar meses reimplementando mecanismos que podem nem ser necessários para o objetivo principal.
+
+CONCLUSÃO
+
+Se o objetivo imediato é um neocórtex consolidado, eu reduziria a nova arquitetura a cinco camadas cognitivas e poucos sistemas transversais.
+
+Manteria como núcleo:
+
+substrato;
+
+energia;
+
+Reservoir/HOTM;
+
+tecidos;
+
+feedback L3↔L2;
+
+semântica;
+
+memória;
+
+atenção;
+
+Workspace;
+
+World Model;
+
+causalidade;
+
+decisão;
+
+ação/outcome;
+
+learning;
+
+Self Model/Identity;
+
+governança mínima;
+
+desenvolvimento/regeneração;
+
+leis/arbitragem;
+
+persistência;
+
+telemetria.
+
+Federações, ecologias e as Cinco Ordens continuam, mas como mecanismos transversais enxutos.
+
+Cascatas e recursões tornam-se propriedades rastreáveis das cadeias, não novos “órgãos”.
+
+Embriogênese deixa de ser permanente e passa a ser regenerativa.
+
+Linguagem, dream, full-brain, geradores, ecologias especializadas e sistemas experimentais ficam como extensões.
+
+A arquitetura resultante deve perseguir uma única propriedade:
+
+L1
+→ L2
+→ L3
+→ L4
+→ decisão
+→ ação
+→ outcome
+→ learning
+→ feedback
+→ reorganização
+→ novo comportamento.
+
+Quando esse circuito estiver fechado, recorrente, adaptativo, persistente e validado em múltiplas runs, então vale voltar a aumentar a complexidade.
+
+Até lá, qualquer sistema que não ajude a fechar esse circuito deve provar por que merece permanecer no núcleo.

@@ -1,0 +1,20 @@
+# =============================================================================
+# triad-contracts — eventos, estado e evidência tipados (núcleo mínimo L1–L5)
+#
+# Nenhuma implementação de cognição aqui (ADR-0001): apenas contratos que as
+# camadas L1–L5 assinam. Direção de dependência: foundation → contracts →
+# camadas (doc/architecture/dependency_rules.md §1).
+# =============================================================================
+
+[package]
+name = "triad-contracts"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true, features = ["v7", "serde"] }
+bitflags = { workspace = true, features = ["serde"] }

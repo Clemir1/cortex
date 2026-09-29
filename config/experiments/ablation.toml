@@ -1,0 +1,28 @@
+# =============================================================================
+# config/experiments/ablation.toml — EXPERIMENTO (não é delta de runtime).
+# Nenhuma configuração experimental é codificada dentro de módulos
+# cognitivos: braços são declarados aqui (e em lua/experiments/) como
+# variáveis controladas sobre caminhos canônicos de default.toml.
+# RESULTADOS vão sempre para var/runs/<run_id>/ — nunca para o diretório
+# do experimento.
+# =============================================================================
+
+[experiment]
+name = "ablation"
+description = "Ablação controlada de um elo por braço para medir contribuição causal ao circuito fechado"
+seeds = [11, 23, 37, 41, 59]
+repetitions_per_seed = 3
+baseline_profile = "default"       # braço controle herda o perfil base intacto
+sham_required = true               # mudança comportamental exige braço sham pareado
+results_dir = "var/runs"
+output_policy = "var_runs_only"    # proibido escrever resultados no diretório do experimento
+
+[experiment.variables]
+# Braços de ablação: cada braço altera EXATAMENTE uma chave canônica; todo o
+# restante herda o default (controle). Nenhum braço viola leis hard
+# (ex.: nenhuma ablação desliga L4 — modo degradado é obrigatório).
+[experiment.variables.arms]
+no_l2_feedback = { target = "l2.adaptation.feedback_enabled", value = false }     # hipótese D2: elo estrutural L3→L2
+no_o4_observation = { target = "cybernetics.o4_self_observation.enabled", value = false }
+no_semantic_reuse = { target = "l3.semantic.reuse_bonus", value = 0.0 }            # diversidade vs. reutilização
+flat_plasticity = { target = "l1.plasticity.hebbian_rate", value = 0.0 }           # substrato inerte

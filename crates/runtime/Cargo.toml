@@ -1,0 +1,11 @@
+[package]
+name = "triad-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+crossbeam-channel = "0.5"
+tracing = "0.1"
+tracing-subscriber = "0.3"

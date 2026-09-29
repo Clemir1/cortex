@@ -1,0 +1,2016 @@
+ANÁLISE ARQUITETURAL — REESTRUTURAÇÃO COMPLETA DO TRIAD_AEE PARA RUST + LUA
+
+A decisão mais importante é não estruturar o novo Triad_AEE supondo antecipadamente que ele será apenas um neocórtex ou necessariamente um cérebro artificial completo.
+
+O nome e a arquitetura de diretórios devem permanecer neutros.
+
+O neocórtex é apenas uma parte do córtex cerebral; o cérebro inclui também estruturas subcorticais, cerebelo, tronco encefálico, diencéfalo, hipocampo, gânglios da base etc. A neuroanatomia também não possui uma divisão científica universal em exatamente “12 partes”: há classificações macroscópicas em três grandes partes e outras classificações do sistema nervoso central em sete divisões principais. Portanto, usar 12 partes no Triad deve ser tratado como uma abstração computacional funcional, não como afirmação anatômica literal. :chatgpt-content-reference{index="0"}
+
+Isso é importante porque permite que o Triad evolua futuramente para:
+
+Triad como córtex;
+
+Triad como cérebro;
+
+Triad como sistema cognitivo artificial mais abstrato que um cérebro biológico.
+
+Minha recomendação é estruturar o projeto como um ORGANISMO COGNITIVO, dentro do qual existe uma arquitetura cerebral opcional.
+
+1. PRINCÍPIO CENTRAL
+
+Não organizar o projeto assim:
+
+rust/
+lua/
+gpu/
+memory/
+random_files/
+utils/
+
+Isso organiza o sistema pela tecnologia.
+
+O correto para uma arquitetura desse tamanho é organizar primeiro por domínio e responsabilidade.
+
+Rust e Lua devem ser mecanismos de implementação.
+
+Não devem definir a arquitetura cognitiva.
+
+Portanto:
+
+domínio → módulo → implementação.
+
+E não:
+
+linguagem → arquivos → funções.
+
+2. RUST COMO ESTRUTURA CANÔNICA
+
+Rust deve possuir aquilo que não pode ser semanticamente ambíguo:
+
+estado canônico;
+
+ClusterBio;
+
+tecidos;
+
+grafos;
+
+HOTM/Reservoir;
+
+memória estrutural;
+
+scheduler;
+
+event bus;
+
+estado de módulos;
+
+máquinas de estado;
+
+World Model estrutural;
+
+Workspace estrutural;
+
+causalidade;
+
+persistência;
+
+concorrência;
+
+GPU;
+
+telemetria;
+
+contratos;
+
+validação;
+
+FFI;
+
+segurança;
+
+invariantes.
+
+Cargo possui exatamente o conceito adequado para isso: um workspace permite administrar vários packages/crates relacionados com um `Cargo.lock` e diretório `target` compartilhados. A própria documentação oficial recomenda subdividir projetos grandes em múltiplos crates relacionados. :chatgpt-content-reference{index="1"}
+
+3. LUA NÃO DEVE SER DONO DO ORGANISMO
+
+Lua é excelente para:
+
+políticas;
+
+heurísticas;
+
+regras ajustáveis;
+
+estratégias;
+
+experimentos;
+
+gates;
+
+thresholds;
+
+modos cognitivos;
+
+políticas de crise;
+
+seleção;
+
+políticas federativas;
+
+leis configuráveis;
+
+regras ecológicas;
+
+comportamentos experimentais.
+
+O mecanismo `require`/`package.searchers` de Lua já favorece uma organização modular. :chatgpt-content-reference{index="2"}
+
+Mas Lua não deveria possuir diretamente:
+
+memória canônica;
+
+clusters;
+
+tissue graph;
+
+persistência;
+
+estado causal;
+
+buffers GPU;
+
+ownership de recursos;
+
+threads;
+
+locks;
+
+estrutura central.
+
+A relação ideal será:
+
+Rust produz Snapshot
+→ Lua analisa
+→ Lua produz Proposal
+→ Rust valida
+→ Laws verificam
+→ Rust aplica
+→ Observer mede
+→ Learning avalia efeito.
+
+Isso preserva flexibilidade sem permitir que um script modifique o organismo arbitrariamente.
+
+4. NÃO CRIAR UM DIRETÓRIO “CORE” GIGANTE
+
+Esse é um erro comum em sistemas grandes.
+
+`core/`
+
+acaba virando:
+
+core/system.rs
+core/utils.rs
+core/helpers.rs
+core/misc.rs
+core/manager.rs
+
+e depois ninguém sabe mais onde uma responsabilidade pertence.
+
+No novo Triad:
+
+foundation = tipos fundamentais.
+
+runtime = execução.
+
+substrate = substrato cognitivo.
+
+brain = sistemas funcionais.
+
+governance = governança.
+
+development = desenvolvimento.
+
+platform = infraestrutura.
+
+Cada conceito terá endereço arquitetural claro.
+
+5. AS 12 DIVISÕES FUNCIONAIS
+
+Eu adotaria doze sistemas computacionais inspirados na organização cerebral, sem afirmar equivalência biológica.
+
+01. brainstem
+
+Sobrevivência operacional.
+
+Responsabilidades:
+
+arousal;
+lifecycle;
+wake/sleep;
+emergency state;
+basic survival;
+runtime viability.
+
+02. hypothalamus
+
+Homeostase e necessidades internas.
+
+Responsabilidades:
+
+energia;
+scarcity;
+stress;
+resource demand;
+drives;
+homeostatic references.
+
+A analogia é particularmente adequada porque o hipotálamo integra sinais internos e participa da manutenção da homeostase biológica. :chatgpt-content-reference{index="3"}
+
+03. thalamus
+
+Roteamento e gating.
+
+Responsabilidades:
+
+routing;
+queues;
+attention routing;
+cross-region routing;
+priority;
+signal admission;
+traffic regulation.
+
+04. cerebellum
+
+Coordenação temporal/preditiva.
+
+Responsabilidades computacionais:
+
+timing;
+prediction-error coordination;
+trajectory correction;
+sequence coordination;
+temporal precision.
+
+O cerebelo biológico participa da coordenação e ajuste fino, inclusive de sequências temporais complexas. :chatgpt-content-reference{index="4"}
+
+05. basal_ganglia
+
+Seleção de ação.
+
+Responsabilidades:
+
+proposal competition;
+action gating;
+inhibition;
+selection;
+reward/action policy.
+
+A analogia é coerente porque os gânglios da base participam do gating de ações e também se conectam a circuitos cognitivos e de recompensa. :chatgpt-content-reference{index="5"}
+
+06. limbic
+
+Valoração.
+
+Responsabilidades:
+
+salience;
+value;
+reward;
+aversion;
+motivation;
+novelty significance;
+internal drives.
+
+Não transformar isso simplesmente em “emoção”; estruturas chamadas de sistema límbico estão associadas também a memória, aprendizado e motivação. :chatgpt-content-reference{index="6"}
+
+07. hippocampal
+
+Memória histórica.
+
+Responsabilidades:
+
+episodic memory;
+allocortex;
+spatial/context memory;
+reconsolidation;
+replay;
+autobiographical episodes;
+memory indexing.
+
+08. sensory
+
+Entrada e representação perceptiva.
+
+Responsabilidades:
+
+sensory adapters;
+feature extraction;
+spatial representation;
+multimodal grounding;
+future vision/audio/etc.
+
+Mesmo que atualmente o Triad não possua todos esses sensores, o domínio deve existir arquiteturalmente.
+
+09. association
+
+Integração representacional.
+
+Responsabilidades:
+
+semantic emergence;
+semantic binding;
+concepts;
+symbol ecology;
+symbolic projection;
+abstraction;
+hierarchies;
+cross-modal associations.
+
+10. executive
+
+Cognição global.
+
+Responsabilidades:
+
+Global Workspace;
+working context;
+World Model integration;
+planning;
+causal reasoning;
+attention binding;
+proposal generation;
+decision context.
+
+Este é provavelmente o domínio que mais precisa amadurecer na fase atual do Triad.
+
+11. action
+
+Saída e agência.
+
+Responsabilidades:
+
+action plans;
+actuators;
+execution;
+outcomes;
+efference copy;
+external interaction;
+agency tracking.
+
+É importante existir separadamente porque:
+
+decision ≠ execution.
+
+12. metacognition
+
+Cognição sobre a própria cognição.
+
+Responsabilidades:
+
+Self Model;
+Unified Identity;
+meta-learning;
+self-engineering;
+architecture observation;
+strategy adaptation;
+identity continuity.
+
+Esses 12 sistemas formam um mapa computacional.
+
+Não são “12 partes anatômicas oficiais do cérebro”.
+
+6. GOVERNANÇA NÃO DEVE SER A 13ª PARTE DO CÉREBRO
+
+Federações, leis e ecologias não são regiões cerebrais.
+
+São propriedades organizacionais do Triad.
+
+Por isso devem ficar fora de `brain/`.
+
+Isso é fundamental.
+
+Da mesma forma:
+
+scheduler;
+
+GPU;
+
+telemetria;
+
+persistência;
+
+database
+
+não pertencem a nenhuma região cerebral.
+
+7. ESTRUTURA RAIZ RECOMENDADA
+
+Triad_AEE/
+
+Cargo.toml
+Cargo.lock
+rust-toolchain.toml
+README.md
+LICENSE
+CONTRIBUTING.md
+SECURITY.md
+CHANGELOG.md
+
+config/
+crates/
+lua/
+schemas/
+assets/
+data/
+docs/
+experiments/
+tests/
+benches/
+tools/
+migrations/
+var/
+
+target/
+
+A convenção Cargo coloca código, testes, benchmarks e executáveis em estruturas bem definidas; dentro de um workspace grande, cada crate pode seguir essas convenções independentemente. :chatgpt-content-reference{index="7"}
+
+8. CONFIG
+
+config/
+
+default.toml
+development.toml
+research.toml
+benchmark.toml
+production.toml
+
+modes/
+    embryogenesis.toml
+    corticalization.toml
+    maintenance.toml
+    regeneration.toml
+    awake.toml
+    sleep.toml
+    dream.toml
+    crisis.toml
+    recovery.toml
+
+hardware/
+    cpu.toml
+    rx580.toml
+    opencl.toml
+    wgpu.toml
+
+experiments/
+    ablation.toml
+    deterministic.toml
+    multi_seed.toml
+
+Nenhuma configuração experimental deve ficar codificada dentro de módulos cognitivos.
+
+9. FOUNDATION
+
+crates/foundation/
+
+Cargo.toml
+src/
+    lib.rs
+    ids.rs
+    clock.rs
+    errors.rs
+    result.rs
+    status.rs
+    evidence.rs
+    provenance.rs
+    version.rs
+    units.rs
+
+Aqui ficam apenas conceitos universais.
+
+Exemplo:
+
+RunId
+StepId
+ClusterId
+TissueId
+ConceptId
+DecisionId
+EpisodeId
+TraceId
+
+Também:
+
+VALUE
+NO_DATA
+STALE
+INVALID
+PENDING
+DISABLED
+ERROR.
+
+É aqui que o problema de `None` deve ser eliminado arquiteturalmente.
+
+10. CONTRACTS
+
+crates/contracts/
+
+src/
+    lib.rs
+
+    events/
+        mod.rs
+        cognitive.rs
+        memory.rs
+        decision.rs
+        learning.rs
+        tissue.rs
+        governance.rs
+
+    messages/
+        mod.rs
+        sensory.rs
+        semantic.rs
+        workspace.rs
+        prediction.rs
+        action.rs
+        outcome.rs
+
+    state/
+        mod.rs
+        snapshot.rs
+        delta.rs
+        versioned.rs
+
+    evidence/
+        mod.rs
+        evidence_level.rs
+        causal_proof.rs
+
+Nada aqui implementa cognição.
+
+Define contratos entre componentes.
+
+11. RUNTIME
+
+crates/runtime/
+
+src/
+    lib.rs
+
+    scheduler/
+        mod.rs
+        adaptive.rs
+        priority.rs
+        eligibility.rs
+
+    execution/
+        mod.rs
+        executor.rs
+        pipeline.rs
+        task.rs
+
+    event_bus/
+        mod.rs
+        bus.rs
+        topic.rs
+        subscriber.rs
+
+    lifecycle/
+        mod.rs
+        component_state.rs
+        activation.rs
+        suspension.rs
+        recovery.rs
+
+    context/
+        mod.rs
+        typed_context.rs
+        key.rs
+        freshness.rs
+
+    tracing/
+        mod.rs
+        trace.rs
+        span.rs
+
+Esse crate substitui gradualmente a lógica monolítica do atual `system.py`.
+
+12. SUBSTRATE
+
+crates/substrate/
+
+src/
+    lib.rs
+
+    cluster/
+        mod.rs
+        state.rs
+        lifecycle.rs
+        role.rs
+        genome.rs
+        plasticity.rs
+
+    tissue/
+        mod.rs
+        tissue.rs
+        registry.rs
+        organization.rs
+        affinity.rs
+        bridge.rs
+        adaptation.rs
+
+    graph/
+        mod.rs
+        topology.rs
+        edge.rs
+        sparse.rs
+        spatial.rs
+
+    reservoir/
+        mod.rs
+        hotm.rs
+        readout.rs
+        recurrence.rs
+        memory_trace.rs
+        hebbian.rs
+        spectral.rs
+
+    morphogenesis/
+        mod.rs
+        division.rs
+        fusion.rs
+        pruning.rs
+        repair.rs
+
+Este é o substrato computacional.
+
+Não coloque World Model aqui.
+
+Não coloque Workspace aqui.
+
+Não coloque Meta Learning aqui.
+
+13. BRAIN
+
+crates/brain/
+
+Isso pode ser um crate agregador pequeno.
+
+src/
+    lib.rs
+    registry.rs
+    region.rs
+    brain_state.rs
+
+As implementações ficam como crates irmãos:
+
+crates/regions/brainstem/
+crates/regions/hypothalamus/
+crates/regions/thalamus/
+crates/regions/cerebellum/
+crates/regions/basal_ganglia/
+crates/regions/limbic/
+crates/regions/hippocampal/
+crates/regions/sensory/
+crates/regions/association/
+crates/regions/executive/
+crates/regions/action/
+crates/regions/metacognition/
+
+Isso evita criar um crate cerebral monstruoso.
+
+14. BRAINSTEM
+
+crates/regions/brainstem/
+
+src/
+    lib.rs
+    state.rs
+    survival.rs
+    arousal.rs
+    lifecycle.rs
+    wake_sleep.rs
+    emergency.rs
+    signals.rs
+
+Não colocar scheduler do software aqui.
+
+Brainstem é domínio cognitivo.
+
+Runtime scheduler continua em `runtime/`.
+
+15. HYPOTHALAMUS
+
+crates/regions/hypothalamus/
+
+src/
+    lib.rs
+    homeostasis.rs
+    energy.rs
+    stress.rs
+    scarcity.rs
+    drives.rs
+    setpoints.rs
+    regulation.rs
+
+Migraria conceitualmente para cá:
+
+energy homeostasis;
+cognitive energy model;
+scarcity state;
+parte fisiológica do Cognitive Economy.
+
+16. THALAMUS
+
+crates/regions/thalamus/
+
+src/
+    lib.rs
+    network.rs
+    router.rs
+    gates.rs
+    queues.rs
+    priorities.rs
+    governor.rs
+    recovery.rs
+
+O atual `thalamic_network` pertence aqui.
+
+O `thalamus_governor` também.
+
+Mas a governança global do organismo não.
+
+17. CEREBELLUM
+
+crates/regions/cerebellum/
+
+src/
+    lib.rs
+    timing.rs
+    sequence.rs
+    prediction_error.rs
+    correction.rs
+    coordination.rs
+    temporal_model.rs
+
+No início pode ser pequeno.
+
+Não invente funcionalidades apenas para preencher o diretório.
+
+18. BASAL GANGLIA
+
+crates/regions/basal_ganglia/
+
+src/
+    lib.rs
+    proposal.rs
+    competition.rs
+    selection.rs
+    inhibition.rs
+    reward.rs
+    policy.rs
+
+Fluxo futuro:
+
+Workspace
+→ proposals
+→ basal_ganglia competition
+→ selected action
+→ action system.
+
+Isso resolveria arquiteturalmente parte da ambiguidade atual entre:
+
+workspace;
+
+decision;
+
+execution.
+
+19. LIMBIC
+
+crates/regions/limbic/
+
+src/
+    lib.rs
+    state.rs
+    valuation.rs
+    salience.rs
+    motivation.rs
+    drives.rs
+    reward.rs
+    aversion.rs
+
+Migrar:
+
+limbic_system;
+paleocortex drives;
+parte de cognitive salience.
+
+20. HIPPOCAMPAL
+
+crates/regions/hippocampal/
+
+src/
+    lib.rs
+    episodic.rs
+    allocortex.rs
+    retrieval.rs
+    replay.rs
+    reconsolidation.rs
+    consolidation.rs
+    spatial_memory.rs
+    autobiographical.rs
+
+Esse domínio deve separar claramente:
+
+armazenar
+
+de:
+
+recuperar
+
+de:
+
+usar.
+
+21. SENSORY
+
+crates/regions/sensory/
+
+src/
+    lib.rs
+    modality.rs
+    perception.rs
+    grounding.rs
+    spatial.rs
+
+    visual/
+    auditory/
+    textual/
+    proprioceptive/
+    synthetic/
+
+Mesmo que muitos estejam inicialmente vazios/feature-gated.
+
+Aqui o importante é preparar arquitetura para crescimento futuro.
+
+22. ASSOCIATION CORTEX
+
+crates/regions/association/
+
+src/
+    lib.rs
+
+    semantic/
+        concept.rs
+        emergence.rs
+        coherence.rs
+        grounding.rs
+
+    binding/
+        semantic.rs
+        symbolic.rs
+
+    symbolic/
+        projection.rs
+        abstraction.rs
+        ecology.rs
+
+    hierarchy/
+        abstraction.rs
+        composition.rs
+
+    resonance/
+        cross_region.rs
+
+Aqui deve ficar grande parte da cognição L3/L4 associativa.
+
+23. EXECUTIVE CORTEX
+
+crates/regions/executive/
+
+src/
+    lib.rs
+
+    workspace/
+        state.rs
+        competition.rs
+        selection.rs
+        broadcast.rs
+
+    world_model/
+        state.rs
+        prediction.rs
+        simulation.rs
+        calibration.rs
+
+    causal/
+        graph.rs
+        inference.rs
+        cycle.rs
+
+    attention/
+        binding.rs
+        selection.rs
+
+    planning/
+        plan.rs
+        alternatives.rs
+
+    decision/
+        proposal.rs
+        context.rs
+
+Esse seria o coração da corticalização.
+
+24. ACTION
+
+crates/regions/action/
+
+src/
+    lib.rs
+    action.rs
+    actuator.rs
+    execution.rs
+    outcome.rs
+    feedback.rs
+    agency.rs
+
+A cadeia passa a ficar explícita:
+
+DecisionProposal
+→ SelectedAction
+→ ActionExecution
+→ Outcome
+→ LearningSignal.
+
+25. METACOGNITION
+
+crates/regions/metacognition/
+
+src/
+    lib.rs
+
+    self_model/
+        state.rs
+        prediction.rs
+        reflection.rs
+
+    identity/
+        unified.rs
+        temporal.rs
+        narrative.rs
+
+    meta_learning/
+        strategy.rs
+        evaluation.rs
+
+    self_engineering/
+        observation.rs
+        proposal.rs
+
+Metacognition não deve modificar o organismo diretamente.
+
+Ela deve produzir propostas.
+
+26. GOVERNANCE
+
+crates/governance/
+
+src/
+    lib.rs
+
+    laws/
+        mod.rs
+        law.rs
+        invariant.rs
+        enforcement.rs
+
+    federation/
+        mod.rs
+        federation.rs
+        proposal.rs
+        agreement.rs
+        trade.rs
+
+    ecology/
+        mod.rs
+        population.rs
+        competition.rs
+        selection.rs
+        extinction.rs
+
+    economy/
+        mod.rs
+        budget.rs
+        resource.rs
+        allocation.rs
+
+    arbitration/
+        mod.rs
+        conflict.rs
+        ownership.rs
+        controller_graph.rs
+
+    policy/
+        mod.rs
+        decision.rs
+
+Aqui devem morar:
+
+leis;
+
+federações;
+
+ecologias;
+
+economia;
+
+arbitragem de controladores.
+
+Não misturar esses conceitos com L5 apenas porque são “meta”.
+
+27. DEVELOPMENT
+
+Este diretório é crucial para a próxima versão.
+
+crates/development/
+
+src/
+    lib.rs
+
+    embryogenesis/
+        mod.rs
+        growth.rs
+        tissue_birth.rs
+        structural_expansion.rs
+
+    corticalization/
+        mod.rs
+        specialization.rs
+        integration.rs
+        stabilization.rs
+
+    maturation/
+        mod.rs
+        consolidation.rs
+        tenure.rs
+
+    maintenance/
+        mod.rs
+        repair.rs
+        pruning.rs
+
+    regeneration/
+        mod.rs
+        damage.rs
+        regrowth.rs
+        recovery.rs
+
+    phase/
+        mod.rs
+        stage.rs
+        transition.rs
+        detector.rs
+
+Isso resolve o problema que discutimos anteriormente.
+
+Embriogênese deixa de estar misturada ao organismo adulto.
+
+Ela vira um regime de desenvolvimento explícito.
+
+28. COGNITIVE MODES
+
+crates/modes/
+
+src/
+    lib.rs
+    mode.rs
+    controller.rs
+
+    awake.rs
+    sleep.rs
+    dream.rs
+    crisis.rs
+    stabilization.rs
+    recovery.rs
+    reintegration.rs
+
+Não duplicar Reservoir para cada modo.
+
+O modo altera política/gain/permissions.
+
+29. LEARNING
+
+Eu criaria learning como domínio transversal próprio.
+
+crates/learning/
+
+src/
+    lib.rs
+    error.rs
+    credit.rs
+    update.rs
+    validation.rs
+    transfer.rs
+    forgetting.rs
+    plasticity.rs
+
+Porque:
+
+learning
+
+não pertence exclusivamente a hipocampo, neocórtex ou metacognição.
+
+Ele atravessa todo o sistema.
+
+30. MEMORY CONTRACT
+
+Da mesma forma, criar uma interface comum:
+
+crates/memory/
+
+src/
+    lib.rs
+    store.rs
+    retrieve.rs
+    trace.rs
+    provenance.rs
+    consolidation.rs
+
+Mas as implementações cognitivas específicas continuam no hippocampal.
+
+Isso evita dezenas de sistemas inventando formatos diferentes de memória.
+
+31. GPU
+
+crates/platform/gpu/
+
+src/
+    lib.rs
+    backend.rs
+    buffer.rs
+    dispatch.rs
+
+    wgpu/
+    opencl/
+    cpu/
+
+    kernels/
+        energy.rs
+        pairwise.rs
+        fusion.rs
+        morphogenesis.rs
+        tissue_affinity.rs
+        metrics.rs
+
+Rust controla isso.
+
+Lua nunca deve tocar buffers GPU diretamente.
+
+32. PERSISTENCE
+
+crates/platform/persistence/
+
+src/
+    lib.rs
+    snapshot.rs
+    journal.rs
+    checkpoint.rs
+    restore.rs
+    migration.rs
+    lineage.rs
+
+Adicionar:
+
+parent_run_id;
+checkpoint_hash;
+state_hash;
+schema_version.
+
+A atual dependência de `latest` deve desaparecer como única verdade.
+
+33. TELEMETRY
+
+crates/platform/telemetry/
+
+src/
+    lib.rs
+    event.rs
+    metric.rs
+    recorder.rs
+    evidence.rs
+    freshness.rs
+    lineage.rs
+    profiler.rs
+
+    cognitive/
+    runtime/
+    causal/
+    performance/
+
+Separar:
+
+telemetria científica
+
+de:
+
+logging operacional.
+
+34. STORAGE
+
+crates/platform/storage/
+
+src/
+    lib.rs
+    database.rs
+    repository.rs
+    serialization.rs
+
+SQLite, arquivos ou outro mecanismo ficam atrás dessas interfaces.
+
+O domínio cognitivo não deveria conhecer SQL.
+
+35. LUA
+
+lua/
+
+init.lua
+
+policies/
+    energy/
+    crisis/
+    recovery/
+    attention/
+    workspace/
+    learning/
+    forgetting/
+    growth/
+
+governance/
+    laws/
+    federation/
+    ecology/
+    arbitration/
+
+development/
+    embryogenesis/
+    corticalization/
+    regeneration/
+
+experiments/
+    ablations/
+    seeds/
+    counterfactuals/
+
+strategies/
+    exploration/
+    exploitation/
+    resource_allocation/
+
+Nunca:
+
+lua/cluster_state.lua contendo estado real dos clusters.
+
+Lua recebe visão limitada.
+
+36. CONTRATO RUST ↔ LUA
+
+Essa fronteira precisa ser extremamente rígida.
+
+Rust:
+
+PolicySnapshot.
+
+Lua:
+
+PolicyProposal.
+
+Rust:
+
+ProposalValidation.
+
+Depois:
+
+LawValidation.
+
+Depois:
+
+Actuation.
+
+Exemplo conceitual:
+
+Rust
+→ EnergySnapshot
+
+Lua
+→ ReduceMorphogenesis(0.40)
+
+Rust
+→ valida range
+
+LawEnforcer
+→ valida invariantes
+
+Governor
+→ arbitra
+
+Rust
+→ aplica
+
+Telemetry
+→ observa efeito.
+
+Lua nunca faz:
+
+cluster.energy = 0.4
+
+diretamente.
+
+37. SCHEMAS
+
+schemas/
+
+events/
+    cognitive_event.schema
+    decision_event.schema
+    outcome_event.schema
+    learning_event.schema
+
+state/
+    cluster_state.schema
+    tissue_state.schema
+    workspace_state.schema
+    world_model_state.schema
+
+telemetry/
+    metric_definition.schema
+    evidence.schema
+
+persistence/
+    snapshot.schema
+    checkpoint.schema
+
+version/
+    schema_version.toml
+
+Isso protege Rust, Lua, telemetria e persistência contra divergência semântica.
+
+38. ASSETS
+
+assets/
+
+language/
+    corpus/
+    anchors/
+
+seeds/
+    topology/
+    genome/
+
+test_vectors/
+
+Assets são dados estáticos.
+
+Não misturar com runtime.
+
+39. DATA
+
+data/
+
+datasets/
+training/
+validation/
+benchmarks/
+
+Dados de pesquisa.
+
+Não checkpoints.
+
+40. VAR
+
+var/
+
+runs/
+    <run_id>/
+
+checkpoints/
+validated/
+latest_runtime/
+
+logs/
+telemetry/
+profiles/
+cache/
+tmp/
+
+Essa separação é importante.
+
+`var/` contém estado mutável produzido durante execução.
+
+Não deve ser misturado com source code.
+
+41. EXPERIMENTS
+
+experiments/
+
+ablation/
+counterfactual/
+multi_seed/
+regression/
+development/
+crisis/
+corticalization/
+
+Cada experimento:
+
+manifest.toml
+hypothesis.md
+config.toml
+expected_metrics.toml
+
+Resultado vai para `var/runs`.
+
+Não dentro do diretório do experimento.
+
+42. TESTS
+
+tests/
+
+architecture/
+causal/
+determinism/
+persistence/
+recovery/
+integration/
+regression/
+multi_seed/
+gpu/
+lua_policy/
+cognitive_closure/
+
+Casos críticos:
+
+tests/cognitive_closure/
+    concept_to_workspace.rs
+    workspace_to_decision.rs
+    decision_to_execution.rs
+    outcome_to_learning.rs
+    learning_to_future_behavior.rs
+
+Isso transforma objetivos científicos em testes de software.
+
+43. TESTES DE CAMADA
+
+tests/architecture/
+
+no_layer_cycles.rs
+no_direct_actuation_from_lua.rs
+no_infrastructure_in_brain.rs
+no_stale_as_value.rs
+no_undefined_layers.rs
+no_context_key_collision.rs
+no_global_mutable_state.rs
+
+Muito importante para impedir que a nova arquitetura volte a virar o sistema atual com nomes diferentes.
+
+44. BENCHES
+
+benches/
+
+cluster/
+tissue/
+reservoir/
+morphogenesis/
+workspace/
+world_model/
+gpu/
+persistence/
+
+Rust já possui convenção própria para benchmarks em `benches/`. :chatgpt-content-reference{index="8"}
+
+45. DOCS
+
+docs/
+
+architecture/
+    overview.md
+    dependency_rules.md
+    brain_map.md
+    runtime.md
+    rust_lua_boundary.md
+
+science/
+    cognition.md
+    emergence.md
+    cybernetics.md
+    learning.md
+    consolidation.md
+
+development/
+    embryogenesis.md
+    corticalization.md
+    maturation.md
+    regeneration.md
+
+governance/
+    laws.md
+    federation.md
+    ecology.md
+
+adr/
+    ADR-0001-domain-first.md
+    ADR-0002-rust-canonical-state.md
+    ADR-0003-lua-policy-only.md
+    ADR-0004-no-shared-untyped-context.md
+    ADR-0005-brain-neutral-root.md
+
+ADRs são particularmente importantes para impedir que decisões fundamentais sejam esquecidas daqui a alguns meses.
+
+46. TOOLS
+
+tools/
+
+xtask/
+migration/
+graph/
+profiling/
+validation/
+dataset/
+
+Sempre que possível, ferramentas internas importantes deveriam ser Rust executáveis do workspace.
+
+Cargo suporta múltiplos binaries e workspaces de forma nativa. :chatgpt-content-reference{index="9"}
+
+47. MIGRATIONS
+
+migrations/
+
+state/
+database/
+config/
+schema/
+legacy_python/
+
+Cada mudança persistente precisa possuir versão.
+
+Principalmente porque o Triad possui memória cross-run.
+
+48. LEGACY
+
+Durante reescrita:
+
+legacy/
+
+python/
+    ...
+
+read_only.md
+
+Mas esse diretório deve ser temporário.
+
+Nenhum novo código deve depender de `legacy/`.
+
+Quando a migração terminar:
+
+arquivar fora do runtime.
+
+49. DIREÇÃO DE DEPENDÊNCIAS
+
+A dependência deve ser aproximadamente:
+
+foundation
+
+↓
+
+contracts
+
+↓
+
+substrate
+
+↓
+
+regions
+
+↓
+
+learning
+
+↓
+
+governance
+
+↓
+
+runtime orchestration
+
+Enquanto infraestrutura entra através de interfaces:
+
+GPU
+Persistence
+Telemetry
+Database
+
+Nunca:
+
+foundation → World Model.
+
+Nunca:
+
+substrate → Global Workspace.
+
+Nunca:
+
+semantic → database.
+
+Nunca:
+
+Lua → GPU buffer.
+
+50. COMUNICAÇÃO ENTRE REGIÕES
+
+Não permitir chamadas arbitrárias como:
+
+hippocampus.workspace.world_model.foo()
+
+Utilizar mensagens tipadas.
+
+Exemplo:
+
+MemoryRetrieved
+
+SemanticRepresentation
+
+WorkspaceCandidate
+
+WorkspaceSelected
+
+PredictionMade
+
+ActionProposed
+
+ActionSelected
+
+ActionExecuted
+
+OutcomeObserved
+
+LearningUpdate
+
+Isso cria rastreabilidade causal.
+
+51. SUBSTITUIR O `_ctx` GENÉRICO
+
+O `_ctx` atual foi útil para desenvolvimento, mas num Rust reescrito ele não deveria ser a arquitetura principal.
+
+Criar:
+
+TypedContext
+
+e principalmente eventos/estado versionado.
+
+Cada valor:
+
+value
+status
+source
+step
+version
+confidence
+provenance.
+
+Isso elimina grande parte das ambiguidades atuais.
+
+52. L1–L5 CONTINUAM EXISTINDO
+
+As 12 divisões cerebrais não substituem L1–L5.
+
+São duas dimensões diferentes.
+
+Exemplo:
+
+Thalamus:
+
+substrato L1;
+
+circuito tecidual L2;
+
+routing local L3;
+
+integração L4;
+
+governor L5.
+
+Portanto cada `ModuleDescriptor` deve possuir:
+
+region
+
+layer
+
+domain
+
+entity_kind
+
+execution_pipeline.
+
+Nunca inferir um pelo outro.
+
+53. EMBRIOGÊNESE NÃO DEVE SER UMA “REGIÃO”
+
+Isso é especialmente importante agora.
+
+Embriogênese é:
+
+processo temporal de desenvolvimento.
+
+Não parte permanente do cérebro.
+
+Logo:
+
+development/embryogenesis/
+
+e não:
+
+brain/embryogenesis/.
+
+Isso permitirá que ela entre em standby quando corticalização assumir.
+
+54. CÓRTEX OU CÉREBRO COMPLETO?
+
+Não precisa decidir agora.
+
+Faça:
+
+brain/
+    regions/
+
+E dentro dele:
+
+cortical/
+subcortical/
+
+Conceitualmente:
+
+cortical:
+
+sensory;
+association;
+executive;
+motor/action;
+language networks;
+metacognitive representations.
+
+subcortical:
+
+thalamus;
+hypothalamus;
+basal ganglia;
+limbic;
+hippocampal/allocortical;
+brainstem.
+
+cerebellum fica como sistema paralelo ligado aos dois.
+
+Se no futuro decidir que Triad é apenas córtex:
+
+subcortical pode virar infraestrutura funcional externa.
+
+Se decidir cérebro completo:
+
+já existe lugar arquitetural para tudo.
+
+55. ÁRVORE FINAL RESUMIDA
+
+Triad_AEE/
+
+config/
+
+crates/
+    foundation/
+    contracts/
+    runtime/
+
+    substrate/
+        cluster/
+        tissue/
+        graph/
+        reservoir/
+        morphogenesis/
+
+    brain/
+
+    regions/
+        brainstem/
+        hypothalamus/
+        thalamus/
+        cerebellum/
+        basal_ganglia/
+        limbic/
+        hippocampal/
+        sensory/
+        association/
+        executive/
+        action/
+        metacognition/
+
+    learning/
+
+    governance/
+        laws/
+        federation/
+        ecology/
+        economy/
+        arbitration/
+
+    development/
+        embryogenesis/
+        corticalization/
+        maturation/
+        maintenance/
+        regeneration/
+
+    modes/
+        awake/
+        sleep/
+        dream/
+        crisis/
+        stabilization/
+        recovery/
+        reintegration/
+
+    platform/
+        gpu/
+        persistence/
+        telemetry/
+        storage/
+
+    bindings/
+        lua/
+
+lua/
+    policies/
+    governance/
+    development/
+    strategies/
+    experiments/
+
+schemas/
+
+assets/
+
+data/
+
+docs/
+
+experiments/
+
+tests/
+
+benches/
+
+tools/
+
+migrations/
+
+var/
+
+target/
+
+56. O PRINCIPAL GANHO DESSA ARQUITETURA
+
+Ela separa cinco coisas que hoje tendem a se misturar:
+
+biologia computacional;
+
+cognição;
+
+desenvolvimento;
+
+governança;
+
+infraestrutura.
+
+Isso é exatamente o que o Triad precisa antes da reescrita.
+
+O sistema deixa de ser organizado pelo histórico:
+
+“FASE 1, FASE 17, FASE 35, FASE 94”.
+
+E passa a ser organizado pela arquitetura atual.
+
+Fases antigas continuam documentadas no Git.
+
+Não devem determinar a estrutura física futura.
+
+57. REGRA PARA A REESCRITA
+
+Eu não recomendo pegar cada `.py` atual e criar um `.rs` correspondente.
+
+Isso apenas transportaria a arquitetura atual para outra linguagem.
+
+A sequência correta seria:
+
+inventariar componentes atuais
+
+→ atribuir `entity_kind`
+
+→ atribuir L1–L5
+
+→ atribuir uma das 12 regiões ou TRANSVERSE
+
+→ definir input/output
+
+→ definir owner de estado
+
+→ definir eventos
+
+→ eliminar dependências circulares
+
+→ criar contratos
+
+→ somente então reescrever em Rust/Lua.
+
+58. DECISÃO RUST/LUA PARA CADA COMPONENTE
+
+Use uma regra simples.
+
+Se o componente:
+
+mantém estado canônico;
+executa a cada step;
+é pesado;
+é concorrente;
+usa GPU;
+mexe em memória;
+precisa ser determinístico;
+protege invariantes;
+
+RUST.
+
+Se o componente:
+
+define política;
+define threshold;
+faz estratégia;
+seleciona parâmetros;
+implementa heurística substituível;
+é experimental;
+precisa ser alterado rapidamente;
+
+LUA.
+
+Se possuir os dois:
+
+Rust = mecanismo.
+
+Lua = política.
+
+Esse provavelmente será o melhor padrão de toda a nova arquitetura.
+
+CONCLUSÃO
+
+Eu não estruturaria o novo Triad_AEE como “um diretório que imita literalmente o cérebro humano”.
+
+Também não estruturaria simplesmente como um grande software Rust.
+
+A melhor arquitetura seria híbrida:
+
+organização de software profissional
++
+bounded contexts funcionais
++
+inspiração neuroanatômica
++
+arquitetura cibernética própria do Triad.
+
+A estrutura deve permitir que o projeto descubra experimentalmente o que ele será.
+
+O nome raiz continua:
+
+Triad_AEE.
+
+Dentro dele:
+
+substrate constrói o meio computacional;
+
+12 regions organizam as grandes funções cerebrais;
+
+learning fecha experiência;
+
+governance coordena leis, federações e ecologias;
+
+development controla embriogênese, corticalização e regeneração;
+
+modes controla AWAKE/SLEEP/DREAM/CRISIS;
+
+platform fornece GPU, persistência e telemetria;
+
+Rust mantém o organismo;
+
+Lua modifica políticas sem ser dona do organismo.
+
+Essa estrutura não força o Triad a ser “somente um córtex” nem declara prematuramente que ele já seja “um cérebro completo”. Ela deixa espaço para ambos os caminhos enquanto elimina grande parte do acoplamento arquitetural que hoje dificultaria uma reescrita limpa.
