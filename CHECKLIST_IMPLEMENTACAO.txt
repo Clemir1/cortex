@@ -1,4 +1,4 @@
-=====================================================================
+﻿=====================================================================
  TRIAD_AEE — CHECKLIST DE IMPLEMENTAÇÃO
  Coordenação: SESSÃO 6 (orquestradora) e SESSÃO 7 (colaboradora)
 =====================================================================
@@ -378,7 +378,7 @@ PERSISTENCIA E ESCADA DE EVIDENCIA:
 [ ] [7] 16.10 Cross-run persistence (P4 da 13-0): ledgers/recibos/
          envelopes fechados sobrevivendo entre execucoes (serde em
          var/; replay com verificacao de procedencia)
-[ ] [6] 16.11 E5 com gemea bit-identica por decisao L4 (sham pareado
+[x] [6] 16.11 E5 com gemea bit-identica por decisao L4 (sham pareado
          global; custo de duplicacao e politica da orquestradora) --
          declarado no relatorio 15-0 secao 5
 
@@ -403,3 +403,175 @@ FILA DE INVESTIGACAO DO LEGADO (13-0 secao 4 -- nenhum item bloqueia):
   com bonus 65/65 taxa Some(1.0) "sem violar as leis da casa".
   Proximo [6]: 16.11 gemea E5 + migrar SECAO 17 (escala 1.200->30K,
   diretriz do dono) apos commit.
+
+----------------------------------------------------------------------
+SECAO 17 -- ADERENCIA AO doc/CAMADA.TXT (arquitetura canonica) +
+            PROXIMAS FASES: implementacao, instrumentacao, correcao,
+            ajustes (SESSAO 7, diretriz do dono)
+----------------------------------------------------------------------
+BASE: doc/CAMADA.txt (1751 linhas) e a classificacao canonica:
+L1 substrato/dinamica; L2 tecidual mesoscopico; L3 representacao
+local; L4 integracao global; L5 metacognicao/governo; T transversal
+(runtime/compute/development/governance/learning/persistence/
+observability/storage/lua/extensions); O1-O5 separados de camada;
+descritor canonico completo por modulo; ~20-25 sistemas canonicos
+fundidos a partir dos 60-90 nominais do legado. Requisitos do dono:
+modularizado, alta performance, alta concorrencia interna, alta
+escalabilidade horizontal e vertical -- sistema cognitivo distribuido
+adaptativo evolutivo e emergente. OBS DO DONO: usar SUBAGENTES em
+tarefas pequenas para auditar o legado (C:\Pictures\TB\tb\LAB\
+Triad_AEE) quando nao soubermos o que fazer -- o legado esta muito
+completo com multiplos commits de validacao cientifica; analisar e
+modelar para a nova estrutura usando SOMENTE o necessario para o
+neocortex funcional consolidado. AUDITORIAS DO LEGADO CONCLUIDAS (4 subagentes; especs em var/verificacao/17-1..17-4):
+17-1 L1 dinamica, 17-2 T/COMPUTE, 17-3 L4 integracao, 17-4 L5/governo/evolucao.
+DESCobertas-chave: (a) o legado JA TEM extensao Rust WGPU com 20 kernels WGSL
+prontos (rust/triad_wgpu) + par numba CPU -- a caixa 17.2 e portar/consolidar,
+nao inventar; (b) genome do legado evolui DENTRO do step -- VIOLA a Lei 7; no
+         fontes/diretrizes/descritor canonico; config/README; AUDITORIA)
+Rust, selecao/aplicacao SOMENTE em evaluate_offline; (c) Run 1800: L4 inteiro
+suspenso em bloco (priority 3) matou o estado cognitivo global -- prova viva
+das Leis 1 e 4 (crise DEGRADA, nunca desliga; taxas com denominador+janela);
+(d) elo direto prediction_error->plasticidade local NAO existe fechado no
+legado -- a 17.3 e extensao consciente (gate ALIGNED/OPPOSING como mecanica);
+(e) validacoes cientificas localizadas: gemeas active/sham (HOTM, federacao
+10x10, cognitive field), test_l1_state_contract, livro/15_metodo_experimental.
+         + linkar CAMADA.txt no checklist e no AGENTS.md + preparar
+         esta secao 17 com as fases (esta propria tarefa)
+
+FASE 1 -- FUNDACAO ESTRUTURAL (instrumentacao; faz todo o resto
+conforme o desenho; sem isso os descritores continuam inferidos):
+[ ] [7] 17.1 DESCritor CANONICO de modulo (CAMADA.txt): estender
+         ModuleDescriptor com entity_kind, cognitive_layer,
+         support_layer, cybernetic_orders [O1..O5], state_owner,
+         inputs/outputs/actuators, execution_backend, criticality,
+         dependencies, evidence_requirement, recovery_policy --
+         migracao compativel (serde default; nada quebra), auditor
+         relatando por descritor, schema atualizado, A/A preservado
+[ ] [7] 17.2 T/COMPUTE REAL (alta performance + escala): trait de
+         kernel com backend duplo CPU-Rayon (paralelismo interno por
+         batch) e WGPU (quando disponivel) + BufferArena +
+         primitivas compartilhadas (cosine/pairwise/centroid/affinity
+         extraidas do L2, SVD/JL/RandLA/L2-norm SOMENTE se a auditoria
+         17-2 provar necessidade) + benchmarks com denominador
+         (throughput/latencia) no app research
+[ ] [7] 17.3 L1 DINAMICA CANONICA: RecurrentDynamics multi-motor
+         (HOTM vira UMA estrategia de dinamica recorrente, nao o
+         cortex) + LocalInhibition (competicao lateral, esparsidade)
+         + LocalPredictionError (prediction->observation->local
+         error->plasticity; inicio do predictive coding hierarquico)
+         + ClusterStore SoA paralelizavel (Rayon) -- conforme
+         auditoria 17-1; habituation do L4 continua intacta
+
+FASE 2 -- FECHAMENTO DO NEOCORTEX (implementacao; cada camada
+consolidada com o que o CAMADA.txt pede e a auditoria validar):
+[ ] [7] 17.4 L2: TopDownFeedback L3->L2 com ADMISSAO TIPADA
+         (recebido/admitido COM razao explicita -- o legado morria
+         em 16 recebidos/0 admitidos sem reason) + TissueRouter +
+         TissueHomeostasis (mesoscopico) + Lua policy de
+         especializacao (thresholds via Proposal, Rust valida)
+[ ] [7] 17.5 L3 REPRESENTACAO REAL: SemanticRepresentation/Binding/
+         ConceptStore + OntogeneticMemory (a trilha 16.2 e o
+         embriao -- consolidacao/reconsolidacao janelada) +
+         TemporalRepresentation (ponte HOTM->semantica, fundamental
+         no CAMADA.txt) + MetaestabilityLocal (atratores locais)
+[ ] [7] 17.6 L4 INTEGRACAO COMPLETA: GlobalIntegration agregador
+         (router/attention/competition/resonance/context FUNDIR o que
+         hoje sao nomes separados) + EpisodicIntegration (buffer/
+         consolidacao janelada alimentando a memoria L3) +
+         GlobalAbstraction + ThalamicRouter (gating/prioridade) +
+         FutureNavigator (trajetorias da dinamica recorrente; o
+         rollout 16.3 e o embriao) -- conforme auditoria 17-3
+[ ] [7] 17.7 L5 GOVERNADORES COMPLETOS: ResourceGovernor REAL
+         (budgets energia/compute/atencao/memoria com degradacao e
+         recuperacao TIPADAS) + MetaLearning + MetaReflection +
+         DevelopmentGovernor (acordar morfogenese por causa
+         declarada) + CausalGovernor (politica por informacao causal,
+         sem duplicar o CausalModel L4) + MetaGoals -- conforme
+         auditoria 17-4; CognitiveGenome O5 SEMPRE offline (Lei 7)
+[ ] [7] 17.8 T/LEARNING REAL: crate learning consumindo os envelopes
+         fechados L4/L5 (prediction_error, credit_assignment COM
+         DENOMINADOR por modulo, update, validation t+1/t+5 com sham,
+         transfer, forgetting) -- a caixa 16.5 e o caso de uso; a
+         cadeia do CAMADA.txt (L4 outcome -> L3/L2/L1 update) fecha
+         aqui (a 16.2 fecha L3; falta L2/L1 via credit)
+
+FASE 3 -- INFRAESTRUTURA DE ESCALA E TEMPO (distribuido/evolutivo):
+[ ] [7] 17.9 T/PERSISTENCE (absorve a 16.10): Checkpointer,
+         Snapshot, Journal, Restore, Migration, Lineage, CrossRun --
+         ledgers/recibos/envelopes sobrevivendo entre execucoes com
+         verificacao de procedencia (serde em var/; sem banco
+         prematuro)
+[ ] [7] 17.10 T/OBSERVABILITY: TraceEngine (trace_id/span_id/
+         parent_event -- cascatas reconstruiveis) + CausalProvenance
+         + DeltaTelemetry/Aggregator -- a auditoria de eventos e o
+         embriao; telemetria de performance com denominador
+[ ] [6] 17.11 T/GOVERNANCE REAL: LawEngine (hard laws Rust, soft
+         policies Lua) + FederationEngine COMO PROTOCOLO
+         (need->proposal->agreement->transfer->effect) + EcologyEngine
+         generico + ArbitrationEngine + ControllerConflictGraph (O3)
+         -- dona nominal: sessao 6 (orquestradora); pode delegar
+[ ] [7] 17.12 LUA POLICY WIRING REAL: policies resource/attention/
+         learning/forgetting/crisis/recovery/corticalization/
+         regeneration + governance/evolution via PolicyHost --
+         Lua SEMPRE retorna Proposal; Rust valida e aplica; hashes
+         versionados; sandbox; nada de estado canonico em Lua
+[ ] [6] 17.13 ESCALA HORIZONTAL (distribuido): federacao entre
+         organismos sobre o protocolo 17.11 + validacao cross-run
+         (17.9) + genome/ecologia O5 em janela longa/episode
+         boundary -- decisao de arquitetura da orquestradora com o
+         dono; escala vertical ja coberta por 17.2/17.3
+AJUSTES/CORRECOES TRANSVERSAIS (continuos, alimentados pelas
+auditorias e pelas rodadas de verificacao):
+[ ] [7] 17.14 Correcoes de aderencia apontadas pelas auditorias
+         17-1..17-4 (nomenclatura de modulos/camadas conforme a
+         classificacao direta do CAMADA.txt; fusao de sobrepostos;
+         remocao de pendencias teatrais) -- relatorio por rodada
+
+SECAO 17 -- ESCALA DO ORGANISMO (diretriz do dono, ANALISE secao 4.8:
+boot 1.200 clusters, teto 30K, alta-concorrencia interna e vertical;
+ordem fixa, benchmark ANTES de otimizar, thresholds ESCRITOS ANTES de
+medir, A/A bit-identico em cada degrau, CPU sempre canonica)
+
+[ ] [6] 17.1 Benchmarks baseline (criterion): passo L1 atual nas cargas
+        1.200 / 5K / 30K (tick e2e), thresholds declarados ANTES de
+        medir; baseline salvo em var/ (nao versionado)
+[ ] [6] 17.2 SoA n x 97 bit-identico: estado dos clusters em
+        Struct-of-Arrays com A/A bit-exato vs AoS (mesma seed)
+[ ] [6] 17.3 Paralelismo deterministico da fisica L1: rayon par_chunks
+        com reducao em ordem canonica (sem lock global no hot path),
+        A/A bit-exato
+[ ] [6] 17.4 Concorrencia interna de modulos: modulos independentes em
+        paralelo com barrier por passo e ordem deterministica de
+        eventos (eventos com step consistente)
+[x] [6] 17.5 Recursao Chladni na cognicao: RESOLVIDA pela 16.4
+        (ADR-0007: bonus de atencao L3 + memoria por ressonancia +
+        ponte read-only; o L4 ve a harmonia via read_for_l4)
+[ ] [6] 17.6 Carga 30K verde: app roda 30K clusters com budget/latencia
+        dentro dos thresholds da 17.1, sem violar as leis
+[ ] [6] 17.7 GPU compute SO SE GO: decisao GO/NO-GO pelos benchmarks
+        17.1-17.6; se GO: staging SoA em platform/triad-gpu com
+        [gpu] enabled=false, kernels energia/pairwise/reservoir e
+        golden tests CPU<->GPU; CPU permanece canonica (fallback)
+[ ] [6] 17.8 Verificacao final da escala: workspace verde, house_laws
+        5/5, app 1.200 E 30K verdes, A/A bit-identico documentado,
+        AUDITORIA/checklist atualizados, commit/push
+
+- SESSAO 6 (16.11 fechado, E5 com gemea): o degrau MAXIMO da escada de
+  evidencia agora tem mecanismo REAL. twin.rs (triad-l4-global):
+  gemea = SEGUNDA run do mesmo organismo (mesma seed) com
+  commit_threshold 1.1 -> DEFER PAREADO GLOBAL nas mesmas decisoes
+  (determinismo por seed garante o pareamento). Veredito POR DECISAO:
+  twin_effect = ativa(t+1) - gemea(t+1) (contrafactual global);
+  gemea valida (divergencia dentro da tolerancia) => E5EffectValidated;
+  gemea divergente REBAIXA a E4 com a divergencia documentada (E5
+  nunca e inflado); gemea ausente => E4 com None (ausencia != zero).
+  Politica da ORQUESTRADORA declarada: experimento OFFLINE (Lei 7) --
+  custo de duplicar a run NAO entra no loop principal; envelopes de
+  producao continuam E4. Insumo novo: L4Module.closed_log (cap 64,
+  registro POR DECISAO: tick, chave, actual, sham, net_effect,
+  confirmed). Teste E2E: run ativa vs gemea em 10 ticks -- gemea
+  NUNCA commita, twin_effect ~0 (nada alem da decisao propaga),
+  TODAS as decisoes E5, ao menos uma confirmada. L4: 19 verdes.
+  SECAO 17 migrada acima (a escala do dono); ordem de execucao
+  comeca na 17.1 na proxima rodada.

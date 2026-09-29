@@ -101,6 +101,28 @@ pub struct L4Stats {
     pub degraded_beyond_tolerance: u64,
 }
 
+/// Registro de ciclo FECHADO (telemetria POR DECISÃO — insumo do
+/// experimento E5 com gêmea, checklist 16.11; cap `CLOSED_LOG_MAX`).
+#[derive(Debug, Clone)]
+pub struct ClosedCycleRecord {
+    /// Tick em que a decisão foi commitada (t).
+    pub decided_tick: u64,
+    /// Conteúdo prometido (chave comensurável).
+    pub content_key: String,
+    /// Valor do conteúdo em t+1 (outcome observado).
+    pub actual: f32,
+    /// Sham local no tick do commit (persistência sem a ação).
+    pub sham: f32,
+    /// Efeito líquido (actual − sham).
+    pub net_effect: f32,
+    /// Confirmação do critério E4 (Lei 5).
+    pub confirmed: bool,
+}
+
+/// Cap do histórico de ciclos fechados (telemetria limitada — o
+/// experimento E5 é offline, o organismo não carrega o log inteiro).
+const CLOSED_LOG_MAX: usize = 64;
+
 /// Módulo L4: workspace, modelo do mundo, causal e decisão integrados.
 pub struct L4Module {
     descriptor: tc::ModuleDescriptor,
@@ -122,6 +144,9 @@ pub struct L4Module {
     /// o MESMO conteúdo não reconsolida mais que 1× por janela).
     reinforcement_throttle: Mutex<std::collections::HashMap<String, u64>>,
     stats: Mutex<L4Stats>,
+    /// Últimos ciclos fechados (cap CLOSED_LOG_MAX) — telemetria por
+    /// decisão, insumo do experimento E5 com gêmea (16.11).
+    closed_log: Mutex<Vec<ClosedCycleRecord>>,
     state: Mutex<rt::ModuleState>,
 }
 
@@ -166,8 +191,18 @@ impl L4Module {
             config,
             l3,
             stats: Mutex::new(L4Stats::default()),
+            closed_log: Mutex::new(Vec::new()),
             state: Mutex::new(rt::ModuleState::Active),
         }
+    }
+
+    /// Últimos ciclos fechados (cap CLOSED_LOG_MAX) — POR DECISÃO, para
+    /// auditoria e para o experimento E5 com gêmea (16.11).
+    pub fn closed_log(&self) -> Vec<ClosedCycleRecord> {
+        self.closed_log
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone()
     }
 
     /// Telemetria corrente (auditoria); a diversidade de vencedores é
@@ -272,6 +307,25 @@ impl L4Module {
                         }
                     }
                     stats.envelopes_closed += 1;
+                    // Telemetria POR DECISÃO (insumo do E5 com gêmea):
+                    // cap rotativo — o organismo não cresce sem limite.
+                    {
+                        let mut log = self
+                            .closed_log
+                            .lock()
+                            .unwrap_or_else(|p| p.into_inner());
+                        if log.len() >= CLOSED_LOG_MAX {
+                            log.remove(0);
+                        }
+                        log.push(ClosedCycleRecord {
+                            decided_tick: cycle.decided_tick,
+                            content_key: cycle.content_key.clone(),
+                            actual,
+                            sham: cycle.sham,
+                            net_effect,
+                            confirmed,
+                        });
+                    }
                     // TRILHA L4→L3 (seção 16.2): o ciclo CONFIRMADO
                     // reforça o conceito na memória episódica do L3 —
                     // fila no DONO, o L4 apenas submete; janela de
@@ -795,6 +849,96 @@ mod tests {
             self.l3.tick(&ctx, &mut out).expect("tick l3");
             self.l4.tick(&ctx, &mut out).expect("tick l4");
         }
+
+        /// 16.11: gêmea — MESMO organismo com a política L4 trocada
+        /// (commit_threshold acima do máximo força defer pareado global).
+        fn with_l4_config(seed: u64, population: usize, cfg: L4Config) -> Self {
+            let l1 = Arc::new(l1::ClusterModule::new(seed, population));
+            let l2 = Arc::new(l2::TissueModule::new(l1.shared_runner(), seed));
+            let l3 = Arc::new(l3::L3Module::new_with_substrate(Arc::clone(&l2)));
+            let l4 = Arc::new(L4Module::new_with_l3_and_config(Some(Arc::clone(&l3)), cfg));
+            Self {
+                l1,
+                l2,
+                l3,
+                l4,
+                clock: tf::LogicalClock::new(),
+            }
+        }
+    }
+
+    /// 16.11 — E5 COM GÊMEA BIT-IDÊNTICA (experimento offline, Lei 7):
+    /// run ativa (commits) vs. gêmea com o MESMO organismo e seed, mas
+    /// commit_threshold 1.1 ⇒ defer pareado global nas MESMAS decisões.
+    /// O veredito E5 exige: gêmea nunca commita, contrafactual global
+    /// dentro da tolerância em t+1 (twin_effect ≈ 0 — nada além da
+    /// decisão propaga) e ao menos uma confirmação (Lei 5 intacta).
+    #[test]
+    fn gemea_bit_identica_valida_e5_por_decisao() {
+        let mut ativa = Ciclo::new(42, 24);
+        let cfg_gemea = L4Config {
+            decision: crate::config::DecisionCfg {
+                commit_threshold: 1.1,
+                ..crate::config::DecisionCfg::default()
+            },
+            ..L4Config::default()
+        };
+        let mut gemea = Ciclo::with_l4_config(42, 24, cfg_gemea);
+        let mut snapshots_gemea: Vec<triad_l3_local::L3Snapshot> = Vec::new();
+        for _ in 0..10 {
+            ativa.tick();
+            gemea.tick();
+            // Fotografia corrente da gêmea (índice t−1 = tick t).
+            snapshots_gemea.push(gemea.l3.read_for_l4());
+        }
+        let log = ativa.l4.closed_log();
+        assert!(!log.is_empty(), "a run ativa commitou decisões");
+        assert_eq!(
+            gemea.l4.stats().decisions_committed,
+            0,
+            "gêmea: defer pareado global (nunca commita)"
+        );
+        let decisions: Vec<crate::twin::TwinDecision> = log
+            .iter()
+            .map(|r| crate::twin::TwinDecision {
+                decided_tick: r.decided_tick,
+                content_key: r.content_key.clone(),
+                actual_t_plus_1: r.actual,
+                sham: r.sham,
+            })
+            .collect();
+        // Valor do MESMO conteúdo em t+1 na gêmea (mesma chave, mesmo
+        // tick — ids de conceito são estáveis por ordem de aparição).
+        let twin_vals: Vec<(u64, String, f32)> = log
+            .iter()
+            .filter_map(|r| {
+                let s = snapshots_gemea.get(r.decided_tick as usize)?;
+                content_value(&r.content_key, s)
+                    .map(|v| (r.decided_tick, r.content_key.clone(), v))
+            })
+            .collect();
+        assert_eq!(
+            twin_vals.len(),
+            decisions.len(),
+            "gêmea cobre TODAS as decisões (determinismo por seed)"
+        );
+        let verdicts = crate::twin::twin_verdicts(&decisions, &twin_vals, 0.1);
+        for v in &verdicts {
+            assert_eq!(
+                v.evidence,
+                tf::evidence::EvidenceLevel::E5EffectValidated,
+                "gêmea determinística valida o contrafactual global"
+            );
+            let te = v.twin_effect.expect("twin presente");
+            assert!(
+                te.abs() <= 0.1 + 1e-9,
+                "divergência contrafatual {te} dentro da tolerância"
+            );
+        }
+        assert!(
+            verdicts.iter().any(|v| v.confirmed),
+            "ao menos um ciclo confirmado com E5 (Lei 5)"
+        );
     }
 
     #[test]

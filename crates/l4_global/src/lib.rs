@@ -7,11 +7,13 @@ pub mod decision;
 pub mod degraded;
 pub mod integration;
 pub mod memory;
+pub mod twin;
 pub mod workspace;
 pub mod world_model;
 
 pub use config::L4Config;
 pub use integration::{L4Module, L4Stats};
+pub use twin::{twin_verdicts, TwinDecision, TwinVerdict};
 
 use triad_contracts as tc;
 use triad_foundation as tf;
