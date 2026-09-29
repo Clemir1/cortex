@@ -1,4 +1,4 @@
-﻿=====================================================================
+=====================================================================
  TRIAD_AEE — CHECKLIST DE IMPLEMENTAÇÃO
  Coordenação: SESSÃO 6 (orquestradora) e SESSÃO 7 (colaboradora)
 =====================================================================
@@ -428,7 +428,6 @@ neocortex funcional consolidado. AUDITORIAS DO LEGADO CONCLUIDAS (4 subagentes; 
 DESCobertas-chave: (a) o legado JA TEM extensao Rust WGPU com 20 kernels WGSL
 prontos (rust/triad_wgpu) + par numba CPU -- a caixa 17.2 e portar/consolidar,
 nao inventar; (b) genome do legado evolui DENTRO do step -- VIOLA a Lei 7; no
-         fontes/diretrizes/descritor canonico; config/README; AUDITORIA)
 Rust, selecao/aplicacao SOMENTE em evaluate_offline; (c) Run 1800: L4 inteiro
 suspenso em bloco (priority 3) matou o estado cognitivo global -- prova viva
 das Leis 1 e 4 (crise DEGRADA, nunca desliga; taxas com denominador+janela);
@@ -436,6 +435,9 @@ das Leis 1 e 4 (crise DEGRADA, nunca desliga; taxas com denominador+janela);
 legado -- a 17.3 e extensao consciente (gate ALIGNED/OPPOSING como mecanica);
 (e) validacoes cientificas localizadas: gemeas active/sham (HOTM, federacao
 10x10, cognitive field), test_l1_state_contract, livro/15_metodo_experimental.
+
+[x] [7] 17.0 LER CAMADA.txt + ATUALIZAR documentacao (AGENTS.md com
+         fontes/diretrizes/descritor canonico; config/README; AUDITORIA)
          + linkar CAMADA.txt no checklist e no AGENTS.md + preparar
          esta secao 17 com as fases (esta propria tarefa)
 
@@ -533,7 +535,7 @@ boot 1.200 clusters, teto 30K, alta-concorrencia interna e vertical;
 ordem fixa, benchmark ANTES de otimizar, thresholds ESCRITOS ANTES de
 medir, A/A bit-identico em cada degrau, CPU sempre canonica)
 
-[ ] [6] 17.1 Benchmarks baseline (criterion): passo L1 atual nas cargas
+[x] [6] 17.1 Benchmarks baseline (criterion): passo L1 atual nas cargas
         1.200 / 5K / 30K (tick e2e), thresholds declarados ANTES de
         medir; baseline salvo em var/ (nao versionado)
 [ ] [6] 17.2 SoA n x 97 bit-identico: estado dos clusters em
@@ -575,3 +577,21 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
   TODAS as decisoes E5, ao menos uma confirmada. L4: 19 verdes.
   SECAO 17 migrada acima (a escala do dono); ordem de execucao
   comeca na 17.1 na proxima rodada.
+
+- SESSAO 6 (17.1 medido, thresholds ANTES no commit e39e082): baseline
+  criterion do passo L1 (seed 42, config default de codigo, hardware
+  do dono, release bench): pop=1.200 -> 4.01 ms/tick; pop=5.000 ->
+  3.71 ms/tick; pop=30.000 -> 3.99 ms/tick. VERDE nas tres cargas e
+  JA DENTRO DAS METAS da 17.6 (10/20/50 ms): o passo L1 e O(1) na
+  populacao porque o desenho ja e AMORTIZADO POR AMOSTRAGEM
+  DETERMINISTICA (stride sobre a ordem canonica: reservoir/state_matrix
+  amostram cap fixo por tick, pares cap 64, chladni SAMPLE_PER_TICK;
+  custo O(active), lib.rs do L1). TRADE-OFF honesto registrado: com
+  30K, cada cluster e visitado menos vezes por unidade de tempo
+  (amostra de tamanho fixo) -- a populacao escala, a frequencia por
+  cluster dilui. CONSEQUENCIA para as fases seguintes: 17.2 SoA e
+  17.3 rayon valem para SUBIR O THROUGHPUT POR CLUSTER (amostra maior
+  por tick dentro da meta) e nao para destravar o tick; o GO/NO-GO da
+  GPU (17.7) decide pelo objetivo de frequencia por cluster, nao por
+  emergencia. Baseline completo em var/bench/baseline-l1*.txt (nao
+  versionado), numeros citados aqui (auditoria).
