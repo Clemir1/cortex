@@ -1,0 +1,64 @@
+{
+  "version": 2,
+  "sessionId": "session-3ff778ff-914e-4390-826e-c5217b730b98",
+  "cwd": "D:\\cortex",
+  "updatedAt": 1790646760556,
+  "checkpoints": [
+    {
+      "turn": 33,
+      "commit": "c17724d2815ec64fa3e449aa3716f759ae9f621c",
+      "parent": "282921b1290760c7d16f43bf017efc1887784031",
+      "time": 1790644242433,
+      "untracked": [
+        "crates/chladni/Cargo.toml",
+        "crates/chladni/src/bands.rs",
+        "crates/chladni/src/lib.rs",
+        "crates/chladni/src/table.rs",
+        "doc/ANALISE_WGPU_WGSL.txt.txt"
+      ],
+      "truncated": false,
+      "after": {
+        "commit": "495bc58e327d4d92feba2d7831b88d6e26359a46",
+        "time": 1790646331067
+      }
+    },
+    {
+      "turn": 34,
+      "commit": "495bc58e327d4d92feba2d7831b88d6e26359a46",
+      "parent": "495bc58e327d4d92feba2d7831b88d6e26359a46",
+      "time": 1790646331086,
+      "untracked": [
+        "crates/chladni/Cargo.toml",
+        "crates/chladni/src/bands.rs",
+        "crates/chladni/src/lib.rs",
+        "crates/chladni/src/observation.rs",
+        "crates/chladni/src/table.rs",
+        "crates/l1_substrate/src/chladni_signal.rs",
+        "doc/ANALISE_WGPU_WGSL.txt.txt"
+      ],
+      "truncated": false,
+      "after": {
+        "commit": "a3183c9cd04920b0138b78b12d622799a5866f4f",
+        "time": 1790646752987
+      }
+    },
+    {
+      "turn": 35,
+      "commit": "a3183c9cd04920b0138b78b12d622799a5866f4f",
+      "parent": "a3183c9cd04920b0138b78b12d622799a5866f4f",
+      "time": 1790646753006,
+      "untracked": [
+        "crates/chladni/Cargo.toml",
+        "crates/chladni/src/bands.rs",
+        "crates/chladni/src/lib.rs",
+        "crates/chladni/src/observation.rs",
+        "crates/chladni/src/table.rs",
+        "crates/l1_substrate/src/chladni_signal.rs",
+        "doc/ANALISE_WGPU_WGSL.txt.txt"
+      ],
+      "truncated": false
+    }
+  ],
+  "rolls": [],
+  "undos": []
+}

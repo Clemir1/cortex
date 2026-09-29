@@ -60,6 +60,13 @@ fn main() {
             return;
         }
     };
+    let l4cfg: l4::L4Config = match cfg.get_section("l4") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("FALHA NO BOOT: seção [l4] ausente: {e:?}");
+            return;
+        }
+    };
 
     let bus = rt::EventBus::new(4096);
     // Auditor de eventos: assinante canônico do runtime (orientação a
@@ -89,8 +96,12 @@ fn main() {
     // Config completa injetada de `config/default.toml [l3.*]`.
     let l3_mod = l3::L3Module::new_with_config(Arc::clone(&l2_handle), l3cfg);
     let l3_handle = Arc::new(l3_mod);
-    // L4: cognição global (workspace, decisão, ação).
-    let l4_mod = l4::L4Module::new();
+    // L4: cognição global REAL — workspace com candidatos do L3
+    // (focos/predição/sinais), decisão com commit/defer e ciclo
+    // decisão→outcome→learning FECHADO (Lei 5). Config injetada de
+    // `config/default.toml [l4.*]`.
+    let l4_mod = l4::L4Module::new_with_l3_and_config(Some(Arc::clone(&l3_handle)), l4cfg);
+    let l4_handle = Arc::new(l4_mod);
     // L5: metacognição (identidade, límbico, metacontrolador).
     let l5_mod = l5::L5Module::new(
         tc::ModuleDescriptor {
@@ -117,7 +128,7 @@ fn main() {
         Arc::new(l1_mod),
         l2_mod as Arc<dyn rt::CognitiveModule>,
         l3_handle.clone() as Arc<dyn rt::CognitiveModule>,
-        Arc::new(l4_mod),
+        l4_handle.clone() as Arc<dyn rt::CognitiveModule>,
         Arc::new(l5_mod),
     ];
     let mut scheduler = rt::Scheduler::new(
@@ -206,6 +217,29 @@ fn main() {
             rep.adaptations_deferred
         );
     }
+    // ---- L4 REAL: o ciclo global medido com denominador ----
+    let l4_stats = l4_handle.stats();
+    println!("=== Cognição global L4 (real) ===");
+    println!(
+        "Workspace: {} broadcasts (candidatos do L3); decisões commitidas/adiadas/expiradas {}/{}/{}",
+        l4_stats.broadcasts,
+        l4_stats.decisions_committed,
+        l4_stats.decisions_deferred,
+        l4_stats.decisions_expired,
+    );
+    println!(
+        "Ciclo decisão→outcome→learning: fechados {} de {} abertos (taxa {:?}); expirados sem outcome: {}",
+        l4_stats.envelopes_closed,
+        l4_stats.envelopes_opened,
+        l4_handle.closed_rate().map(|r| r.value()),
+        l4_stats.envelopes_expired,
+    );
+    println!(
+        "Causal: {:?} de confirmação (hits/total); modelo do mundo v{} ({} atualizações com dados reais)",
+        l4_handle.causal_pct().map(|r| r.value()),
+        l4_handle.world_version(),
+        l4_stats.world_updates,
+    );
     drop(l1_guard);
 
     println!("Núcleo encerrado sem violar as leis da casa.");

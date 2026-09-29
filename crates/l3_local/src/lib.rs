@@ -21,6 +21,6 @@ pub mod semantic;
 pub use attention::{AttentionCfg, AttentionField, AttentionFoci};
 pub use goals::{Goal, GoalStack};
 pub use memory::{Episode, LocalMemory};
-pub use module::{L3Config, L3Module, L3Policy};
+pub use module::{L3Config, L3Module, L3Policy, L3Snapshot};
 pub use prediction::{Prediction, PredictionCfg, Predictor};
 pub use semantic::{Concept, SemanticField};

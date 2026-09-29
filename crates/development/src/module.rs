@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use triad_contracts as tc;
 use triad_foundation as tf;
 use triad_runtime as rt;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::corticalization::Corticalization;
 use crate::maintenance::Maintenance;
@@ -127,6 +127,22 @@ impl rt::CognitiveModule for DevelopmentModule {
             "development tick publicado"
         );
         ctx.set("development.status", status);
+
+        // Harmonia (13.4): consome o sinal Chladni do substrato — leitura
+        // qualificada, ADITIVA. Ausência ≠ zero: sem sinal, trace com
+        // motivo; uso em POLÍTICA (peso de atenção) só via ADR, com
+        // necessidade demonstrada e consumidor real (regra de promoção).
+        let chladni = ctx.get_qualified::<triad_chladni::Observation>("l1.substrate.chladni");
+        if let Some(o) = chladni.as_ref_value() {
+            trace!(
+                banda = ?o.band,
+                amostra = o.sample_size,
+                ressonancia = ?o.resonance,
+                "development consumiu o sinal chladni do substrato"
+            );
+        } else {
+            trace!("development: sinal chladni ausente (ausência ≠ zero)");
+        }
         out.push(rt::envelope(
             "development",
             ctx.clock().tick,

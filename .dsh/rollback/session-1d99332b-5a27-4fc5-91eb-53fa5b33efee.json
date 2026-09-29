@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "sessionId": "session-1d99332b-5a27-4fc5-91eb-53fa5b33efee",
+  "cwd": "D:\\cortex",
+  "updatedAt": 1790644997443,
+  "checkpoints": [
+    {
+      "turn": 15,
+      "commit": "209636931638488e63ea2161f9d7914b636dca61",
+      "parent": "282921b1290760c7d16f43bf017efc1887784031",
+      "time": 1790641953278,
+      "untracked": [],
+      "truncated": false,
+      "after": {
+        "commit": "6b41ded6ba5132ba4b9f075d9310bc7bc29ebe65",
+        "time": 1790644727961
+      }
+    },
+    {
+      "turn": 16,
+      "commit": "6b41ded6ba5132ba4b9f075d9310bc7bc29ebe65",
+      "parent": "6b41ded6ba5132ba4b9f075d9310bc7bc29ebe65",
+      "time": 1790644993764,
+      "untracked": [
+        "crates/chladni/Cargo.toml",
+        "crates/chladni/src/bands.rs",
+        "crates/chladni/src/lib.rs",
+        "crates/chladni/src/table.rs",
+        "doc/ANALISE_WGPU_WGSL.txt.txt"
+      ],
+      "truncated": false
+    }
+  ],
+  "rolls": [],
+  "undos": []
+}

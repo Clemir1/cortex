@@ -2,6 +2,7 @@
 
 pub mod action;
 pub mod causal;
+pub mod config;
 pub mod decision;
 pub mod degraded;
 pub mod integration;
@@ -9,7 +10,8 @@ pub mod memory;
 pub mod workspace;
 pub mod world_model;
 
-pub use integration::L4Module;
+pub use config::L4Config;
+pub use integration::{L4Module, L4Stats};
 
 use triad_contracts as tc;
 use triad_foundation as tf;

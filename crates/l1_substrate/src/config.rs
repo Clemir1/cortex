@@ -261,7 +261,8 @@ mod config_tests {
         let d = L1Config::default();
         assert!((d.energy.initial_level - 0.8).abs() < 1e-9);
         assert!((d.energy.target_level - 0.8).abs() < 1e-9);
-        assert_eq!(d.homeostasis.band, [0.6, 0.9], "banda do default.toml");
+        assert!((d.homeostasis.band[0] - 0.6).abs() < 1e-9, "banda do default.toml");
+        assert!((d.homeostasis.band[1] - 0.9).abs() < 1e-9, "banda do default.toml");
         assert!((d.homeostasis.adaptation_gain - 0.05).abs() < 1e-9);
         assert!((d.morphogenesis.division_threshold - 0.3).abs() < 1e-9);
         assert!((d.morphogenesis.fusion_threshold - 0.15).abs() < 1e-9);

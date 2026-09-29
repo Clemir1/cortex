@@ -7,6 +7,7 @@ edition = "2021"
 triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
 triad-runtime = { path = "../runtime" }
+triad-chladni = { path = "../chladni" }
 tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }

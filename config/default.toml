@@ -197,6 +197,7 @@ simulation_max_depth = 3         # rollouts de simulação
 [l4.causal]
 enabled = true
 graph_prune_interval_steps = 1000
+confirm_tolerance = 0.2          # |observado − esperado| que confirma o efeito
 
 [l4.memory_integration]
 enabled = true                   # working/episodic/semantic/retrieval/reconsolidation
@@ -527,3 +528,17 @@ o5_enabled = true
 recharge_factor = 1.0
 attention_gain = 1.0
 lua_window_ms = 5
+
+[chladni]
+# Motor de ressonância Chladni (crate triad-chladni) — neocortex consolidado.
+# Mecânica portada do legado core/chladni_frequencies.py (referência).
+# Consumidores: atenção L3 (bônus), memória L3 (similaridade), development
+# (banda cognitiva por estágio). Crise muda política de USO, nunca desativa.
+enabled = true
+grid_size = 32                # grade N×N dos padrões (mínimo 2)
+pattern_cache_max = 64         # teto do cache FIFO de padrões (0 = sem limite)
+resonance_cache_max = 128      # teto do cache LRU de ressonância (0 = sem limite)
+history_max = 50               # últimos pedidos guardados
+descriptor_version = 1         # muda => hashes de descritor mudam
+evidence_hash_version = 1      # versão do algoritmo de hash de evidência
+attention_weight = 0.15        # peso do bônus de ressonância na atenção (L3)

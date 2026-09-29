@@ -1,0 +1,1558 @@
+Sim. Se a nova versão do Triad_AEE for realmente reescrita em Rust + Lua, eu retiraria do núcleo Python, NumPy, Numba e OpenCL.
+
+A pilha principal pode ficar muito mais simples:
+
+Rust = organismo, estado, paralelismo, matemática, memória, GPU e execução.
+Lua = políticas, regras, estratégias, thresholds e experimentos.
+WGPU/WGSL = computação massivamente paralela na GPU.
+
+Para o seu caso, eu estruturaria assim.
+
+1. PILHA PRINCIPAL
+
+Core:
+Rust
+
+GPU:
+wgpu + WGSL
+
+CPU paralelo:
+Rayon
+
+Comunicação entre workers:
+crossbeam
+
+Lua embutido:
+mlua
+
+Serialização/configuração:
+serde
+toml
+
+Persistência:
+bincode ou rkyv
+zstd para compressão
+
+Matemática CPU:
+faer para álgebra linear mais pesada
+código próprio para vetores 97D e operações simples
+
+GPU buffers:
+bytemuck
+
+Logging/tracing:
+tracing
+tracing-subscriber
+
+Erros:
+thiserror
+anyhow apenas nas bordas/aplicação
+
+Benchmarks:
+criterion
+
+Testes:
+cargo test
+proptest para invariantes quando necessário.
+
+2. O QUE SAI COMPLETAMENTE
+
+Você pode remover do novo runtime:
+
+Python
+
+NumPy
+
+Numba
+
+PyOpenCL
+
+OpenCL kernels
+
+bindings Python↔Rust
+
+arrays NumPy
+
+conversões Python→C→GPU
+
+GIL
+
+overhead de objetos Python.
+
+Isso elimina uma quantidade enorme de complexidade.
+
+3. O QUE SUBSTITUI O OPENCL
+
+WGPU.
+
+A arquitetura fica:
+
+Rust
+→ wgpu
+→ WGSL shader
+→ backend nativo da máquina.
+
+No Windows, wgpu pode utilizar principalmente APIs gráficas/computacionais modernas suportadas pelo adaptador, sem você programar diretamente uma implementação OpenCL.
+
+Então seu código não precisa mais saber:
+
+“esta GPU é OpenCL?”
+
+Ele precisa saber:
+
+“wgpu encontrou um adapter adequado?”
+
+O backend concreto fica abaixo dessa abstração.
+
+4. NÃO PRECISA TER WGPU PARA TUDO
+
+Esse ponto é importante.
+
+Não transforme todo cálculo do Triad em shader.
+
+Use GPU somente quando houver:
+
+muitos clusters;
+
+mesma operação aplicada sobre muitos elementos;
+
+grandes vetores;
+
+pairwise;
+
+reduções;
+
+afinidade;
+
+distâncias;
+
+atualização de estados;
+
+operações esparsas suficientemente grandes;
+
+reservoir/HOTM em lote.
+
+Deixe CPU para:
+
+scheduler;
+
+governança;
+
+eventos;
+
+leis;
+
+decisões;
+
+mudanças estruturais pequenas;
+
+controle;
+
+Lua;
+
+estado administrativo.
+
+5. A ARQUITETURA COMPUTACIONAL IDEAL
+
+Eu usaria três planos:
+
+CONTROL PLANE — Rust CPU
+
+DATA PLANE — Rust CPU paralelo
+
+ACCELERATOR PLANE — WGPU.
+
+CONTROL PLANE:
+
+scheduler
+governança
+L4/L5
+leis
+decisão
+event bus
+lifecycle
+políticas Lua.
+
+DATA PLANE:
+
+clusters
+tecidos
+grafos
+memórias
+recorrência
+plasticidade
+transformações vetoriais.
+
+ACCELERATOR PLANE:
+
+kernels realmente paralelos.
+
+6. O QUE SUBSTITUI NUMPY
+
+Não procure um “NumPy para Rust” como arquitetura principal.
+
+No Triad, seria melhor ter estruturas próprias.
+
+Por exemplo:
+
+ClusterStateArrays
+
+com Structure of Arrays:
+
+energy: Vec<f32>
+stress: Vec<f32>
+activity: Vec<f32>
+tissue_id: Vec<u32>
+role: Vec<u8>
+state_97d: Vec<f32>
+
+Em vez de:
+
+Vec<Cluster> contendo dezenas de pequenos objetos.
+
+Para milhares ou milhões de unidades isso melhora:
+
+cache locality;
+
+SIMD;
+
+transferência GPU;
+
+batch processing;
+
+serialização.
+
+7. PARA O ESTADO 97D
+
+Eu não criaria milhares de pequenos `Vec<f32>`.
+
+Criaria um buffer contínuo:
+
+states = Vec<f32>
+
+de tamanho:
+
+n_clusters × 97.
+
+Acesso lógico:
+
+state(cluster, dim)
+=
+states[cluster * 97 + dim].
+
+Isso é excelente tanto para CPU quanto GPU.
+
+Na GPU:
+
+StorageBuffer<f32>.
+
+8. STRUCTURE OF ARRAYS DEVE SER PADRÃO
+
+Evite:
+
+Cluster {
+    energy,
+    stress,
+    state,
+    memory,
+    ...
+}
+
+como formato computacional quente.
+
+Prefira:
+
+ClusterStore {
+    energy[],
+    stress[],
+    role[],
+    tissue[],
+    state[],
+    memory_trace[],
+    ...
+}
+
+Pode manter uma `ClusterView` ergonômica para código de alto nível.
+
+Mas o estado real deve permanecer compacto.
+
+9. BYTEMUCK
+
+`bytemuck` será muito útil para objetos POD enviados para GPU.
+
+Exemplo conceitual:
+
+GpuParams
+
+GpuClusterHeader
+
+GpuTissueHeader
+
+sem ponteiros internos.
+
+Rust:
+
+estrutura POD
+→ bytemuck
+→ buffer wgpu.
+
+Evite serializações intermediárias para cada dispatch.
+
+10. WGPU DEVICE DEVE SER PERSISTENTE
+
+Não recriar:
+
+Instance
+Adapter
+Device
+Queue
+
+a cada step.
+
+Criar uma vez:
+
+GpuContext.
+
+Ele vive durante toda a run.
+
+Algo conceitualmente assim:
+
+GpuContext
+    instance
+    adapter
+    device
+    queue
+    pipelines
+    buffers
+    bind_groups
+    staging
+    profiler.
+
+11. PIPELINES TAMBÉM DEVEM SER PERSISTENTES
+
+Compilar os shaders uma única vez.
+
+Exemplo:
+
+energy_pipeline
+
+reservoir_pipeline
+
+hebbian_pipeline
+
+pairwise_pipeline
+
+tissue_affinity_pipeline
+
+fusion_pipeline
+
+metrics_pipeline.
+
+Depois apenas:
+
+update buffers
+→ dispatch
+→ resultado.
+
+12. MAS O IDEAL É REDUZIR READBACK
+
+Na versão atual uma quantidade relevante de dados GPU volta para CPU.
+
+Na nova versão:
+
+GPU
+→ kernel A
+→ kernel B
+→ kernel C
+→ somente resultado necessário volta ao CPU.
+
+Evite:
+
+CPU → GPU
+→ CPU
+→ GPU
+→ CPU
+
+em cada módulo.
+
+Ideal:
+
+CPU
+→ GPU state
+→ várias operações
+→ pequeno summary
+→ CPU.
+
+13. ESTADO QUENTE DEVE FICAR RESIDENTE NA GPU
+
+Por exemplo:
+
+cluster state;
+
+memory trace;
+
+HOTM/recurrent state;
+
+neighbor index;
+
+tissue membership;
+
+alguns weights.
+
+Podem permanecer residentes.
+
+CPU mantém apenas:
+
+metadados;
+
+controle;
+
+versões;
+
+eventos;
+
+deltas necessários.
+
+14. GPU NÃO DEVE SER DONA DO ESTADO CANÔNICO SEM ESTRATÉGIA
+
+Eu faria inicialmente:
+
+Rust CPU = estado canônico.
+
+GPU = working replica versionada.
+
+Cada buffer possui:
+
+version
+
+dirty_cpu
+
+dirty_gpu
+
+last_sync_step.
+
+Depois, se a arquitetura amadurecer, certos arrays podem passar a ser GPU-resident.
+
+Isso evita inconsistência difícil de depurar.
+
+15. PARA GRAFOS
+
+Eu evitaria `petgraph` no hot path principal do Triad.
+
+Ele é ótimo para muitos casos, mas sua arquitetura cognitiva provavelmente precisa de algo mais compacto.
+
+Usaria:
+
+CSR para grafo estável
+
++
+
+overlay para edges recentes.
+
+Estrutura:
+
+row_offsets: Vec<u32>
+neighbors: Vec<u32>
+weights: Vec<f32>
+
+E uma pequena:
+
+delta_edges
+
+para mudanças.
+
+Periodicamente:
+
+compactar.
+
+Isso é muito apropriado para GPU.
+
+16. PARA TECIDOS
+
+Mesma ideia.
+
+Não:
+
+Vec<Vec<ClusterId>>
+
+se for hot path.
+
+Use:
+
+tissue_offsets
+
+tissue_members
+
+cluster_to_tissue.
+
+Isso permite:
+
+GPU tissue reduction
+
+affinity
+
+mean state
+
+energy aggregation.
+
+17. CPU PARALELO
+
+Rayon deve substituir grande parte do papel que Numba fazia no CPU.
+
+Por exemplo:
+
+clusters.par_iter()
+
+ou melhor, trabalhar em slices:
+
+energy.par_chunks_mut(...)
+
+Mas não paralelizar tudo.
+
+Operações muito pequenas podem ficar mais lentas com overhead de threads.
+
+18. NÃO USARIA TOKIO NO LOOP COGNITIVO
+
+Tokio é excelente para:
+
+rede;
+
+arquivos;
+
+servidores;
+
+I/O assíncrono.
+
+Mas eu não usaria Tokio como scheduler cognitivo central.
+
+O Triad é predominantemente:
+
+simulação computacional;
+
+estado sincronizado;
+
+determinismo;
+
+CPU/GPU.
+
+Use:
+
+Rayon para compute;
+
+crossbeam para canais;
+
+Tokio somente se existir:
+
+API
+websocket
+networking
+remote control.
+
+19. LUA
+
+Lua deve ficar embutido no processo Rust.
+
+Não criar:
+
+Rust process
+↔ Lua process.
+
+Use `mlua`.
+
+Arquitetura:
+
+Rust
+→ constrói Snapshot
+→ chama Lua
+→ Lua retorna Proposal
+→ Rust valida.
+
+20. LUA NÃO PODE RECEBER PONTEIRO LIVRE PARA O ESTADO
+
+Não exponha:
+
+cluster mutable;
+
+GPU device;
+
+Vec interno;
+
+World Model mutable.
+
+Lua recebe objetos limitados.
+
+Por exemplo:
+
+EnergySnapshot
+CognitiveSnapshot
+CrisisSnapshot.
+
+E retorna:
+
+PolicyProposal.
+
+21. EXEMPLO DE PAPEL DO LUA
+
+Lua pode dizer conceitualmente:
+
+se energy < limite
+e F2 está caindo
+então:
+    morphogenesis_gain = 0.2
+    workspace_mode = "minimal"
+    division_enabled = false
+
+Mas Lua NÃO executa:
+
+cluster.energy = ...
+
+Isso continua em Rust.
+
+22. POLÍTICAS DEVEM SER HOT-RELOADABLE
+
+Uma vantagem de Lua:
+
+você pode alterar uma política sem recompilar Rust.
+
+Então:
+
+lua/policies/crisis.lua
+
+pode ser recarregado durante desenvolvimento.
+
+Mas para experimentos reproduzíveis:
+
+calcule hash do script.
+
+Registre:
+
+lua_policy_hash.
+
+Assim uma run pode ser reproduzida exatamente.
+
+23. O QUE FICA EM RUST E O QUE FICA EM LUA
+
+Rust:
+
+ClusterStore
+
+TissueStore
+
+Reservoir/HOTM
+
+Cortical Dynamics
+
+World Model
+
+Workspace
+
+Decision engine
+
+Memory
+
+Learning mechanism
+
+EventBus
+
+Scheduler
+
+Persistence
+
+GPU
+
+Telemetry
+
+Laws duras
+
+Invariantes
+
+Lifecycle.
+
+Lua:
+
+thresholds
+
+resource strategies
+
+crisis policy
+
+recovery policy
+
+exploration/exploitation policy
+
+ecological selection heuristics
+
+federation negotiation policy
+
+development policies
+
+experiment policies.
+
+24. LEIS DURAS NÃO DEVEM FICAR EM LUA
+
+Por exemplo:
+
+NO_DATA não pode ser tratado como VALUE.
+
+STALE não pode virar FRESH.
+
+DREAM não pode virar EXTERNAL_OBSERVED.
+
+Lua não pode acessar GPU diretamente.
+
+Essas leis precisam estar em Rust.
+
+Lua pode definir políticas.
+
+Não invariantes de segurança arquitetural.
+
+25. PARA ÁLGEBRA LINEAR
+
+Você ainda pode precisar de:
+
+SVD
+
+eigenvalues
+
+matrizes
+
+projeções.
+
+Eu usaria Rust nativo.
+
+Para operações CPU de álgebra linear:
+
+`faer` é uma boa opção.
+
+Para vetores pequenos e específicos:
+
+código próprio.
+
+Para grandes matrizes altamente paralelas:
+
+WGPU.
+
+26. NÃO USE UMA BIBLIOTECA GRANDE PARA SOMAR 97 FLOATS
+
+Para operações simples:
+
+dot product
+
+norm
+
+cosine
+
+mean
+
+variance
+
+normalize
+
+escreva kernels próprios em Rust/WGSL.
+
+Isso dá maior previsibilidade.
+
+27. SIMD
+
+Primeiro deixe LLVM auto-vetorizar loops simples.
+
+Estruture os dados para facilitar isso:
+
+contiguous arrays;
+
+sem branches dentro de hot loops;
+
+slices simples;
+
+alinhamento adequado.
+
+Somente depois adicione SIMD explícito se profiling provar necessidade.
+
+Não otimizar antes de medir.
+
+28. WGSL
+
+Eu usaria WGSL como linguagem canônica dos kernels GPU.
+
+Diretório:
+
+shaders/
+
+common/
+    types.wgsl
+    math.wgsl
+    reduction.wgsl
+
+substrate/
+    energy.wgsl
+    reservoir.wgsl
+    hebbian.wgsl
+
+graph/
+    affinity.wgsl
+    neighbors.wgsl
+
+development/
+    fusion_score.wgsl
+    morphogenesis.wgsl
+
+metrics/
+    reductions.wgsl.
+
+29. UM KERNEL NÃO DEVE REPRESENTAR UM MÓDULO COGNITIVO
+
+Por exemplo:
+
+`semantic_coherence.wgsl`
+
+pode ser um cálculo.
+
+Mas não é “o sistema semântico”.
+
+O módulo cognitivo continua em Rust.
+
+Shader é acelerador matemático.
+
+30. REDUÇÕES GPU
+
+Você vai precisar muito de:
+
+sum
+
+mean
+
+max
+
+min
+
+variance
+
+histogram
+
+top-k aproximado.
+
+Crie uma pequena biblioteca interna WGSL.
+
+Isso evita duplicação de kernels.
+
+31. NÃO FAÇA UMA PIPELINE GPU PARA CADA MÉTRICA
+
+Agrupe.
+
+Exemplo:
+
+um kernel pode calcular por cluster:
+
+energy
+activity
+entropy contribution
+norm.
+
+Depois outro faz redução.
+
+Não disparar 20 shaders pequenos por step.
+
+32. COMMAND ENCODER POR FASE
+
+Uma evolução interessante:
+
+um `CommandEncoder` pode acumular vários compute passes.
+
+Por exemplo:
+
+L1 GPU pass:
+energy
+reservoir
+plasticity
+metrics
+
+submit uma vez.
+
+Depois L2:
+
+tissue affinity
+aggregation
+
+submit.
+
+Isso reduz overhead.
+
+33. BUFFER ARENA
+
+Criaria:
+
+GpuBufferArena
+
+para buffers persistentes.
+
+Categorias:
+
+hot
+
+scratch
+
+staging
+
+readback.
+
+Não criar e destruir buffers continuamente.
+
+34. MEMORY POOL CPU
+
+Igualmente:
+
+ClusterStore
+
+TissueStore
+
+EventArena.
+
+Evitar milhares de allocations por step.
+
+Rust permite controlar isso muito melhor que Python.
+
+35. IDs
+
+Use IDs simples:
+
+u32.
+
+ClusterId(u32)
+
+TissueId(u32)
+
+ConceptId(u32).
+
+Não usar ponteiros como identidade.
+
+Isso facilita:
+
+GPU;
+
+persistência;
+
+remapeamento;
+
+compactação.
+
+36. GENERATIONAL IDS
+
+Para objetos que podem morrer e nascer, melhor ainda:
+
+index + generation.
+
+Assim um ID antigo não aponta acidentalmente para um novo objeto reutilizando slot.
+
+37. PERSISTÊNCIA
+
+Eu usaria duas camadas:
+
+Journal incremental.
+
+Checkpoint periódico.
+
+Por step:
+
+registrar apenas deltas importantes.
+
+A cada N steps/evento:
+
+snapshot completo.
+
+Isso pode reduzir muito o custo que hoje aparece em `cross_run_persistence`.
+
+38. RKYV OU BINCODE
+
+Para estado de runtime grande:
+
+rkyv pode ser interessante para leitura eficiente e formatos mais próximos de zero-copy.
+
+Para simplicidade inicial:
+
+serde + bincode.
+
+Eu começaria simples.
+
+Depois profiling decide.
+
+39. CONFIG
+
+TOML.
+
+Rust:
+
+serde + toml.
+
+Exemplo:
+
+[development]
+mode = "corticalization"
+
+[gpu]
+enabled = true
+backend = "wgpu"
+
+[cognition]
+state_dim = 97
+
+[lua]
+enabled = true
+policy_dir = "lua/policies".
+
+40. DATABASE
+
+Não coloque banco no loop quente.
+
+Use:
+
+SQLite
+
+ou algo similar para:
+
+metadados de runs;
+
+experimentos;
+
+índices.
+
+Dados grandes:
+
+arquivos binários.
+
+Banco aponta para eles.
+
+41. TELEMETRIA
+
+Use `tracing`.
+
+Mas métricas científicas devem ter estrutura própria.
+
+Algo como:
+
+MetricSample<T> {
+    metric_id,
+    step,
+    value,
+    status,
+    source,
+    confidence
+}
+
+Não gravar tudo como string.
+
+42. PROFILING
+
+Mantenha profiling por segmentos.
+
+Em Rust:
+
+tracing spans
+
++ timers monotônicos.
+
+Na GPU:
+
+timestamp queries quando suportadas.
+
+Separar:
+
+CPU prepare
+
+GPU submit
+
+GPU execution
+
+GPU wait
+
+readback.
+
+Isso evitará confundir:
+
+host_ms
+
+com:
+
+kernel_ms.
+
+43. DETERMINISMO
+
+Muito importante para Triad.
+
+Tenha:
+
+seed global;
+
+seed por subsistema;
+
+RNG determinístico;
+
+ordem estável de eventos;
+
+reduções determinísticas quando necessário.
+
+GPU floating point pode introduzir pequenas diferenças.
+
+Portanto defina duas classes:
+
+BITWISE_DETERMINISTIC
+
+NUMERICALLY_STABLE.
+
+Nem todo experimento precisa ser bit-exato.
+
+44. RANDOM
+
+Use um PRNG explícito.
+
+Por exemplo:
+
+ChaCha ou outro RNG determinístico adequado.
+
+Nunca usar “random global invisível”.
+
+Cada evento experimental precisa saber de qual stream veio.
+
+45. LUA TAMBÉM NÃO DEVE TER RANDOM LIVRE
+
+Rust fornece RNG para Lua.
+
+Assim:
+
+mesma seed
+
+→ mesmas decisões.
+
+Não deixar `math.random()` virar fonte paralela não rastreada.
+
+46. SCHEDULER
+
+Rust.
+
+Não Lua.
+
+Scheduler decide:
+
+eligibility
+
+frequency
+
+priority
+
+dependency
+
+state.
+
+Lua pode sugerir:
+
+interval_multiplier
+
+priority adjustment.
+
+Mas Rust preserva invariantes.
+
+47. EVENT BUS
+
+Rust.
+
+Eventos tipados.
+
+Não strings como:
+
+"workspace_changed".
+
+Use enums/structs.
+
+Exemplo:
+
+enum CognitiveEvent {
+    RepresentationProduced(...),
+    WorkspaceSelected(...),
+    DecisionCommitted(...),
+    OutcomeObserved(...),
+    LearningApplied(...)
+}
+
+48. NÃO CRIE UM “GOD ENUM” INFINITO
+
+Divida eventos por domínio.
+
+Mas todos implementam um contrato comum de envelope:
+
+EventHeader
+
+trace_id
+
+step
+
+source
+
+provenance.
+
+49. FFI
+
+Idealmente você não precisa de C FFI entre Rust e Lua se usar `mlua`.
+
+WGPU também é chamado diretamente por Rust.
+
+Então desaparece boa parte da complexidade atual de DLLs e bindings.
+
+50. PYTHON PODE CONTINUAR FORA DO ORGANISMO
+
+Eu não proibiria Python completamente no projeto.
+
+Pode ser excelente para:
+
+analisar resultados;
+
+notebooks;
+
+gráficos;
+
+ciência de dados offline.
+
+Mas NÃO participa da simulação.
+
+Estrutura:
+
+tools/python-analysis/
+
+Opcional.
+
+Assim:
+
+runtime = zero Python.
+
+research offline = Python permitido.
+
+51. STACK MÍNIMO QUE EU ESCOLHERIA
+
+Se quiser reduzir drasticamente dependências:
+
+Rust
+
+Cargo
+
+wgpu
+
+WGSL
+
+rayon
+
+crossbeam
+
+mlua
+
+serde
+
+toml
+
+bytemuck
+
+tracing
+
+thiserror
+
+rand/rand_chacha
+
+bincode inicialmente
+
+criterion.
+
+Isso já é suficiente para construir praticamente todo o novo Triad.
+
+52. DEPENDÊNCIAS OPCIONAIS
+
+Depois, somente se justificadas:
+
+faer
+para álgebra linear.
+
+rkyv
+para persistência de alto desempenho.
+
+zstd
+para compressão.
+
+rusqlite
+para metadata/run database.
+
+proptest
+para invariantes.
+
+Não adicionar 50 crates no início.
+
+53. ARQUITETURA FINAL DE EXECUÇÃO
+
+Boot:
+
+Rust carrega config.
+
+↓
+
+Rust inicializa persistence.
+
+↓
+
+Rust cria ClusterStore/TissueStore.
+
+↓
+
+Rust inicializa WGPU.
+
+↓
+
+Rust cria pipelines WGSL.
+
+↓
+
+Rust inicializa Lua.
+
+↓
+
+Rust carrega políticas Lua.
+
+↓
+
+Runtime inicia.
+
+Cada step:
+
+Event/Sensory input
+
+↓
+
+L1 CPU/GPU
+
+↓
+
+L2 CPU/GPU
+
+↓
+
+L3 Rust
+
+↓
+
+L4 Rust
+
+↓
+
+L5 Rust + políticas Lua
+
+↓
+
+Decision
+
+↓
+
+Action
+
+↓
+
+Outcome
+
+↓
+
+Learning
+
+↓
+
+Telemetry
+
+↓
+
+Persistence delta.
+
+54. WGPU FICA ABAIXO DE L1/L2, NÃO ACIMA DA ARQUITETURA
+
+Isso é importante.
+
+Não criar:
+
+gpu_system
+→ controla o Triad.
+
+Crie:
+
+ComputeBackend trait.
+
+Algo conceitualmente:
+
+CPUBackend
+
+WgpuBackend.
+
+Então L1 pede:
+
+compute_reservoir()
+
+Sem precisar saber exatamente qual GPU está sendo usada.
+
+55. FALLBACK CPU
+
+Mesmo sem OpenCL/Numba, mantenha backend CPU Rust.
+
+Isso é obrigatório para:
+
+testes;
+
+CI;
+
+determinismo;
+
+debug;
+
+máquinas sem GPU.
+
+Arquitetura:
+
+enum Backend {
+    Cpu,
+    Wgpu
+}
+
+Idealmente mesma semântica.
+
+56. NÃO PRECISA TER TRÊS BACKENDS GPU
+
+Hoje existem:
+
+OpenCL
+
+WGPU
+
+Numba.
+
+Isso cria muita duplicação.
+
+Na nova versão:
+
+CPU Rust = referência.
+
+WGPU = acelerador.
+
+Dois caminhos.
+
+É suficiente.
+
+57. GPU COMO OTIMIZAÇÃO, NÃO CORREÇÃO DE ALGORITMO
+
+Primeiro:
+
+CPU Rust correto.
+
+Depois:
+
+WGPU equivalente.
+
+Teste:
+
+CPU output ≈ GPU output.
+
+Só então usar GPU em produção.
+
+Isso evita bugs impossíveis de localizar.
+
+58. TESTES GOLDEN CPU↔GPU
+
+Para cada kernel:
+
+input conhecido.
+
+CPU implementation.
+
+GPU implementation.
+
+Compare:
+
+max_abs_error
+
+mean_abs_error
+
+relative_error.
+
+Exemplo:
+
+energy_cpu_vs_wgpu
+
+hebbian_cpu_vs_wgpu
+
+tissue_affinity_cpu_vs_wgpu.
+
+59. SUA RX580 CONTINUA SENDO ÚTIL
+
+Para a RX580, WGPU é particularmente interessante porque você deixa de manter manualmente uma pilha separada OpenCL e outra WGPU.
+
+Mas é essencial:
+
+não assumir backend pelo nome;
+
+registrar adapter;
+
+backend efetivo;
+
+device limits;
+
+features;
+
+timestamp support.
+
+60. RESUMINDO A SUBSTITUIÇÃO
+
+Hoje:
+
+Python
++ NumPy
++ Numba
++ OpenCL
++ WGPU
++ bindings
++ vários caminhos de fallback.
+
+Nova versão:
+
+Rust CPU
++
+WGPU/WGSL GPU
++
+Lua políticas.
+
+Matemática:
+
+Rust.
+
+Paralelismo CPU:
+
+Rayon.
+
+Paralelismo GPU:
+
+WGPU.
+
+Política:
+
+Lua.
+
+Persistência:
+
+Rust.
+
+Telemetria:
+
+Rust.
+
+Essa é uma arquitetura muito mais limpa.
+
+Minha recomendação final para o novo Triad_AEE seria manter apenas dois motores computacionais:
+
+CPU_CANONICAL = Rust
+
+GPU_ACCELERATOR = WGPU/WGSL.
+
+E uma única camada dinâmica de política:
+
+POLICY_ENGINE = Lua.
+
+Todo o resto deve existir sobre esses três pilares.
+
+Isso elimina a necessidade estrutural de NumPy, Numba e OpenCL no organismo e reduz drasticamente a quantidade de backends, conversões, estados duplicados e caminhos de execução que hoje dificultam provar exatamente onde o Triad está executando e onde está aprendendo.

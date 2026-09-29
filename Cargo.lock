@@ -475,6 +475,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "triad-chladni"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tracing",
+ "triad-foundation",
+]
+
+[[package]]
 name = "triad-contracts"
 version = "0.1.0"
 dependencies = [
@@ -502,6 +511,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "triad-chladni",
  "triad-contracts",
  "triad-foundation",
  "triad-runtime",
@@ -532,7 +542,9 @@ version = "0.1.0"
 dependencies = [
  "rand",
  "serde",
+ "toml",
  "tracing",
+ "triad-chladni",
  "triad-contracts",
  "triad-foundation",
  "triad-runtime",
@@ -560,6 +572,7 @@ name = "triad-l3-local"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "toml",
  "tracing",
  "triad-contracts",
  "triad-foundation",
@@ -573,9 +586,14 @@ dependencies = [
 name = "triad-l4-global"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "toml",
  "tracing",
  "triad-contracts",
  "triad-foundation",
+ "triad-l1-substrate",
+ "triad-l2-tissue",
+ "triad-l3-local",
  "triad-runtime",
 ]
 

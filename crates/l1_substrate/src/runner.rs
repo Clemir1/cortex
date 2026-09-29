@@ -130,6 +130,12 @@ impl L1Runner {
         } else {
             clusters.iter().map(|c| c.energy).sum::<f64>() / n as f64
         };
+        // Orçamento de energia com a homeostase injetada ([l1.homeostasis]).
+        let energy = EnergyBudget::new_with_config(
+            config.energy.target_level,
+            (config.homeostasis.band[0], config.homeostasis.band[1]),
+            config.homeostasis.adaptation_gain,
+        );
         Self {
             seed,
             rng,
@@ -140,11 +146,7 @@ impl L1Runner {
             graph,
             matrix,
             reservoir: HotmReservoir::new(&mut StdRng::seed_from_u64(seed ^ 0x5eed)),
-            energy: EnergyBudget::new_with_config(
-                config.energy.target_level,
-                (config.homeostasis.band[0], config.homeostasis.band[1]),
-                config.homeostasis.adaptation_gain,
-            ),
+            energy,
             emergency: CollectiveEmergency::default(),
             ledger,
             metrics: L1Metrics::default(),

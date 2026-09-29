@@ -1,0 +1,24 @@
+# =============================================================================
+# triad-chladni — motor de ressonância Chladni (neocortex consolidado)
+#
+# Mecânica portada do legado core/chladni_frequencies.py (referência de
+# mecânica, nunca literal): energia→frequência, padrões de onda estacionária
+# por síntese trigonométrica, bandas cognitivas, ressonância entre padrões,
+# hashes com evidência. Cluster e HOTM (L1) já existem na árvore nova —
+# este crate é a peça ausente que dá harmonia aos três.
+#
+# Posição: biblioteca PURA, sem dependência de camadas. Consumidores
+# (atenção L3, memória L3, development) injetam via construtor e qualificam
+# nas bordas (ausência ≠ zero; entrada inválida = erro explícito —
+# diferente do fallback silencioso do legado).
+# =============================================================================
+
+[package]
+name = "triad-chladni"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"

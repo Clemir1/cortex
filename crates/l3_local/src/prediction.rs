@@ -119,6 +119,12 @@ impl Predictor {
     pub fn config(&self) -> &PredictionCfg {
         &self.cfg
     }
+
+    /// Última predição emitida (clone), se existir — ponte L3→L4.
+    /// Ausência permanece ausência (None), nunca valor fantasma.
+    pub fn last(&self) -> Option<Prediction> {
+        self.last.clone()
+    }
 }
 
 #[cfg(test)]

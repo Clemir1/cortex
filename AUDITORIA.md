@@ -181,6 +181,71 @@ Com `trace` ativo, o volume é alto (por cluster por passo).
   Tissue, Governance, Development, Federation, Law, Ecology}` — o tipo guia
   roteamento e auditoria.
 
+## Legado Python (referência) — classificação para o neocortex consolidado
+
+Fonte: `C:\Pictures\TB\tb\LAB\Triad_AEE` (sistema legado em Python; grafo
+próprio em `graphify-out/`: 28.988 nós, 42.399 arestas, 1.727 comunidades).
+Regra: a árvore nova tem ZERO arquivos Python — o legado é lido como
+referência de mecânica, nunca portado literalmente.
+
+### Essencial (referência de mecânica)
+- `core/chladni_frequencies.py` — motor Chladni: energia→frequência,
+  padrões de onda estacionária, bandas cognitivas, ressonância entre
+  padrões, hashes com evidência. Entregue no crate `triad-chladni`
+  (seção 13 do checklist; cadeia instrumentada abaixo).
+- `core/attention_system.py` (~linhas 90-165) — bônus de ressonância na
+  energia de atenção (peso 0.15) com contadores por passo.
+- `core/development.py` (~linhas 720-745) — estágio de desenvolvimento →
+  banda cognitiva → frequência aplicada ao cluster.
+- Já portados (não reimportar): `cluster.py` (ClusterBio no L1),
+  `reservoir_readout.py` (HOTM/reservoir no L1), `config.py` (constantes
+  conferidas em `l1/config.rs`), tecidos, governança, federação.
+
+### Legado/histórico (descartado — não portar)
+- `core/system.py` (monolito de 1,47 MB), `gpu_engine_unified.py`,
+  `numba_jit.py`, engines Wgpu/Vulkan (GPU fica no platform; CPU é o
+  fallback sempre disponível), `runtime_observability.py` (substituído
+  por tracing + EventBus), `thalamic_network.py`, `semantic_emergence.py`,
+  `reporting.py`, `cross_run_persistence.py` (persistence com lineage no
+  platform).
+- `analysis/*` (harness counterfactual/fatorial com braço sham) e
+  `scripts/*` (exploração sacred geometry) — método experimental
+  histórico; harness só volta quando houver consumidor real.
+
+## Cadeia Chladni (neocortex consolidado) — crates/chladni + L1 + development
+
+Cadeia completa da harmonia Cluster/HOTM/Chladni (seção 13 do checklist):
+
+- **`triad-chladni`** (biblioteca pura, zero Python): `bands` (4 bandas
+  cognitivas em Hz: stability 80–250, memory 250–700, creativity
+  700–1500, meta 1500–4000), `table` (tabelas PIRT circular/quadrada,
+  20+20 modos, `nearest` por menor delta), `pattern` (síntese
+  trigonométrica escolhida pelo nome do modo, features por quadrante,
+  similaridade cosseno com clamp, hashes FNV-1a de conteúdo e
+  descritor versionado), `system` (motor `ChladniFrequencySystem`:
+  energia→frequência com inversão de banda, caches FIFO/LRU,
+  estatísticas), `observation` (tipo neutro do sinal publicado).
+- **Config central**: seção `[chladni]` em `config/default.toml` (grade,
+  tetos de cache, histórico, versões de descritor/evidência, peso de
+  atenção 0.15); injetada via `ClusterModule::with_chladni_config`.
+- **Sinal do dono do estado**: `l1_substrate::chladni_signal` — o L1
+  (dono do estado 97D e da energia) amostra 4 clusters vivos por tick,
+  normaliza L2, converte energia→frequência→padrão, compara features e
+  publica `ch::Observation` na chave de contexto `l1.substrate.chladni`
+  (`Qualified<f32>`). ADITIVO: não muda o passo físico, os eventos nem
+  os testes A/A do substrato.
+- **Consumidor**: `development` lê o sinal com `get_qualified` + trilha
+  `trace`. Uso em POLÍTICA (bônus de atenção com `attention_weight`)
+  só via ADR, com necessidade demonstrada e consumidor real.
+- **Leis da casa (difere do legado)**: entrada inválida =
+  `TriadError::Invalid` explícito (o legado usava 0.0 silencioso);
+  taxas de cache sempre com denominador (`Option<tf::Rate>`); trilha
+  de auditoria pt-BR (warn = inválido, debug = geração/evicção,
+  trace = cache hit).
+- **Verificação**: 31 testes no crate, 46 no L1 (3 novos do sinal),
+  workspace 166 verdes, house_laws 5/5, app 65 ticks "sem violar as
+  leis da casa" com trilha Chladni visível por tick.
+
 ## MCP
 
 `graphify-mcp.exe` existe na `.venv` para integrar o grafo a assistentes.

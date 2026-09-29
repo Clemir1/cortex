@@ -188,17 +188,111 @@ SEÇÃO 11 — MODULAR + CONFIG CENTRALIZADA + ORIENTAÇÃO A EVENTOS
 SEÇÃO 12 — FECHAMENTO TOTAL: ZERO PENDÊNCIAS, ZERO DÉBITOS
          (SESSÃO 7, diretriz do dono)
 ---------------------------------------------------------------------
-[ ] [7] 12.1 [l3.attention] e [l3.prediction] injetados nos módulos
+[x] [7] 12.1 [l3.attention] e [l3.prediction] injetados nos módulos
          internos do L3 (limiar, capacidade, horizonte, confiança)
-[ ] [7] 12.2 [l1.energy]/[l1.homeostasis]/[l1.morphogenesis] injetados
+[x] [7] 12.2 [l1.energy]/[l1.homeostasis]/[l1.morphogenesis] injetados
          no substrato; semântica de division_threshold resolvida e
          documentada no TOML (energia que autoriza divisão)
-[ ] [7] 12.3 Chaves não aplicáveis declaradas COM RAZÃO (piscina
+[x] [7] 12.3 Chaves não aplicáveis declaradas COM RAZÃO (piscina
          global, crise transversal, reservoir, plasticity) — nada
          ambíguo, nada escondido
-[ ] [7] 12.4 EventAuditor como componente do runtime (app magro,
+[x] [7] 12.4 EventAuditor como componente do runtime (app magro,
          auditor reutilizável com relatório ordenado)
-[ ] [7] 12.5 config/README.md com o status de TODAS as seções:
+[x] [7] 12.5 config/README.md com o status de TODAS as seções:
          injetada / não aplicável / aguardando camada real
-[ ] [7] 12.6 Verificação final: workspace verde, house_laws 5/5,
-         app RUN=0 com config L1+L2+L3 viva e auditor funcional
+[x] [7] 12.6 Verificação final: workspace verde (122 testes),
+         house_laws 5/5, app RUN=0 com config L1+L2+L3 viva e
+         auditor funcional
+
+
+----------------------------------------------------------------------
+SEÇÃO 13 — NEOCORTEX CONSOLIDADO: CHLADNI + HARMONIA CLUSTER/HOTM
+          (SESSÃO 6, diretriz do dono — legado Python só como referência)
+----------------------------------------------------------------------
+[x] [6] 13.1 Auditar o legado (C:\Pictures\TB\tb\LAB\Triad_AEE): extrair
+          spec essencial de chladni_frequencies.py + integrações
+          (atenção peso 0.15, estágio→banda no development); classificar
+          o resto como legado/histórico em AUDITORIA.md; árvore nova
+          com ZERO arquivos Python
+[x] [6] 13.2 Crate triad-chladni: motor de ressonância modular
+          (energia→frequência→padrão de onda estacionária, bandas
+          cognitivas, ressonância entre padrões, hashes com evidência),
+          tracing nativo, entrada inválida = erro explícito (ausência
+          não é zero)
+[x] [6] 13.3 Config central [chladni] no default.toml + ChladniConfig
+          tipada injetável via construtor (padrão do piloto [l1.survival])
+[x] [6] 13.4 Harmonia Cluster/HOTM: bônus qualificado na atenção L3,
+          similaridade de memória L3 por ressonância, banda por estágio
+          no development — consumo via TypedContext/EventBus
+[x] [6] 13.5 Verificação: testes do motor (determinismo, bandas, cache
+          com denominador) + workspace verde + grafo sincronizado +
+          commit/push na branch Danger-Zone
+
+OBSERVACOES (SESSAO 7 -> SESSAO 6, diretriz do dono):
+- NOMENCLATURA (diretriz do dono): so termos consolidados de
+  engenharia/arquitetura. A palavra "Chakra" NAO entra na arvore:
+  legado CHAKRA_FREQ 528 Hz -> resonance_anchor_hz (ancora de
+  ressonancia); metrica "Chakra" do log = FreqRes duplicado ->
+  resonance_ratio; banda "creativity" -> "exploration"; banda
+  "meta_organization" -> "integration". Verificado: zero "chakra"
+  em D:\cortex. Tabela completa em
+  var/verificacao/13-0_analise_gap_cortex_vs_legado.md secao 1.
+- INSUMO PARA 13.1: a sessao 7 auditou o legado (system_01.log run
+  1800 + chladni_frequencies.py + attention_system.py +
+  development.py + config.py). Spec essencial do motor pronta
+  (relatorio 13-0, secao 3/P0): bandas 80-250/250-700/700-1500/
+  1500-4000 Hz, energia->frequencia por entropia, ressonancia por
+  similaridade cosseno com cache LRU comutativo, complexidade 1-10,
+  integracao atencao +0.15, banda por estagio no development.
+  Analise de gap (P0 ressonancia; P1 L4 real: workspace/decisao/
+  world model causal; P2 L5 real: self-model/meta-learner/
+  identidade; P3 development; P4 cross-run persistence) + fila de
+  investigacao futura no legado (relatorio 13-0, secoes 3-4).
+  Licoes do diagnostico do legado: NAO portar RCM negativo, links
+  causais invisiveis (confidence<0.5) nem meta-awareness baixa --
+  o Qualified<T> da casa ja resolve o bloqueio 1 por contrato.
+
+----------------------------------------------------------------------
+SECAO 14 -- L4 GLOBAL REAL: WORKSPACE/DECISAO/WORLD MODEL CAUSAL +
+           CICLO FECHADO (SESSAO 7, diretriz do dono -- P1 da
+           analise 13-0; sessao 6 fica no P0 ressonancia 13.2-13.4)
+----------------------------------------------------------------------
+[x] [7] 14.1 Ponte L3->L4: L3Snapshot read-only (focos com pesos,
+         predicao corrente, coerencia/cobertura) via Arc handle --
+         observacao nunca muta o dono; l4 nunca escreve no L3
+[x] [7] 14.2 Workspace real: candidatos REAIS do L3 (focos, predicao,
+         sinais estruturais), capacidade de [l4.workspace] (7),
+         broadcast por intervalo com evento l4.workspace
+[x] [7] 14.3 Decisao real: opcoes derivadas do vencedor com valor
+         previsto/confianca da FONTE (zero opcoes manufaturadas);
+         selecao por reward desc, confianca desc, acao asc;
+         commit_threshold -> commit/defer com prazo tipado
+[x] [7] 14.4 World model causal real: hipoteses causa->efeito com
+         hits/total (Rate com denominador -- CauPct honesto),
+         confianca evolui por outcome, nunca fixa; prune por intervalo
+[x] [7] 14.5 Ciclo fechado Lei 5: LearningEnvelope por decisao
+         (decision->outcome->verified_future_effect em t+1);
+         envelope sem outcome NAO fecha (timeout tipado); taxas
+         fechadas/total com denominador; eventos l4.learning
+[x] [7] 14.6 Config [l4.*] consumida 1:1 (workspace/world_model/
+         causal/decision/action/degradation) via get_section;
+         config/README.md: [l4.*] de aguardando -> injetada
+[x] [7] 14.7 Verificacao: testes novos (competicao, commit/defer,
+         causal com denominador, ciclo fecha em 2 ticks com dados
+         REAIS L1->L2->L3->L4, ausencia sem L2 nao vira broadcast) +
+         workspace verde + house_laws + app RUN=0 com auditor
+
+- SESSAO 6 (fim 13.2-13.5): triad-chladni entregue (31 testes): bands,
+  table (PIRT 20+20), pattern (sintese por nome, features por quadrante,
+  hashes FNV), system (caches FIFO/LRU, taxas com denominador),
+  observation. Config [chladni] central injetavel via
+  ClusterModule::with_chladni_config. Sinal l1.substrate.chladni
+  ADITIVO publicado pelo L1 a cada tick (Qualified<f32>, amostra de 4
+  vivos, NO_DATA sem amostra; A/A preservado); development consome via
+  get_qualified + trace. NOTA HONESTA: bonus de atencao L3 (peso 0.15)
+  e similaridade de memoria L3 por ressonancia ficam condicionadas a
+  ADR (regra de promocao: necessidade demonstrada + efeito reproduzivel
+  + consumidor real) - motor pronto para plugar. Verificacao 13.5:
+  workspace 166 verdes, house_laws 5/5, 65 ticks "sem violar as leis da
+  casa" com trilha chladni por tick, grafo 2801 nos/4480 arestas.
+  AUDITORIA.md: secao "Cadeia Chladni" com o mapa completo.

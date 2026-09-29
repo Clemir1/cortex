@@ -121,6 +121,25 @@ pub struct L3Module {
     state: Mutex<rt::ModuleState>,
 }
 
+/// PONTE L3→L4: fotografia corrente para a cognição global.
+///
+/// Leitura READ-ONLY do dono L3 (observação nunca muta — f5 achado 3):
+/// focos com pesos de saliência, predição corrente e sinais
+/// estruturais do tecido (coerência/cobertura). O L4 nunca escreve.
+#[derive(Debug, Clone)]
+pub struct L3Snapshot {
+    /// Focos correntes com saliência, do mais ao menos saliente.
+    pub foci: Vec<(tf::id::ConceptId, f32)>,
+    /// Última predição emitida (com confiança); None = ausência.
+    pub prediction: Option<Prediction>,
+    /// Coerência média dos tecidos (None = sem fonte viva).
+    pub coherence_mean: Option<f64>,
+    /// Cobertura organizacional (None = sem fonte viva).
+    pub coverage: Option<f32>,
+    /// Tick da fotografia (proveniência da leitura).
+    pub step: u64,
+}
+
 impl L3Module {
     /// Cria o módulo L3 sem tecido (modo honesto: sem fonte, publica
     /// ausência, nunca fabrica focos).
@@ -218,6 +237,55 @@ impl L3Module {
                     Some(receipt.clone());
                 (snapshot, Some(receipt))
             }
+        }
+    }
+
+    /// PONTE L3→L4: fotografia corrente para o workspace global.
+    ///
+    /// Somente leitura (a observação nunca muta o dono): focos com
+    /// pesos da ÚLTIMA fotografia, predição corrente e sinais
+    /// estruturais. Sem fonte L2 os campos ficam vazios — ausência
+    /// nunca vira valor fabricado.
+    pub fn read_for_l4(&self) -> L3Snapshot {
+        // Focos com pesos: reprocessa as views correntes com a mesma
+        // saliência do tick (fotografia é derivada, não mutada).
+        let mut foci: Vec<(tf::id::ConceptId, f32)> = Vec::new();
+        let (coherence_mean, coverage) = match &self.l2 {
+            Some(l2) => {
+                let (snapshot, _receipt) = l2.read_for_l3("l4.cognition");
+                let views = l2.tissue_views();
+                let mut concepts = self.concepts.lock().unwrap_or_else(|p| p.into_inner());
+                for v in &views {
+                    let concept = concepts.concept_of(v.tissue_id);
+                    foci.push((concept, Self::salience_of(v)));
+                }
+                drop(concepts);
+                match snapshot {
+                    Some(s) if s.provider_status == tf::status::Status::Value => {
+                        (s.coherence_mean, s.assignment_coverage)
+                    }
+                    _ => (None, None),
+                }
+            }
+            None => (None, None),
+        };
+        let prediction = self
+            .predictor
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .last();
+        let step = self
+            .attention
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .snapshot()
+            .step;
+        L3Snapshot {
+            foci,
+            prediction,
+            coherence_mean,
+            coverage,
+            step,
         }
     }
 

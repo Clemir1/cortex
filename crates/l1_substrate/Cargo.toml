@@ -20,6 +20,7 @@ license-file.workspace = true
 triad-foundation = { workspace = true }
 triad-runtime = { path = "../runtime" }
 triad-contracts = { workspace = true }
+triad-chladni = { path = "../chladni" }
 rand = { workspace = true }
 uuid = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

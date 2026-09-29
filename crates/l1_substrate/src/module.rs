@@ -23,6 +23,9 @@ pub struct SubstrateSummary {
 pub struct ClusterModule {
     descriptor: tc::ModuleDescriptor,
     runner: Arc<Mutex<L1Runner>>,
+    /// Sinal Chladni da harmonia (13.4) — motor próprio, observação
+    /// ADITIVA: não altera o passo físico nem os eventos publicados.
+    chladni: Mutex<crate::chladni_signal::ChladniSignal>,
     state: Mutex<rt::ModuleState>,
 }
 
@@ -50,9 +53,21 @@ impl ClusterModule {
                 initial_population,
                 config,
             ))),
+            // Harmonia: motor Chladni com config default; o loader central
+            // injeta a seção [chladni] via with_chladni_config (builder).
+            chladni: Mutex::new(crate::chladni_signal::ChladniSignal::new(
+                triad_chladni::ChladniConfig::default(),
+            )),
             // Nasce ativo: Boot/Embryo não podem tickar no runtime.
             state: Mutex::new(rt::ModuleState::Active),
         }
+    }
+
+    /// Injeta a config `[chladni]` do default.toml (builder, aditivo —
+    /// não muda nenhuma assinatura existente).
+    pub fn with_chladni_config(mut self, chladni: triad_chladni::ChladniConfig) -> Self {
+        self.chladni = Mutex::new(crate::chladni_signal::ChladniSignal::new(chladni));
+        self
     }
 
     /// Acesso compartilhado ao runner do substrato — para o L2 real
@@ -111,6 +126,14 @@ impl rt::CognitiveModule for ClusterModule {
             "l1.substrate tick publicado"
         );
         ctx.set("l1.substrate.summary", summary);
+
+        // Harmonia (13.4): sinal Chladni ADITIVO — observa os clusters
+        // vivos e publica chave NOVA no contexto. Não altera o passo
+        // físico, os eventos nem os testes A/A do substrato.
+        let mut chladni = self.chladni.lock().unwrap_or_else(|p| p.into_inner());
+        let obs = chladni.observe(&*runner, self.descriptor.module_id, step_id);
+        ctx.set("l1.substrate.chladni", obs);
+        drop(chladni);
 
         // Evento pequeno: só escalares + versão do ledger (ADR-0004).
         out.push(rt::envelope(

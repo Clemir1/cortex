@@ -24,6 +24,7 @@
 //! - [`contract`] — ledger de 4 fases, versão monotônica, recibos E3→E4;
 //! - [`runner`] — o step completo, determinístico (A/A bit-idêntico).
 
+pub mod chladni_signal;
 pub mod cluster;
 pub mod config;
 pub mod contract;
@@ -37,6 +38,7 @@ pub mod runner;
 pub mod state_matrix;
 pub mod survival;
 
+pub use chladni_signal::ChladniSignal;
 pub use cluster::{ClusterBio, ClusterProfile, Lifecycle, LifecycleState};
 pub use contract::L1Ledger;
 pub use energy::EnergyBudget;

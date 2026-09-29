@@ -87,7 +87,7 @@ mod tests {
         bus.publish(envelope(
             "l1.substrate",
             1,
-            tc::EventType::Physical,
+            tc::EventType::Cognitive,
             tc::Priority::Normal,
         ))
         .expect("publica");
