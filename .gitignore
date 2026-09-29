@@ -32,6 +32,10 @@
 /.vs/
 .idea/
 
+# Infra da harness de agentes (snapshots de sessão/rollback) — interna,
+# nunca versionada
+/.dsh/
+
 # Sistema operacional
 .DS_Store
 Thumbs.db
