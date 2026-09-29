@@ -28,3 +28,9 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 toml = "0.8"
+criterion = "0.5"
+
+# 17.1 — benchmark baseline do passo L1 (criterion, sem harness).
+[[bench]]
+name = "step_l1"
+harness = false
