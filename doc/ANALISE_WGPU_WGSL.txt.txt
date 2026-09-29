@@ -148,7 +148,9 @@ há nenhum desses volumes.
   hoje: nunca).
 - Terceiro backend (o legado tinha OpenCL+WGPU+Numba = duplicação;
   a árvore nova terá no máximo 2: CPU canônico + wgpu acelerador).
-- SoA ClusterStore sem gargalo medido (risco A/A sem recompensa).
+- SoA ClusterStore SEM o requisito de escala seria risco A/A sem
+  recompensa; COM a diretriz de 30K (seção 4.8) vira pré-requisito
+  estrutural, feito por refatoração bit-idêntica.
 - Um shader por módulo cognitivo (kernel é acelerador matemático,
   nunca "o sistema" — o módulo cognitivo continua em Rust).
 - Lua com qualquer acesso à GPU (leis duras ficam em Rust).
@@ -163,6 +165,41 @@ quem publica no TypedContext continua sendo o módulo Rust dono.
 wgpu abstrai o backend (Vulkan/DX12 conforme o adapter); regra: não
 assumir backend pelo nome — registrar adapter, backend efetivo,
 limits, features e suporte a timestamp queries no boot.
+
+4.8 DIRETRIZ DE ESCALA DO DONO (2026-09-29) — o que muda no plano:
+- NÚMEROS: boot com 1.200 clusters; teto de 30K (50x do boot,
+  1250x sobre os 24 atuais). Horizontal = módulos em paralelo NA
+  MESMA máquina (alta-concorrência interna). Vertical = SoA + SIMD
+  + WGPU. Clusters + HOTM existem para o sistema PENSAR — e pensar
+  exige CADEIA COMPLETA com RECURSÃO (como no legado), não HOTM
+  isolado.
+- IMPLICAÇÕES (todas com as leis da casa preservadas):
+  a) SoA n x 97 contínuo deixa de ser opcional: 30K objetos AoS
+     destroem cache locality; refatoração bit-idêntica (A/A verde
+     antes e depois).
+  b) O lock global Arc<Mutex<L1Runner>> serializa o passo inteiro.
+     A física por cluster paraleliza com rayon par_chunks e redução
+     de ordem CANÔNICA (chunks fixos) — paralelismo sem quebrar o
+     determinismo bit-exato.
+  c) Concorrência interna de módulos: o scheduler do runtime executa
+     módulos independentes em paralelo com barreira por passo e ordem
+     de eventos determinística; budget e leis intocados.
+  d) RECURSÃO COGNITIVA (fechar o loop, como no legado): atenção L3
+     consumindo l1.substrate.chladni com peso [chladni].
+     attention_weight; banda -> estágio no development (legado
+     development.py). O sinal já está publicado; falta o consumidor
+     ativo. ADR com experimento A/A antes de ativar o peso — a
+     diretriz do dono está dada; a promoção continua exigindo
+     evidência reproduzível (E0-E5).
+  e) GPU: a 30K, os kernels batch (energia/norma por cluster,
+     pairwise do grafo, reservoir) têm workload real. GO/NO-GO por
+     kernel pelos benchmarks da fase 0, agora com carga sintética
+     1.200 / 5K / 30K.
+- ORDEM DE EXECUÇÃO (medição antes de otimizar, sempre):
+  14.1 benchmarks baseline -> 14.2 SoA -> 14.3 paralelismo
+  determinístico da física -> 14.4 concorrência de módulos ->
+  14.5 recursão Chladni na cognição -> 14.6 carga 30K -> 14.7 GPU
+  (se GO) -> 14.8 verificação final.
 
 ------------------------------------------------------------------------------
 5. ARQUITETURA ALVO (SE promovido)
@@ -187,11 +224,12 @@ limits, features e suporte a timestamp queries no boot.
 6. CHECKLIST DE IMPLEMENTAÇÃO (estruturado)
 ------------------------------------------------------------------------------
 Protocolo: mesma caixa dupla do CHECKLIST_IMPLEMENTACAO.txt — 1a caixa
-= concluído, 2a caixa = sessão responsável (6 ou 7). Estes itens SÓ
-migram para o CHECKLIST_IMPLEMENTACAO.txt (como SEÇÃO 14) quando o
-dono aprovar; enquanto isso, este arquivo é a fonte.
-Sequência obrigatória: nenhuma fase posterior começa sem a anterior
-verde. GPU só entra em produção por ADR de promoção.
+= concluído, 2a caixa = sessão responsável (6 ou 7). Com a diretriz de
+escala (seção 4.8), o roadmap completo de cadeia cognitiva + escala +
+concorrência migra para o CHECKLIST_IMPLEMENTACAO.txt como SEÇÃO 14
+assim que o dono aprovar a ordem; enquanto isso, este arquivo é a
+fonte. Sequência obrigatória: nenhuma fase posterior começa sem a
+anterior verde. GPU só entra em produção por ADR de promoção.
 
 FASE 0 — MEDIÇÃO E GO/NO-GO (sem GPU; pode rodar já)
 [ ] [ ] 0.1 Benchmarks criterion dos hot paths atuais (L1 step por
