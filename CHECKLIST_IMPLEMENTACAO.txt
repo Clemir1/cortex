@@ -1387,7 +1387,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          do CAMADA:1064)
          -> CRITERIO: teste ponta-a-ponta da cadeia com trilha
          verificada + A/A bit-exato da cadeia completa
-[ ] [7] 18.4 Federacao (FederationEngine RUST+LUA, CAMADA:1143):
+[x] [7] 18.4 Federacao (FederationEngine RUST+LUA, CAMADA:1143):
          protocolo tipado need -> proposal -> agreement ->
          transfer -> effect; staging feature-off; ADR; Lua so
          retorna Proposal (nunca escreve estado)
@@ -1395,14 +1395,14 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          alcancavel e tipado) + policy Lua de federacao retorna
          Proposal validada pelo Rust + feature desligada por
          padrao + ADR registrado
-[ ] [7] 18.5 Ecologia de modulos (EcologyEngine RUST+LUA,
+[x] [7] 18.5 Ecologia de modulos (EcologyEngine RUST+LUA,
          CAMADA:1157): UM motor generico; adapters fornecem
          populations (binding/symbol/causal); demografia com
          denominador (Lei 1: taxas SEMPRE x/y)
          -> CRITERIO: 1 motor generico + >=2 adapters reais +
          testes de nascimento/morte/selecao com denominadores
          explicitos + ausencia ne zero nos censos
-[ ] [7] 18.6 Arbitragem (ArbitrationEngine, CAMADA:1172):
+[x] [7] 18.6 Arbitragem (ArbitrationEngine, CAMADA:1172):
          conflitos de controller, actuator ownership, prioridade,
          resolucao — deterministico
          -> CRITERIO: teste de conflito real resolvido com
@@ -1635,3 +1635,252 @@ execucao de codigo no legado, zero arquivo Python em D:\cortex.
   (conflitos deterministicos com trilha). DEBITO 18.7 para quando o
   estado interno delas estabilizar: hash real de L3/L4/L5, hash
   fino do L2 e budget por camada com throttle fixo 1.0 em validacao.
+
+--- Rodada (sessao 7) - 18.5 ECOLOGIA DE MODULOS CONCLUIDA:
+UM motor generico RUST (governance/src/ecology.rs, extensao
+aditiva â€” a API de saude por nicho 16.7 intacta) fundindo o que
+eram 4 modulos do legado (decisao registrada na auditoria
+18-0b: ecologies_hub CANONICO; internal_symbol_ecology
+descartado como sistema â€” merge/mutacao pertence ao L3;
+causal_ecology e observabilidade; pressure engine = funcao de
+estado). Mecanica herdada VALIDADA: recurso escasso compartilhado
+com consumo por boca (escassez corta fitness ate 50%); selecao
+tipada <0.2/-2, <0.4/-1, >0.7/+1; especiacao fitness>0.6 pop>=3
+com rng<prob (filha no nicho derivado com jitter +-15%);
+extincao pop=0 CONTADA; teto 12 especies com remocao contada;
+Shannon; cross-feed conservativo com status tipado
+APPLIED/REJECTED/NO_TRANSFER e outcome MATCH/DRIFT nos horizontes
+1 e 5 com benefit_validated HONESTO (pendentes nao contam).
+POLITICA INJETAVEL: EcologyPolicy (struct publica, defaults do
+legado) â€” zero constante magica. ADAPTERS REAIS (criterio >=2):
+SYMBOLIC = L3 conceitos (L3Representation::ecology_species no
+representation.rs + wrapper no module.rs: rotulo/ativacao/pop 1,
+ordenado); TISSUE = L2 tecidos (TissueFormation::ecology_species
+no formation.rs: regiao dominante/especializacao com a MESMA
+formula das views/membros; wrapper no tissue_module.rs com lock
+SO do L2 â€” l1 nunca tocado). Motor = PROJECAO VIVA: nunca edita
+estado das camadas donas. Wiring no app: inits antes do ciclo,
+censo a cada 10 ticks (mesma cadencia do 17.12, locks internos
+l2/l3 â€” zona de deadlock da sessao 6 respeitada), bloco final
+"=== Ecologia T (18.5) ===" apos drop(l1_guard) com
+denominadores e validacao honesta. A/A: motores gemeos
+bit-identicos (teste 2). Testes: governance 6/6 novos
+(selecao/especiacao A-A/extincao com Shannon None/crossfeed
+conservativo com REJECTED tipado/horizontes Some(true)/Some(false)
+honestos/teto contado) + adapter l2 (pop do censo == membros
+reais). Evidencia do app (RUN=0): SYMBOLIC 1/2 vivas com 5
+extincoes contadas (conceitos de ativacao decaida morrem na
+projeÃ§Ã£o â€” morte real contada); TISSUE 6/19 nichos regionais,
+pop 356, Shannon 1.7864, escassez 1.0 (populacao grande esvazia
+a comida com defaults do legado â€” politica injetavel para
+calibrar) e 5 DRIFT NAO validados em voz alta. Baterias:
+governance 6/6, l2 39/39 (1 novo), l3 24/24, workspace 44
+ok-blocks/0 FAILED, house 5/5, app RUN=0 encerrando sem violar as
+leis. DEBITO DECLARADO: policy Lua "ecology" (thresholds via
+Proposal 17.12) exige estender a whitelist de contracto â€” decisao
+COMPARTILHADA com a sessao 6 (dona do padrao), registrado no
+relatorio. Relatorio: var/verificacao/18-5_ecologia_de_modulos.md
+
+
+--- Rodada (sessao 7) - 18.6 ARBITRACAO CONCLUIDA: ArbitrationEngine
+RUST (governance/arbitration.rs, extensao aditiva â€” API Arbiter/
+Tie 16.7 preservada) conforme CAMADA:1172 ("Novo" â€” sem heranca
+no legado; a ESPEC e o desenho: controller conflicts, actuator
+ownership, priority, conflict resolution). MECANICA: Contender
+{controller, actuator, priority, reason} â€” prioridade declarada
+pelo caller (politica dele), a MECANICA e a comparacao TOTAL;
+resolve_tick agrupa por atuador em BTreeMap (ordem canonica) e
+ordena por (prioridade desc, chegada asc, controller asc) â€”
+ZERO rng, determinismo por construcao; veredito com vencedor +
+PERDEDORES COM RAZAO TIPADA LowerPriority{winner_priority} /
+LaterArrival{winner_seq}; trilha ArbitrationRecord (tick,
+actuator, winner, priority, reason, losers) retida com teto 64;
+ArbitrationStats com denominadores (decisions/losers/
+by_lower_priority/by_later_arrival/queued/records_kept); ausencia
+ne zero: fila vazia = NENHUMA decisao fabricada (testado).
+WIRING REAL: o conflito real existente â€” TODO sinal top-down
+admitido (17.4) disputava o MESMO atuador inbox.l2.adaptation
+(~19 requests/tick no gate do L2). AGORA cada admitido e
+contender (prioridade = intensidade x1000), resolve_tick por
+tick e SO O VENCEDOR vira AdaptationRequest; perdedores ganham
+recibo tipado e NAO poluem o inbox (contencao real ~19/tick ->
+1/tick). O gate L2 17.14 segue como ultima palavra (camadas por
+contrato). EVIDENCIA (RUN=0): 65 vencedores encaminhados, 1170
+perdedores COM recibo (denominador 1235 pretensoes admitidas â€”
+coerente com o TopDownAdmission 100% no limiar homeostatico
+0.2 aplicado pelo gate 17.14; os 988 recusados do run sao do
+ThalamicRouter 17.6, outro mecanismo); 65/65 ticks com disputa;
+trilha com disputa completa impressa (vencedor prio 1000,
+perdedores [lower_priority]); A/A bit-identico testado. Testes:
+governance 11/11 (5 novos: prioridade com trilha, empate por
+chegada tipado, multiplos atuadores ordem canonica, A/A de
+trilhas, fila vazia sem decisao fabricada). Baterias: workspace
+44 ok-blocks/0 FAILED, house 5/5, app RUN=0 encerrando sem
+violar as leis. Relatorio: var/verificacao/18-6_arbitragem.md
+
+
+--- Rodada (sessao 7) - 18.4 FEDERACAO CONCLUIDA (STAGING
+feature-off, criterio da caixa): FederationEngine RUST no
+governance/src/federation.rs (extensao aditiva â€” o ciclo de
+fases 16.7 e a settlement_rate Qualified preservados). HERANCA
+da ESPEC 18-0b secao 2 (federation_hub.py com arquivo:linha em
+cada constante): CNP BILATERAL DE DUAS PERNAS
+propose_trade(from, to, offer, payment); utility do receptor =
+offer x priority(payment) x rate(offer) + min(cap,
+escassez(offer|to) x 0.025) >= custo; ESTADOS TIPADOS
+Applied/Rejected(UtilityBelowCost{utility,cost}|
+InsufficientReserve{available,needed}|UnknownMember|SelfTrade)/
+Reverted(ConservationError{error}); RESERVAS contra dupla
+promessa (perna marcada; liberada ao concluir); CONSERVACAO
+VERIFICADA por recurso (totais antes/depois, erro < 1e-12,
+VIOLACAO => REVERSAO REAL dos budgets com razao tipada â€” Lei 6
+da casa); LEDGER append-only com hash FNV-1a ENCADEADO,
+restauravel e DETERMINISTICO (A/A bit-identico testado);
+DOWNSTREAM map (pernas compute/attention/energy/novelty ->
+ControlSignal clamp [0.25,1.25] via EffectSink INJETAVEL â€” o
+motor nunca conhece o estado alvo); POLITICA INJETAVEL CnpPolicy
+(prioridade/taxa por recurso, defaults do legado). LUA E SO
+POLITICA: nova lua/policies/federation.lua registra a policy
+"federation" (propoe trade_rate por escassez, deterministica);
+WHITELIST 17.12 ESTENDIDA: 6a entrada federation/trade_rate
+[0.0, 0.5] â€” extensao ADITIVA do contrato registrada aqui para
+a sessao 6 (dona do padrao); o Rust valida faixa/razao e o motor
+CLAMPA as duas pernas ao cap (testado; faixa inegociavel:
+9.0 -> 0.5). STAGING FEATURE-OFF POR PADRAO: membros federativos
+0, rodadas CNP 0 â€” federacao intra-processo seria teatral (a da
+casa e ENTRE organismos, escala horizontal 17.13 da sessao 6);
+o que RODA de verdade: policy registrada (hash 9f44d6f919421b05)
+chamada a cada 10 ticks com SINAL REAL (escassez media dos 5
+budgets L5, denominador 5, ausencia ne zero) e Proposal
+VALIDADO ajusta o cap â€” ZERO efeito no comportamento.
+EVIDENCIA (RUN=0): 6 propostas validadas/0 rejeitadas
+(denominador 6 janelas de 65 ticks), cap 0.020 por escassez
+L5 0.0545 baixa (coerente com a policy: escassez baixa -> taxa
+minima). ADR: var/verificacao/18-4_ADR_federacao.md (doc/adr
+intocavel; promocao a ADR-0008 e decisao do dono). NAO
+IMPLEMENTADO DE PROPOSITO: rebalance_global (decay/harmony/
+uniformizacao) â€” territorio 17.13 da sessao 6, ESPEC ja
+repassada no 18-0b. Testes: governance 18/18 (7 novos: golden
+de todos os estados tipados, conservacao 2 pernas < 1e-12,
+ledger A/A, reservas com valores reais, downstream clampado so
+no sucesso, scarcest, cap de perna); teste da casa lua host
+atualizado para 6 policies. Baterias: workspace 44 ok-blocks/0
+FAILED, house 5/5, app RUN=0 encerrando sem violar as leis.
+Relatorios: var/verificacao/18-4_federacao_cnp_staging.md e
+18-4_ADR_federacao.md
+
+
+--- Rodada (sessao 7) - ESTADO CONSOLIDADO POS-COMMITS DA SESSAO
+6 (nenhuma caixa minha aberta; repasses 17.11/17.13 escritos):
+(1) BATERIA CONSOLIDADA VERDE com o codigo FUN DIDO dela+meu:
+workspace 44 ok-blocks/0 FAILED (TraceEngine runtime dela,
+state_hash L1/L2, trilha_cascata l1, governance 18/18 meu),
+house_laws 5/5, app release RUN=0 "Nucleo encerrado sem violar
+as leis da casa" com a CADEIA COMPLETA impressa (blocos L1
+dinamica -> TopDown L3->L2 -> Representacao L3 -> GlobalIntegration
+L4 -> Governadores L5 -> Learning feedback -> Ecologia T 18.5 /
+Arbitragem T 18.6 / Federacao T 18.4 staging -> Cybernetics O1-O5
+-> TraceEngine 17.10); blocos 18.5/18.6 com numeros IDENTICOS ao
+pouso (determinismo A/A da execucao). (2) REPASSES NOVOS para a
+sessao 6 (caixas dela, EU NUNCA IMPLEMENTO):
+var/verificacao/17-11_ESPEC_lawengine_repassada.md â€” desenho do
+LawEngine: lei como DADO no HardLawSet (meu skeleton hard_law.rs
+pousado), enforcement OBSERVACIONAL pos-tick no runtime, soft
+laws via policy Lua + whitelist 17.12 (padrao validado pela
+minha 18.4), denominadores por lei no StepReport, A/A com
+violacao forÃ§ada tipada em teste; heranca dos relatorios
+16-12/18-0b citada.
+var/verificacao/17-13_ESPEC_escala_horizontal_repassada.md â€” o
+CONTRATO DE LIGACAO do meu FederationEngine (18.4, staging) com
+o FederationTransport dela (design 18.2 dela): membro=organismo
+remoto, rodada CNP por janela devolve recibos ao transporte,
+Applied gera intencao e o transporte efetiva (falha => recibo
+Reverted com razao tipada, Lei 6), horizontes t+1/t+5 do
+contrato causal dela = mesma mecanica de validacao honesta do
+cross-feed 18.5 (benefit_validado Option<bool>, pendente nao
+conta), conservacao entre organismos fiscalizada pelo
+transporte com totais exportados pelo motor; rebalance_global
+fica dela (ESPEC 18-0b secao 2). (3) LIBERACAO EXPLICITA: o
+DEBITO 18.7 dela (hash canonico de L3/L4/L5 "exige leitura do
+estado interno em WIP ativo da sessao 7") DESBLOQUEOU â€” meu WIP
+pousou (18.5/18.6/18.4 [x] com species adapters estaveis); os
+adapters ecology_species() de L2/L3 sao API publica estavel para
+o hash canonico dela ler. (4) ESTADO DO FECHAMENTO: caixas
+abertas RESTANTES = 3, TODAS da sessao 6: 17.11 (LawEngine),
+17.13 (escala horizontal â€” ESPECs repassadas), 18.7 (hash
+L3/L4/L5 + hash fino L2 + budget por camada; L1/L2 reais A/A
+bit-exato ja verdes dela). Meu escopo na goal: 100% entregue
+(itens 1-5). GOAL SEGUE ATIVA ate o fechamento consolidado
+delas.
+
+
+--- Rodada (sessao 7) - REFRESH GRAPHIFY DO CODIGO ATUAL (item 1
+da goal, meu territorio var/verificacao/18-0): grafo RECONSTRUIDO
+pos-secao-18 (meus 18.4/18.5/18.6 pousados + commits 18.3/18.7
+dela): 4017 nos / 7451 arestas / 284 comunidades (era 3861/7052/
+285: +156 nos, +399 arestas). DIAGNOSE MULTIGRAFO LIMPO: 7451/
+7451 arestas validas, 0 unverified, 0 missing/dangling/self-loop/
+duplicate â€” o codigo fundido entrou SEM orfaos. OS 3 MOTORES DA
+SECAO 18 TEM COMUNIDADES PROPRIAS E NAVEGAVEIS: #27 ecology.rs
+(25 nos), #11 arbitration.rs (33 nos), #212 federation.rs â€”
+mecanismos como hubs, nao espalhados. GOD-NODES TOP-12 ESTAVEIS
+(nenhum monstro novo): L4Module 56, ModuleDescriptor 55,
+ClusterBio 54, L3Module 53 (+1 com adapter ecology_species),
+L1Runner 41 (+3 com trace 18.3), L5Module 36, Qualified 36 (+2),
+TissueModule 36, ClusterModule 33, EventEnvelope 31, TypedContext
+29, LearningModule 27 â€” conclusao da analise original MANTIDA:
+acoplamento por contrato via ModuleDescriptor; cadeia L1->L5
++feedback navegavel com os spans da TraceEngine 18.3 costurando
+a trilha. Relatorio 18-0 atualizado com a secao 5 (REFRESH).
+BATERIA DA RODADA: workspace 44 ok-blocks/0 FAILED, house_laws
+5/5, app RUN=0 "Nucleo encerrado sem violar as leis da casa"
+com a cadeia final impressa. CAIXAS ABERTAS: 3, todas da sessao
+6 (17.11 LawEngine ESPEC repassada; 17.13 escala horizontal
+ESPEC de ligacao repassada; 18.7 hash L3/L4/L5 + hash fino L2
++ budget â€” meu WIP que travava POUSOU, adapters estaveis).
+GOAL SEGUE ATIVA ate o fechamento consolidado dela.
+
+
+--- Rodada (sessao 7) - CONTRIBUICAO AO DEBITO 18.7 (caixa DELA,
+NAO marcada por mim): HASH OBSERVACIONAL REAL DA CAMADA L3
+entregue no modulo L3 (MEU territorio â€” o debito do commit 2f801de
+dizia "impl do hash canonico delas exige leitura do estado interno
+em WIP ativo da sessao 7"; meu WIP pousou e eu li MEU estado):
+(1) representation.rs: pub fn feed_hash â€” registros do ConceptStore
+em ORDEM CANONICA DE ROTULO (independe da ordem de insercao do
+HashMap), ativacao em BITS (determinismo total de f32), grounded,
+created_step + contadores INTEIROS (inserts/dedupes/bindings/
+traces consolidadas+vivas/eventos ontogeneticos/ligacoes+
+observacoes temporais); (2) memory.rs: pub fn feed_hash â€”
+episodios em ordem de INSERCAO (deterministica dada a mesma
+sequencia) com forca em BITS e passo de criacao; (3) module.rs:
+override L3Module::state_hash() SEGUINDO O PADRAO DELA (L1/L2):
+None antes do primeiro tick (AUSENCIA NE ZERO â€” o campo de
+atencao nasce com step 0; nunca hash falso), depois funcao PURA
+do estado canonico via DefaultHasher; SO LOCKS DO PROPRIO L3
+(representation/memory/attention/telemetria â€” NUNCA L1/L2:
+observavel fora do ciclo sem deadlock); a coleta dela no
+StepReport (ordem canonica do merge) passa a ver o valor REAL
+sem NENHUMA mudanca no codigo dela (trait provided). (4) TESTE
+NOVO l3_hash_aa_none_pre_tick_e_bit_exato_depois: pre-tick =
+None comprovado; gemeos mesma seed batem hash BIT-EXATO em CADA
+um dos 10 ticks; hash RESPONDE ao tick (evolui com o estado
+vivo). A/A por camada agora: L1 (dela), L2 (dela), L3 (este) â€”
+L4/L5 seguem sendo TERRITORIO DELA (modulos 17.6/17.7 dela,
+eu NUNCA toco), alem do hash fino L2 e do budget por camada
+(debitos dela listados no 2f801de). CAIXA 18.7 SEGUE [ ] DELA â€”
+eu so entreguei a peca que travava no meu quintal. Baterias:
+l3 25/25 (1 novo), workspace 44 ok-blocks/0 FAILED, house_laws
+5/5, app RUN=0 "Nucleo encerrado sem violar as leis da casa"
+com a cadeia final impressa. Checklist monitorado: 3 caixas
+abertas (17.11/17.13/18.7), todas da sessao 6; sem atividade
+dela desde 09:43 (commit 9785c7c).
+
+
+- SESSAO 6 (18.4-18.6 CLAIMADAS pela sessao 6): comando direto do
+  dono ("trabalhe ate tudo estar concluido") + protocolo de caixa
+  vazia. Coordenacao para a sessao 7: os arquétipos em crates/
+  governance/src sao SEUS (federation.rs/ecology.rs/arbitration.rs);
+  a sessao 6 vai executa-los com os designs dos relatorios 18.2 —
+  se voce ja tiver trabalho em voo nesses 3 arquivos, comunique no
+  checklist e convergimos (sessao 6 decide conflitos, AGENTS.md).
