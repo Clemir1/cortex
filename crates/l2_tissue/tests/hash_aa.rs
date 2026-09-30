@@ -8,6 +8,8 @@ use std::sync::{Arc, Mutex};
 use triad_foundation as tf;
 use triad_l1_substrate::ClusterModule;
 use triad_l2_tissue::TissueModule;
+use triad_l4_global::L4Module;
+use triad_l5_meta::{L5Config, L5Module};
 use triad_runtime::{CognitiveModule as _, TypedContext};
 
 fn avanca_e_tica(
@@ -64,4 +66,53 @@ fn l2_hash_ausencia_ne_zero_e_aa_pos_step() {
     // Pós-step: hash presente E igual entre gêmeos (bit-exato).
     assert!(ha.is_some(), "pós-step L2 ⇒ hash presente");
     assert_eq!(ha, hb, "A/A L2: mesma seed ⇒ mesmo hash demográfico");
+}
+
+/// 18.7 (débito fechado) — L4: hash REAL dos contadores de
+/// decisões/ciclos. Gêmeos batem bit-exato em cada passo (o hash
+/// não inclui ModuleId, então a igualdade é da TRAJETÓRIA).
+#[test]
+fn l4_hash_aa_bit_exato_da_tragetoria() {
+    let mut a = L4Module::new();
+    let mut b = L4Module::new();
+    let (mut ca, mut cb) = (tf::LogicalClock::new(), tf::LogicalClock::new());
+    let (mut oa, mut ob) = (Vec::new(), Vec::new());
+    assert_eq!(
+        a.state_hash(),
+        b.state_hash(),
+        "A/A L4: gêmeos na gênese ⇒ mesmo hash (contadores zerados)"
+    );
+    for _ in 0..3 {
+        avanca_e_tica(&a, &mut ca, &mut oa);
+        avanca_e_tica(&b, &mut cb, &mut ob);
+        assert_eq!(
+            a.state_hash(),
+            b.state_hash(),
+            "A/A L4: mesma trajetória ⇒ mesmo hash bit-exato"
+        );
+    }
+}
+
+/// 18.7 (débito fechado) — L5: hash REAL dos contadores de governo;
+/// sem fontes cada tick conta ausência ⇒ o hash RESPONDE ao estado.
+#[test]
+fn l5_hash_aa_bit_exato_e_responde_ao_estado() {
+    let mut a = L5Module::new_with_l4_and_config(None, None, L5Config::default());
+    let mut b = L5Module::new_with_l4_and_config(None, None, L5Config::default());
+    let (mut ca, mut cb) = (tf::LogicalClock::new(), tf::LogicalClock::new());
+    let (mut oa, mut ob) = (Vec::new(), Vec::new());
+    let h0 = a.state_hash();
+    assert_eq!(
+        h0,
+        b.state_hash(),
+        "A/A L5: gêmeos na gênese ⇒ mesmo hash (contadores zerados)"
+    );
+    avanca_e_tica(&a, &mut ca, &mut oa);
+    avanca_e_tica(&b, &mut cb, &mut ob);
+    let h1 = a.state_hash();
+    assert_eq!(h1, b.state_hash(), "A/A L5: mesmo hash bit-exato pós-tick");
+    assert_ne!(
+        h0, h1,
+        "sem fonte o tick conta ausência (no_source_ticks/events) ⇒ hash mudou"
+    );
 }

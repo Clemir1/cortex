@@ -1408,7 +1408,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          -> CRITERIO: teste de conflito real resolvido com
          prioridade deterministica + trilha de auditoria da
          decisao
-[ ] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
+[x] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
          hash bit-exato do estado por camada (to_bits) +
          latencia _ms por modulo no StepReport L1->L5 +
          spans com parent_event para reconstrucao de cascatas
@@ -1431,7 +1431,7 @@ claimadas [6]; a sessao 7 executa SUBCAIXAS NOVAS [7] com nota "sob
 diretriz da dona" e a sessao 6 VALIDA as caixas dela ao retornar —
 caixas dela NUNCA desmarcadas por mim.
 
-[ ] [7] 19.1 Sintese da auditoria cibernetica O1-O5 (6 subagentes:
+[x] [7] 19.1 Sintese da auditoria cibernetica O1-O5 (6 subagentes:
          legado O1/O2/O3/O4/O5 + mapeamento do codigo atual)
          -> CRITERIO: relatorio var/verificacao/19-0_cibernetica_
          o1_o5_modelagem.md com legado x atual x gap x decisao
@@ -1471,10 +1471,38 @@ caixas dela NUNCA desmarcadas por mim.
          -> CRITERIO: contrato tipado A/A com sham + feature-off
          no app; rede real segue decisao da dona
 
-[ ] [7] 19.8 Melhorias O1-O5 da auditoria (caixas filhas derivadas
-         do 19-0: mecanismos canonicos que faltam por ordem)
-         -> CRITERIO: cada melhoria com mecanismo real, razao
-         tipada, denominador, A/A bit-exato
+[ ] [7] 19.8-a (O1) Atuador tipado para corrective(): a correcao
+         do Homeostat DEIXA de ser debug e modula o throttle de
+         execucao por modulo (19.5) e/ou energy.intake_rate do L1
+         (whitelist 17.12) — nunca escrita direta
+         -> CRITERIO: correcao aplicada com recibo + A/A + baterias
+[ ] [7] 19.8-b (O2) Retuning do controlador O1: OscillationMonitor
+         detecta oscilacao => ajusta o GANHO do Homeostat com razao
+         tipada, histerese e clamp [0.5x, 2x] do nominal (heranca
+         edge_of_chaos; alvos seguem politica Lua)
+         -> CRITERIO: ganho retunado com trilha + A/A + baterias
+[ ] [7] 19.8-c (O3) Consumidor runtime da GoverningAction:
+         Throttle{factor} aplica no throttle do modulo-alvo no
+         scheduler; Shed{reason} difere modulos nao-criticos por
+         N passos COM razao (Lei 4: crise muda politica, nunca
+         desativa)
+         -> CRITERIO: GoverningAction aplicada de fato + A/A
+[ ] [7] 19.8-d (O4) Alarmes tipados de audit: O4 publica
+         MetricAlarm{metrica, valor, razao, denominador} quando o
+         piso e furado; O2/O3 consomem como sinal (observa nunca
+         decide — heranca RuntimeObservability)
+         -> CRITERIO: alarme com denominador alimenta O2/O3 + A/A
+[ ] [7] 19.8-e (O5) Boundary de episodio: fim do run/janela
+         between_episodes invoca evaluate_offline sobre o
+         horizonte; campeao com margem e denominador suficiente
+         => proposto com recibo + ttl + reversao por
+         observed_effect (Leis 6/7); SO o vencedor validado e
+         promovido (erro "ativo aleatorio" do legado fica fora)
+         -> CRITERIO: selecao roda de verdade com veredito tipado
+[ ] [7] 19.8-f (estrutural) Subdirs o1..o5 no crate cybernetics
+         (CAMADA.txt:1549-1554); lib.rs reexporta => zero quebra
+         externa
+         -> CRITERIO: layout do desenho + baterias verdes
 
 [ ] [7] 19.9 Verificacao final da serie 19
          -> CRITERIO: workspace 44+/0, house 5/5, app RUN=0 com
@@ -1995,3 +2023,21 @@ dela desde 09:43 (commit 9785c7c).
   faltam: policy Lua de federacao retornando Proposal, ADR regis-
   trado e a feature flag explicita do FederationTransport (trait
   InProcess existe; a porta cfg precisa ser verificada/escrita).
+
+- SESSAO 6 (18.7 [x] FINAL — todos os debitos de hash fechados):
+  L4 state_hash REAL (25 contadores L4Stats + rollout_div em bits
+  + lens deferred/open/distinct) e L5 state_hash REAL (23 campos de
+  governo: wake/meta/policy/governors + floats em bits + banda +
+  janela auditoria + dormencia) — funcao pura do estado canonico,
+  NUNCA wall-clock, NAO inclui ModuleId (A/A independe dos ids).
+  hash_aa estendido: l4_hash_aa_bit_exato_da_tragetoria (gemeos
+  batem em cada passo) e l5_hash_aa_bit_exato_e_responde_ao_estado
+  (sem fonte o tick conta ausencia => hash muda). Todas as camadas
+  L1-L5 agora com hash real + A/A. DEBITOS 18.7-c registrados:
+  budget por camada 25/35/25/15 com throttle fixo 1.0 (programa
+  maior, observacional) e hash fino do L2 por tecido (TissueState
+  vive fora do crate L2 — exige modelar). DEBITO 18.3 fechado:
+  spans da trilha publicados no journal (TESTE-TRILHA-CASCATA no
+  trilha_cascata.rs). HARNESS: twin L4 registra veredito no
+  var/system.log (TESTE-TWIN-L4, experimento 16.11). RETIFICACAO
+  AUDITORIA: ganho da 17.6 e 79x (68,5 ms medios), nao 73x.

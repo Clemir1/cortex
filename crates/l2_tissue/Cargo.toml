@@ -16,3 +16,6 @@ tracing = "0.1"
 [dev-dependencies]
 serde_json = "1"
 toml = "0.8"
+# 18.7 — hash_aa estendido às camadas L4/L5 (A/A bit-exato).
+triad-l4-global = { path = "../l4_global" }
+triad-l5-meta = { path = "../l5_metacognition" }
