@@ -1387,7 +1387,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          do CAMADA:1064)
          -> CRITERIO: teste ponta-a-ponta da cadeia com trilha
          verificada + A/A bit-exato da cadeia completa
-[ ] [ ] 18.4 Federacao (FederationEngine RUST+LUA, CAMADA:1143):
+[ ] [7] 18.4 Federacao (FederationEngine RUST+LUA, CAMADA:1143):
          protocolo tipado need -> proposal -> agreement ->
          transfer -> effect; staging feature-off; ADR; Lua so
          retorna Proposal (nunca escreve estado)
@@ -1395,14 +1395,14 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          alcancavel e tipado) + policy Lua de federacao retorna
          Proposal validada pelo Rust + feature desligada por
          padrao + ADR registrado
-[ ] [ ] 18.5 Ecologia de modulos (EcologyEngine RUST+LUA,
+[ ] [7] 18.5 Ecologia de modulos (EcologyEngine RUST+LUA,
          CAMADA:1157): UM motor generico; adapters fornecem
          populations (binding/symbol/causal); demografia com
          denominador (Lei 1: taxas SEMPRE x/y)
          -> CRITERIO: 1 motor generico + >=2 adapters reais +
          testes de nascimento/morte/selecao com denominadores
          explicitos + ausencia ne zero nos censos
-[ ] [ ] 18.6 Arbitragem (ArbitrationEngine, CAMADA:1172):
+[ ] [7] 18.6 Arbitragem (ArbitrationEngine, CAMADA:1172):
          conflitos de controller, actuator ownership, prioridade,
          resolucao — deterministico
          -> CRITERIO: teste de conflito real resolvido com
@@ -1446,3 +1446,36 @@ Subagentes do legado disparados (3 frentes, READ-ONLY).
   ecology/arbitration) existem como esqueletos mas SEM populations/
   protocolo vivos — caixas 18.4-18.6. => 18.1 FECHADA (criterio:
   relatorio com god-nodes + diagnose limpo + lacunas com referencia).
+
+- SESSAO 6 (18.2, relatorio 3/3 do legado — ECOLOGIA + INSTRUMENTA-
+  CAO HASH/_MS, subagente READ-ONLY): ECOLOGIA do legado: morte
+  SOBERANA per-cluster (threshold x pressao de sobrevivencia
+  PER-TECIDO, numba_jit.py:1079); 6 nichos por tecido com
+  plasticidade; nascimento com custo energetico real (filho leva
+  70% — diluicao freia natalidade, config.py:689); equilibrio por
+  injecao ambiental quando populacao < alvo; CONCEPT PREDATOR mata
+  conceitos de baixo valor ecologico (5 condicoes, escassez modula
+  thresholds, cognitive_economy.py:810); lei de diversidade
+  GenDiv>0.3 senao ruido entropico + renovacao obrigatoria >=1
+  morte/50 steps (cognitive_laws.py:389-415); populacao estavel
+  CV<5%/50 steps = criterio de MATURIDADE; ecologia causal produz
+  modulacoes consumidas pela governanca. INSTRUMENTACAO: fingerprint
+  CANONICO por SUBFASE (SHA1-16 de clusters/tissues/semantic/RNG-
+  state canonizados: ids ordenados, floats de precisao fixa, sets
+  nunca crus — state_fingerprint.py:49) emitido a cada fronteira de
+  fase para achar o PRIMEIRO (step,fase) divergente entre gemeas
+  A/A; OBSERVACIONAL APENAS (nunca estado causal; opt-in);
+  comparador ignora chaves _ms/run_id (wall-clock); ~80 pares
+  begin/end de _ms (wall+CPU juntos, distinguem espera de trabalho)
+  em TODAS as fronteiras; BUDGET por camada (L1-L2 25%/L3-L4 35%/
+  L5 25%/overhead 15%) com gasto debitado na camada dona e THROTTLE
+  FIXADO 1.0 em modo deterministico (nunca acoplar wall-clock a
+  trajetoria cognitiva — heranca critica); contador de RNG como
+  early-warning de dessincronizacao; GPU com kernel_ms/roundback/
+  readback separados. HERANCAS para 18.5/18.7: (1) cada camada Rust
+  expoe state_fingerprint() -> hash deterministico por subfase,
+  observacional, + comparador A/A que acha o primeiro divergente;
+  (2) budget_ms por camada com throttle neutro em validacao +
+  dupla contagem wall+CPU; (3) ecologia LOCAL soberana por tecido
+  (nichos, custo de nascimento, leis de diversidade/renovacao,
+  predator de conceitos) — nunca global.
