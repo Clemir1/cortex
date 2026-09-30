@@ -422,6 +422,7 @@ impl rt::CognitiveModule for L5Module {
         s.wake_dormant_too_long.hash(&mut h);
         s.wake_scheduled.hash(&mut h);
         s.no_source_ticks.hash(&mut h);
+        s.limbic_no_data_ticks.hash(&mut h);
         s.policy_submitted.hash(&mut h);
         s.policy_rejected.hash(&mut h);
         s.events.hash(&mut h);
@@ -492,6 +493,10 @@ impl rt::CognitiveModule for L5Module {
                     .lock()
                     .unwrap_or_else(|p| p.into_inner());
                 let (stress, _, _) = self.limbic_inputs();
+                let l4s = self.l4.as_ref().map(|l4| l4.stats());
+                if let Some(stress) = stress {
+                // SEÇÃO 20: sem sinal REAL o meta-learner não aprende
+                // (janela pulada com razão; Lei 2 — ausência ≠ 0.0).
                 let scarcity = rg
                     .budget(crate::resource_governor::Resource::Attention)
                     .map(|b| b.scarcity())
@@ -528,7 +533,6 @@ impl rt::CognitiveModule for L5Module {
                 // Trial: reward = taxa de confirmação da janela (com
                 // denominador broadcasts; sem fonte: reward 0 →
                 // rollback honesto do gasto).
-                let l4s = self.l4.as_ref().map(|l4| l4.stats());
                 let reward = match (&l4s, autorizado) {
                     (Some(s), true) if s.broadcasts > 0 => {
                         s.confirmed as f32 / s.broadcasts as f32
@@ -547,6 +551,7 @@ impl rt::CognitiveModule for L5Module {
                 }
                 let _ = explorou;
                 drop(ml);
+                }
                 drop(rg);
                 // Development: causas OBSERVADAS reais.
                 let mut dg = self
@@ -554,8 +559,10 @@ impl rt::CognitiveModule for L5Module {
                     .lock()
                     .unwrap_or_else(|p| p.into_inner());
                 let mut causas: Vec<String> = Vec::new();
-                if stress > 0.8 {
-                    causas.push("persistent_overload".to_string());
+                if let Some(s) = stress {
+                    if s > 0.8 {
+                        causas.push("persistent_overload".to_string());
+                    }
                 }
                 if let Some(s) = &l4s {
                     if s.broadcasts > 0 && s.actions == 0 {
@@ -577,6 +584,10 @@ impl rt::CognitiveModule for L5Module {
         {
             let mut dormant = self.dormant.lock().unwrap_or_else(|p| p.into_inner());
             let (stress, _, _) = self.limbic_inputs();
+            // SEÇÃO 20: sem sinal límbico o gate HighStress fica
+            // FECHADO — ausência ≠ estresse (Lei 2; gate de despertar,
+            // não métrica: dormant/activity seguem contando de verdade).
+            let stress = stress.unwrap_or(0.0);
             let activity = self
                 .l4
                 .as_ref()
@@ -596,23 +607,33 @@ impl rt::CognitiveModule for L5Module {
         }
 
         // (2) LIMBICO: sinais reais com HISTERESE e razão tipada.
+        // SEÇÃO 20: sinal NO_DATA ⇒ banda CORRENTE mantida (Lei 2) —
+        // nunca 0.0/1.0 fabricados na decisão O3.
         let (stress, energy, aversion) = self.limbic_inputs();
-        let mut governor = self.governor.lock().unwrap_or_else(|p| p.into_inner());
-        let reason = governor.update(stress, energy, aversion);
-        stats.limbic_updates += 1;
-        stats.stress = stress;
-        stats.energy_reserve = energy;
-        stats.band = Some(governor.band());
-        if reason != BandReason::Unchanged {
-            stats.limbic_band_changes += 1;
-            info!(
-                banda = ?governor.band(),
-                razao = reason.as_str(),
-                stress,
-                "transicao limbica (histerese da config [l5.limbic])"
-            );
+        match (stress, energy, aversion) {
+            (Some(stress), Some(energy), Some(aversion)) => {
+                let mut governor = self.governor.lock().unwrap_or_else(|p| p.into_inner());
+                let reason = governor.update(stress, energy, aversion);
+                stats.limbic_updates += 1;
+                stats.stress = stress;
+                stats.energy_reserve = energy;
+                stats.band = Some(governor.band());
+                if reason != BandReason::Unchanged {
+                    stats.limbic_band_changes += 1;
+                    info!(
+                        banda = ?governor.band(),
+                        razao = reason.as_str(),
+                        stress,
+                        "transicao limbica (histerese da config [l5.limbic])"
+                    );
+                }
+                drop(governor);
+            }
+            _ => {
+                stats.limbic_no_data_ticks += 1;
+                debug!("sinais limbicos NO_DATA — banda corrente mantida (Lei 2)");
+            }
         }
-        drop(governor);
 
         // (3) SELF-MODEL por intervalo: identidade DERIVADA do L4 real.
         if self.config.self_model.enabled && tick % self.config.self_model.update_interval_steps.max(1) == 0

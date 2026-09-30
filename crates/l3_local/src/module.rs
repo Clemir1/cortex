@@ -548,16 +548,22 @@ impl L3Module {
                 0.25 + self.policy.proposal_delta,
                 true,
             )
-        } else if (snapshot.assignment_coverage.unwrap_or(0.0) as f64)
-            < self.policy.coverage_floor
-        {
-            (
-                "l2.affinity.threshold",
-                (0.25 - self.policy.proposal_delta).max(0.05),
-                false,
-            )
+        } else if let Some(coverage) = snapshot.assignment_coverage {
+            // SEÇÃO 20: cobertura Some ⇒ decide contra o piso de verdade.
+            if (coverage as f64) < self.policy.coverage_floor {
+                (
+                    "l2.affinity.threshold",
+                    (0.25 - self.policy.proposal_delta).max(0.05),
+                    false,
+                )
+            } else {
+                return; // dentro dos pisos: não propõe
+            }
         } else {
-            return; // dentro dos pisos: não propõe
+            // SEÇÃO 20: cobertura NO_DATA ⇒ ausência ≠ zero (Lei 2) —
+            // rebaixar threshold sem dado seria justiça invertida;
+            // mantém o threshold corrente e NÃO propõe.
+            return;
         };
         let req = tc::AdaptationRequest {
             requester: self.descriptor.module_id,
@@ -574,7 +580,8 @@ impl L3Module {
         }
         debug!(
             coerencia = coherence,
-            cobertura = snapshot.assignment_coverage.unwrap_or(0.0),
+            // SEÇÃO 20: loga a AUSÊNCIA como ausência, não como 0.0.
+            cobertura_no_data = snapshot.assignment_coverage.is_none(),
             parametro = parameter,
             "l3 propôe adaptação estrutural ao l2"
         );
