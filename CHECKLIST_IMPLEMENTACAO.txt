@@ -1408,7 +1408,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          -> CRITERIO: teste de conflito real resolvido com
          prioridade deterministica + trilha de auditoria da
          decisao
-[x] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
+[ ] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
          hash bit-exato do estado por camada (to_bits) +
          latencia _ms por modulo no StepReport L1->L5 +
          spans com parent_event para reconstrucao de cascatas
