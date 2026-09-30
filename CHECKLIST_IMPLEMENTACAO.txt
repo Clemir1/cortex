@@ -540,7 +540,7 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
         medir; baseline salvo em var/ (nao versionado)
 [x] [6] 17.2 SoA n x 97 bit-identico: estado dos clusters em
         Struct-of-Arrays com A/A bit-exato vs AoS (mesma seed)
-[ ] [6] 17.3 Paralelismo deterministico da fisica L1: rayon par_chunks
+[x] [6] 17.3 Paralelismo deterministico da fisica L1: rayon par_chunks
         com reducao em ordem canonica (sem lock global no hot path),
         A/A bit-exato
 [ ] [6] 17.4 Concorrencia interna de modulos: modulos independentes em
@@ -613,3 +613,21 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
   (evento validacao_organismo com taxas e denominadores); harnesses
   de teste seguem o mesmo padrao (proximos marcos); ausencia !=
   zero e append atomico por linha.
+
+- SESSAO 6 (17.3 fechado, rayon deterministico + diretriz f32/f64
+  MEDIDA): kernels colunares em rayon por COLUNA -- 97 reducoes
+  independentes, cada uma sequencial na ordem canonica i: BIT-EXATO
+  por construcao, sem lock global, sem reducao entre threads. Gate
+  declarado antes de medir: PAR_MIN_N=2048 (abaixo disso serial,
+  acima rayon; dim_sums_auto no reservoir). Teste A/A: serial ==
+  rayon == auto com assert_eq f64 em n=2185. BENCH do kernel
+  (n=4096, var/bench/kernel-17-3.txt): serial f64 486 us; RAYON f64
+  73 us (6.6x, bit-identico); serial f32 493 us; rayon f32 90 us.
+  CONCLUSAO HONESTA da diretriz do dono (f32 no dinamico): em CPU o
+  f32 NAO traz beneficio nesse kernel (serial igual, rayon pior) --
+  o canônico f64 fica SEM custo extra; o beneficio real do f32 e no
+  staging GPU (ALU 2x e banda/VRAM pela metade) -> fica reservado
+  para a 17.7 se GO. O mecanismo pronto: quando a amostra por tick
+  crescer (throughput por cluster da 17.1), o gate ativa rayon
+  sozinho com bit-exatidao preservada. L1 49 verdes; workspace
+  verde; house_laws 5/5.

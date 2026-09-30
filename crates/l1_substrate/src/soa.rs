@@ -12,6 +12,7 @@
 //! `assert_eq!` de f64 (sem tolerância: bit-exato).
 
 use crate::cluster::ClusterBio;
+use rayon::prelude::*;
 
 /// Estado da amostra em Struct-of-Arrays: `cols[k][i]` é a dimensão
 /// `k` (0..97) da i-ésima amostra (ordem da amostra estratificada).
@@ -55,6 +56,48 @@ impl SampleSoA {
             .collect()
     }
 
+    /// Portão do paralelismo (17.3): abaixo disso o rayon custa mais
+    /// que o trabalho (overhead de task > soma). Declarado antes de
+    /// medir; o crossover real fica documentado no bench.
+    pub const PAR_MIN_N: usize = 2048;
+
+    /// Σᵢ por coluna em PARALELO (17.3): 97 reduções INDEPENDENTES —
+    /// cada coluna é somada sequencialmente na ordem canônica i por
+    /// exatamente uma task, e o `collect` devolve na ordem das
+    /// colunas. Nenhuma redução entre threads: BIT-IDÊNTICO ao
+    /// `dim_sums` por construção, sem lock global no hot path.
+    pub fn dim_sums_par(&self) -> Vec<f64> {
+        self.cols
+            .par_iter()
+            .map(|col| col.iter().fold(0.0_f64, |acc, &v| acc + v))
+            .collect()
+    }
+
+    /// Política automática (gate de tamanho): serial abaixo do
+    /// `PAR_MIN_N`, rayon acima — resultado idêntico nos dois caminhos.
+    pub fn dim_sums_auto(&self) -> Vec<f64> {
+        if self.n < Self::PAR_MIN_N {
+            self.dim_sums()
+        } else {
+            self.dim_sums_par()
+        }
+    }
+
+    /// Caminho f32 (diretriz do dono — f32/f64 DINÂMICO): colunas
+    /// truncadas para f32 e somadas em f32. NÃO é bit-idêntico ao
+    /// caminho f64 (aritmética diferente) — é o candidato de custo do
+    /// compute massivo/GPU; adoção como política exige benefício
+    /// MEDIDO no bench e decisão registrada (o canônico segue f64).
+    pub fn pack_f32(&self) -> SampleSoAF32 {
+        SampleSoAF32 {
+            cols: self
+                .cols
+                .iter()
+                .map(|col| col.iter().map(|&v| v as f32).collect())
+                .collect(),
+        }
+    }
+
     /// Σᵢ ‖estadoᵢ‖ com o produto interno na ordem k — bit-idêntico
     /// ao loop AoS (i externo, k interno).
     pub fn norms_sum(&self) -> f64 {
@@ -95,6 +138,32 @@ impl SampleSoA {
             p += pair_stride;
         }
         (acc, pairs)
+    }
+}
+
+/// Colunas f32 da amostra (compute massivo — bench/decisão de política;
+/// o estado canônico e os features do organismo seguem em f64).
+#[derive(Debug, Clone)]
+pub struct SampleSoAF32 {
+    cols: Vec<Vec<f32>>,
+}
+
+impl SampleSoAF32 {
+    /// Σᵢ cols[k][i] em f32 por coluna (custo de referência do caminho
+    /// f32; determinístico por construção — ordem canônica i).
+    pub fn dim_sums(&self) -> Vec<f32> {
+        self.cols
+            .iter()
+            .map(|col| col.iter().fold(0.0_f32, |acc, &v| acc + v))
+            .collect()
+    }
+
+    /// Versão paralela por coluna (mesma independência do f64).
+    pub fn dim_sums_par(&self) -> Vec<f32> {
+        self.cols
+            .par_iter()
+            .map(|col| col.iter().fold(0.0_f32, |acc, &v| acc + v))
+            .collect()
     }
 }
 
@@ -174,5 +243,26 @@ mod tests {
                 assert_eq!(soa.cols[k][i], clusters[ci].state[k]);
             }
         }
+    }
+
+    /// 17.3 — rayon por COLUNA: bit-idêntico ao serial por construção
+    /// (97 reduções independentes, cada uma sequencial na ordem i),
+    /// inclusive ACIMA do portão PAR_MIN_N onde o paralelismo ativa.
+    #[test]
+    fn rayon_por_coluna_e_bit_identico_ao_serial_acima_do_gate() {
+        let n = SampleSoA::PAR_MIN_N + 137; // força o caminho paralelo
+        let clusters = clusters(n);
+        let sample: Vec<usize> = (0..n).collect();
+        let soa = SampleSoA::pack(&clusters, &sample);
+        assert!(soa.len() >= SampleSoA::PAR_MIN_N);
+        let serial = soa.dim_sums();
+        let paralelo = soa.dim_sums_par();
+        let automatico = soa.dim_sums_auto();
+        assert_eq!(serial, paralelo, "rayon por coluna é bit-exato");
+        assert_eq!(serial, automatico, "gate automático é bit-exato");
+        // f32: determinístico no próprio modo (duas runs iguais) —
+        // candidato de custo, NÃO bit-idêntico ao f64 (por definição).
+        let f32a = soa.pack_f32();
+        assert_eq!(f32a.dim_sums(), f32a.dim_sums_par());
     }
 }

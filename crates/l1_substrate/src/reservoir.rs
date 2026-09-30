@@ -218,7 +218,7 @@ impl HotmReservoir {
         let d = cfg::DIMENSIONALITY;
         let sm = crate::config::slice::SHORT_MEMORY;
         let soa = crate::soa::SampleSoA::pack(clusters, &sample);
-        let dim_mean = soa.dim_sums();
+        let dim_mean = soa.dim_sums_auto();
         let mut mean_norm = soa.norms_sum();
         let mut short_proj = soa.proj_sums(sm.start, self.dim);
         let (sep_acc, sep_n) = soa.separation_sum((sample.len() / 64).max(1), d);

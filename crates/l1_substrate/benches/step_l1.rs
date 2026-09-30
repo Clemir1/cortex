@@ -20,9 +20,12 @@
 //! CURVA de custo por carga, não o estado final).
 
 use criterion::{criterion_group, criterion_main, Criterion};
+use rand::SeedableRng;
 use std::time::Duration;
 use triad_foundation as tf;
+use triad_foundation::id::ClusterId;
 use triad_l1_substrate as l1;
+use triad_l1_substrate::soa::SampleSoA;
 use triad_runtime::{CognitiveModule as _, TypedContext};
 
 const CARGAS: [usize; 3] = [1_200, 5_000, 30_000];
@@ -48,5 +51,27 @@ fn step_l1_por_carga(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, step_l1_por_carga);
+/// 17.3 — kernels colunares da amostra em 3 caminhos: serial f64
+/// (canônico), rayon por coluna (bit-idêntico), f32 (candidato de
+/// custo — diretriz f32/f64 dinâmica do dono). Amostra GRANDE
+/// (n=4096) para medir o crossover onde o paralelismo compensa.
+fn kernel_dim_sums_17_3(c: &mut Criterion) {
+    let n = 4096usize;
+    let mut group = c.benchmark_group("kernel_dim_sums/n=4096");
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(6));
+    let mut rng = rand::rngs::StdRng::seed_from_u64(21);
+    let clusters: Vec<l1::ClusterBio> =
+        (0..n).map(|_| l1::ClusterBio::new(ClusterId::new(), 0, &mut rng)).collect();
+    let sample: Vec<usize> = (0..n).collect();
+    let soa = SampleSoA::pack(&clusters, &sample);
+    let soa32 = soa.pack_f32();
+    group.bench_function("serial_f64", |b| b.iter(|| soa.dim_sums()));
+    group.bench_function("rayon_f64", |b| b.iter(|| soa.dim_sums_par()));
+    group.bench_function("serial_f32", |b| b.iter(|| soa32.dim_sums()));
+    group.bench_function("rayon_f32", |b| b.iter(|| soa32.dim_sums_par()));
+    group.finish();
+}
+
+criterion_group!(benches, step_l1_por_carga, kernel_dim_sums_17_3);
 criterion_main!(benches);

@@ -25,6 +25,7 @@ rand = { workspace = true }
 uuid = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
+rayon = "1.10"
 
 [dev-dependencies]
 toml = "0.8"
