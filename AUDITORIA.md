@@ -323,3 +323,15 @@ que REVERTERAM desenhos mais "paralelos".
   ameaçam o A/A bit-exato permanente por ~25% em UMA fase.
 - CPU permanece canônica; reserva arquitetural wgpu (feature off) no
   triad-compute (sessão 7).
+
+### 17.6 — fechamento com re-baseline aprovado pelo dono
+
+Decisão registrada em pergunta direta (round 13 da sessão 6): o threshold
+de 50 ms/tick da 17.1 foi escrito antes de a 17.6 descobrir que o
+"baseline 30K" media, de fato, apenas 1.024 clusters reais (flag
+`min(max_population)` no runner) — número inválido como referência de
+30K. Re-baseline @30K real aprovado: **68,5 ms/tick de média** (73× vs os
+5,4 s originais da série), picos previsíveis de 125 ms (híbrido do grafo
+por fração movida), app 65 passos em 6,9 s E2E, A/A bit-exato por
+construção entre pools de 1/4/8 threads, sem violação de leis. A SEÇÃO 17
+está integralmente fechada: 17.1-17.8 [x].

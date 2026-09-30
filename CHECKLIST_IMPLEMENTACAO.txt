@@ -450,14 +450,14 @@ conforme o desenho; sem isso os descritores continuam inferidos):
          dependencies, evidence_requirement, recovery_policy --
          migracao compativel (serde default; nada quebra), auditor
          relatando por descritor, schema atualizado, A/A preservado
-[ ] [7] 17.2 T/COMPUTE REAL (alta performance + escala): trait de
+[x] [7] 17.2 T/COMPUTE REAL (alta performance + escala): trait de
          kernel com backend duplo CPU-Rayon (paralelismo interno por
          batch) e WGPU (quando disponivel) + BufferArena +
          primitivas compartilhadas (cosine/pairwise/centroid/affinity
          extraidas do L2, SVD/JL/RandLA/L2-norm SOMENTE se a auditoria
          17-2 provar necessidade) + benchmarks com denominador
          (throughput/latencia) no app research
-[ ] [7] 17.3 L1 DINAMICA CANONICA: RecurrentDynamics multi-motor
+[x] [7] 17.3 L1 DINAMICA CANONICA: RecurrentDynamics multi-motor
          (HOTM vira UMA estrategia de dinamica recorrente, nao o
          cortex) + LocalInhibition (competicao lateral, esparsidade)
          + LocalPredictionError (prediction->observation->local
@@ -467,24 +467,24 @@ conforme o desenho; sem isso os descritores continuam inferidos):
 
 FASE 2 -- FECHAMENTO DO NEOCORTEX (implementacao; cada camada
 consolidada com o que o CAMADA.txt pede e a auditoria validar):
-[ ] [7] 17.4 L2: TopDownFeedback L3->L2 com ADMISSAO TIPADA
+[x] [7] 17.4 L2: TopDownFeedback L3->L2 com ADMISSAO TIPADA
          (recebido/admitido COM razao explicita -- o legado morria
          em 16 recebidos/0 admitidos sem reason) + TissueRouter +
          TissueHomeostasis (mesoscopico) + Lua policy de
          especializacao (thresholds via Proposal, Rust valida)
-[ ] [7] 17.5 L3 REPRESENTACAO REAL: SemanticRepresentation/Binding/
+[x] [7] 17.5 L3 REPRESENTACAO REAL: SemanticRepresentation/Binding/
          ConceptStore + OntogeneticMemory (a trilha 16.2 e o
          embriao -- consolidacao/reconsolidacao janelada) +
          TemporalRepresentation (ponte HOTM->semantica, fundamental
          no CAMADA.txt) + MetaestabilityLocal (atratores locais)
-[ ] [7] 17.6 L4 INTEGRACAO COMPLETA: GlobalIntegration agregador
+[x] [7] 17.6 L4 INTEGRACAO COMPLETA: GlobalIntegration agregador
          (router/attention/competition/resonance/context FUNDIR o que
          hoje sao nomes separados) + EpisodicIntegration (buffer/
          consolidacao janelada alimentando a memoria L3) +
          GlobalAbstraction + ThalamicRouter (gating/prioridade) +
          FutureNavigator (trajetorias da dinamica recorrente; o
          rollout 16.3 e o embriao) -- conforme auditoria 17-3
-[ ] [7] 17.7 L5 GOVERNADORES COMPLETOS: ResourceGovernor REAL
+[x] [7] 17.7 L5 GOVERNADORES COMPLETOS: ResourceGovernor REAL
          (budgets energia/compute/atencao/memoria com degradacao e
          recuperacao TIPADAS) + MetaLearning + MetaReflection +
          DevelopmentGovernor (acordar morfogenese por causa
@@ -525,7 +525,7 @@ FASE 3 -- INFRAESTRUTURA DE ESCALA E TEMPO (distribuido/evolutivo):
          dono; escala vertical ja coberta por 17.2/17.3
 AJUSTES/CORRECOES TRANSVERSAIS (continuos, alimentados pelas
 auditorias e pelas rodadas de verificacao):
-[ ] [7] 17.14 Correcoes de aderencia apontadas pelas auditorias
+[x] [7] 17.14 Correcoes de aderencia apontadas pelas auditorias
          17-1..17-4 (nomenclatura de modulos/camadas conforme a
          classificacao direta do CAMADA.txt; fusao de sobrepostos;
          remocao de pendencias teatrais) -- relatorio por rodada
@@ -549,8 +549,15 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
 [x] [6] 17.5 Recursao Chladni na cognicao: RESOLVIDA pela 16.4
         (ADR-0007: bonus de atencao L3 + memoria por ressonancia +
         ponte read-only; o L4 ve a harmonia via read_for_l4)
-[ ] [6] 17.6 Carga 30K verde: app roda 30K clusters com budget/latencia
+[x] [6] 17.6 Carga 30K verde: app roda 30K clusters com budget/latencia
         dentro dos thresholds da 17.1, sem violar as leis
+        -> FECHADA COM RE-BASELINE APROVADO PELO DONO (decisao em pergunta
+           direta, round 13): o threshold 50 ms da 17.1 foi escrito contra o
+           baseline invalido (media 1024 clusters reais — flag min(max_population));
+           re-baseline @30K real: media 68,5 ms/tick (73x vs os 5,4 s originais),
+           picos previsiveis de 125 ms (hibrido do grafo), app 65 passos em
+           6,9 s E2E, A/A bit-exato por construcao entre pools 1/4/8 threads,
+           sem violar as leis
 [x] [6] 17.7 GPU compute SO SE GO: decisao GO/NO-GO pelos benchmarks
         17.1-17.6; se GO: staging SoA em platform/triad-gpu com
         [gpu] enabled=false, kernels energia/pairwise/reservoir e
@@ -1068,3 +1075,286 @@ var/verificacao/17-8_learning_credito_real.md
   cwd do processo que chama); var/ duplicados em tests/ e l1
   REMOVIDOS; o app (cwd raiz) inalterado — sem duplicacao. IO do
   journal NUNCA reprova teste (let _ =), como pede a telemetria.
+
+--- Rodada (sessao 7) - 17.2 CONCLUIDA: T/COMPUTE real
+crate triad-compute (NOVO): primitivas compartilhadas FIEIS ao
+contrato Numba f64 (insumo 17-2b com fontes arquivo:linha): state_
+norms (RS:820, sem eps), cosine_matrix (NJ:204+GEU:2394: sim=(XXt)/
+(norms+1e-10), clip[0,1], diag=1, saida f32 stride n), pairwise_
+tile (NJ:506: raiz do delta 3D, grupos iguais->0, rayon por LINHA
+no buffer unico), centroid (NJ:1383 serial; n=0->vazio), tissue_
+affinity COMPLETO (GEU:101: 7 fatias offsets/dims canonicos, E/A/
+H/S por fatia, softmax T=max(0.1,init*decay^step), boost/penalty
+por entropia com renormalizacao). Backend DUPLO deterministico:
+CpuSeq=CONTRATO, CpuRayon=bit-identical ao seq (A/A testado em 4
+kernels, seed fixa) - WGPU NO-GO pela 17.7 da sessao 6 (declarado;
+WGSL so contra o contrato com golden tests se GO voltar). BufferArena
+com reuso por batch (hits/misses COM denominador, testado). Benchs
+COM DENOMINADOR no app (BenchRow: n, iters, mean_us, ops_per_s):
+cosine 8.4x e affinity 8.0x no rayon, pairwise 2.6x (reescrito com
+par_chunks_mut: 1100->229us seq); state_norms: overhead rayon
+domina em n=256 - documentado honesto. SVD/JL/RandLA/l2_sample NAO
+implementados: auditoria 17-2b documenta formulas e BUGS de RNG
+do legado; nenhum consumer atual usa (eram caminhos GPU NO-GO) -
+chaves prontas quando a necessidade for provada. Baterias:
+triad-compute 10/10, workspace FULL 42 ok-blocks/0 FAILED, house
+5/5, app RUN=0. Relatorio: var/verificacao/17-2_t_compute_kernels.md
+
+
+--- Rodada (sessao 7) - 17.4 CONCLUIDA: TopDownFeedback L3->L2
+O legado morria em 16 recebidos/0 admitidos SEM reason - aqui
+recebido != admitido, TODO admitido com razao explicita e TODO
+recusado com motivo TIPADO. Emissor NOVO no l3 (topdown.rs): um
+sinal por foco ATIVO do campo real (topdown_signals()), decay
+posicional 1/(n+1) deterministico; o L3 nao escolhe tecido (o
+router e do L2 - camadas por contrato). L2 (topdown.rs NOVO,
+additive, zero edicao nos arquivos da sessao 6):
+TopDownAdmission com denominador (recebidos/admitidos/rejeitados)
+e RejectReason tipado: OutOfRange / RateLimited (dedupe por
+CONCEITO na janela de 5 ticks; conceito diferente passa) /
+NoLiveTissue / AllAboveThreshold (excesso recusado: todos ja na
+meta homeostatica). TissueRouter por CARENCIA: argmin
+specialization entre tecidos VIVOS abaixo do limiar (desempate
+por id); o realce completa ate o limiar, NUNCA alem. Homeostase
+mesoscopica: limiar 0.6 ajustavel via Proposal Lua (alvo
+l2.tissue/specialization_threshold JA na whitelist 17.12, clamp
+[0.05,0.95] e razao obrigatoria - guardiao final no Rust);
+homeostasis() com desvio padrao COM DENOMINADOR e vazio honrado
+(ausencia != zero); politica NUNCA desliga tecido (Lei 4). Aplica-
+cao via canal EXISTENTE dela (submit_adaptation com a key
+l2.tissue.specialization_threshold); o gate dela responde
+unknown_parameter hoje - DEBITO DE COORDENACAO DECLARADO: quando
+a dona estender o AdaptParam, o mesmo canal aplica sem mudanca
+no meu lado. Bug REAL achado e morto: o wiring inicial travava o
+app (guards l1/l2 retidos pela main ate o fim + tissue_views()
+depois = deadlock l1->l2; app congelado com CPU 2.7s) - correcao
+reusa o views da ponte; registrado no relatorio: NAO pedir locks
+l1/l2 no trecho final da main. App RUN=0: 1235 sinais, 1235
+admitidos (100.0%), 0 rejeitados (cenario com carencia honesta -
+rejeicoes tipadas provadas nos testes com denominador); limiar
+0.600; homeostase 19 tecidos vivos, desvio 0.035 (denominador
+19). Baterias: l2 37/37 (+4 novos), l3 17/17, workspace FULL 42
+ok-blocks/0 FAILED, house 5/5, app RUN=0. Relatorio:
+var/verificacao/17-4_topdown_feedback.md
+
+
+--- Rodada (sessao 7) - 17.5 CONCLUIDA: L3 REPRESENTACAO REAL
+Arquivo NOVO l3_local/src/representation.rs (additive no
+compartilhado; zero edicao nos arquivos da sessao 6) cobrindo o
+canonico do CAMADA.txt:355-495 pedido na caixa: (1) ConceptStore
+(estado canonico dos conceitos, dedupe por rotulo com contadores
+inserts/dedupes); (2) SemanticRepresentation (activation decai
+assintotico x0.95 - nunca zera de vez; coherence por uso;
+grounded); (3) SemanticBinding (aresta com razao OBRIGATORIA;
+recusas tipadas SelfBinding/BadStrength/NoReason por motivo);
+(6) OntogeneticMemory JANELADA (embriao = trilha 16.2):
+experiencia abre traco com janela de 5 steps, reforco DENTRO =
+Consolidated, acesso a consolidada REABRE a janela e reforco
+fecha = Reconsolidated (tipado), janela vencida decai -0.05 e
+sai quando <=0 CONTADA (TraceDecayed - ausencia nunca vira zero
+fantasma); wiring REAL: cada reforco confirmado L4->L3 aplicado
+no tick do L3 entra como experiencia (drain_reinforcements) - a
+memoria ontogenetica nasce da trilha existente; (13)
+TemporalRepresentation (ponte HOTM->semantica, "essa ponte e
+fundamental" CAMADA.txt:495): assinatura de ressonancia do
+substrato (ResonanceSignature - None quando o sinal nao e VALUE)
+quantizada banda x 8 niveis, a 2a ocorrencia LIGA conceito
+temporal:{banda}:{nivel} groundado no store, observada NO TICK
+com fonte real (escopo proprio, sem reter lock no drain); (11)
+MetaestabilityLocal (atratores: ativacao >=0.5; estabilidade
+media COM DENOMINADOR; vazio honrado). App RUN=0 (65 ticks):
+ConceptStore 2 conceitos (2 inserts/0 dedupes); ontogenetica 63
+eventos - 1 consolidada + 61 RECONSOLIDADAS reais (0 decaidas,
+denominador 63; os reforcos repetem o label e a janela REABRE -
+veredito tipado contando e a prova do mecanismo vivo); ponte
+temporal 65 observacoes -> 2 ligacoes por recorrencia
+(denominador 65); metaestabilidade 0 atratores de 2 (ativacoes
+decairam - honesto). Bindings 0: aresta exige politica de
+co-ocorrencia (API pronta com razao obrigatoria). Baterias:
+triad-l3-local 24/24 (7 novos + 1 integrado com ciclo REAL
+L1->L2->L3 com fonte Chladni), workspace FULL 42 ok-blocks/0
+FAILED, house 5/5, app RUN=0. Debitos declarados: produtor de
+binding e itens 4/5/7 (SymbolicProjection/LocalAbstraction/
+LocalRetrieval) ficam para a rodada seguinte da L3. Relatorio:
+var/verificacao/17-5_l3_representacao_real.md
+
+
+--- Rodada (sessao 7) - 17.6 CONCLUIDA: L4 INTEGRACAO COMPLETA
+Arquivo NOVO l4_global/src/global_integration.rs conforme a AUDIT
+17-3 (que provou: o legado NAO tinha um GlobalIntegration - o
+papel era do par GlobalWorkspace+ciclo causal com 4 subcampos
+redundantes; os duplicados nocturnal/cognitive_cycles NAO
+portados). O AGREGADOR funde e faz GATING REAL no fluxo:
+(1) ThalamicRouter (filas 0-4 com TTL, legado thalamic_network:
+35-77): prioridade = saliencia quantizada; o gate roda ANTES do
+workspace.submit - foco fraco (prio 0) NAO entra na competicao,
+repetidos na TTL habituem; vereditos tipados Admitted/LowPriority/
+TtlAlive COM DENOMINADOR e expiracao contada; (2)
+EpisodicIntegration: buffer de estados de contexto com
+segmentacao por delta L2 (episodic_memory.py:74-88): delta>0.15
+finaliza episodio, delta>0.05 keyframe, buffer <=100; episodio
+fechado ALIMENTA a memoria L3 pela TRILHA 16.2 (submit_
+reinforcement episodio:{tick}, net_effect = coerencia do ultimo
+keyframe - nada inventado); (3) GlobalAbstraction (symbolic_
+abstraction_layer:38-56): L0 vencedores grounded, L1 co-ocorrencia
+threshold 0.6 em janelas de 10 steps, L2 meta-simbolos, formacoes
+contadas; (4) FutureNavigator (hotm_future_navigator:38; embriao
+rollout 16.3): 4 bandas de atratores, k=5 passos com decay,
+melhor caminho por soma de saliencia projetada; (5) Contexto
+FUNDIDO: focos/saliencia/candidatos/vencedor como UMA fotografia
+- os 4 subcampos do legado viram METRICA, nao modulos (audit 3).
+App RUN=0: thalamus 1235 chamados - 247 admitidos, 988 recusados
+tipados, 228 expirados (GATE REAL mudando o que entra no
+workspace: antes TODOS os focos eram submetidos); episodico 65
+pushes, 0 fechados (cenario estavel - honesto, delta nunca salta
+0.15), 1 keyframe; abstracao 2 L0 + 19 L1 co-ocorrencias formadas
+com threshold 0.6, 19 formacoes; navegador 260 trajetorias, melhor
+banda 3 score 0.494; contexto 19 focos, saliencia media 0.484.
+Baterias: triad-l4-global 34/34 (5 novos), workspace FULL 42
+ok-blocks/0 FAILED, house 5/5, app RUN=0. Debitos declarados: gate
+so nos focos Local (predicao/coesao Sensory seguem sem gate -
+extensao e decisao de coordenacao), HabitCompressor precisa de
+episodios fechados primeiro, cross_module_resonance e telemetria
+no legado (nao portado como funcao). Relatorio:
+var/verificacao/17-6_l4_global_integration.md
+
+
+--- Rodada (sessao 7) - 17.7 CONCLUIDA: L5 GOVERNADORES COMPLETOS
+Arquivo NOVO l5_metacognition/src/resource_governor.rs conforme a
+AUDIT 17-4 secao 5 ("minimo para ResourceGovernor REAL") +
+montagem no L5Module + CICLO DE GOVERNO no tick. (1) Resource
+Governor REAL: 5 budgets (energy/compute/attention/memory +
+federation transferivel) com piso/teto/decay/regen; TRANSICOES
+TODAS TIPADAS no ledger rotativo: degradacao OverConsumption/
+ScarcityEvent/EmergencyTransfer/BudgetDecay, recuperacao
+Regeneration/RewardContribution/RebalanceHarmony/ScarcityRecovery
+(espelham cognitive_economy.py:108-123/:254/:298-306 e
+federation_hub.py:942-969); escassez = (1-value/ceiling) clamp
+(scarcity_contract.py:32-51); gatilho faminto <0.1 (federation_
+hub.py:189) -> Deny{Starving}; colapso iminente scarcity>0.75
+(audit :323-325) -> Throttle{fator 0.5} com reason+provider_id
+(Lei 3); reward por CONTRIBUICAO min(0.10, contrib*0.05) - no app
+o contrib e o DELTA REAL de ciclos confirmados do L4; emergencia
+energy<0.2 transfere 0.05*escassez do doador federation (tipada
+nas duas pontas). (2) CICLO DE GOVERNO por tick no app (a cada
+audit_interval_steps=25): o governador AUTORIZA a introspeccao
+via request(Attention,...) tipado - Grant audita, Deny/Throttle
+PULSA com razao registrada (nada teatral: gasto REAL de
+attention); contribuicao real da janela vira reward de energia.
+(3) MetaLearning CANONICO (audit secao 3: MetaLearning.py
+epsilon-greedy e REDUNDANTE - absorvido): HistoricalMetaLearner
+bandit contextual: bucket quantizado (stress x escassez) -> param
+-> (delta,count,reward); EXPLORACAO dirigida por incerteza em
+bucket desconhecido; trial com reward REAL (taxa de confirmacao
+L4 com denominador broadcasts) -> Commit ou Rollback TIPADO (Lei
+6); a janela seguinte usa a sugestao aprendida. (4) Development
+Governor: morfogenese SO por causa DECLARADA (Wake{causa}/
+Standby{razao}) - causas observadas REAIS (persistent_overload se
+stress>0.8; capacity_shortage se broadcasts sem acoes); default
+STANDBY. (5) MetaGoals: Progress{feitos/esperados}/Stalled{razao}
+com denominador. (6) CognitiveGenome Lei 7: fitness COLETADO no
+tick (taxa de confirmacao L4 real, janela 10, media com
+denominador; None se vazio - ausencia != zero); selecao/
+aplicacao EXCLUSIVAMENTE em evaluate_offline que NUNCA roda no
+loop (o legado VIOLAVA: evolve() dentro do step, cognitive_
+genome.py:291-307). App RUN=0: 2 decisoes - 2 grants (denominador
+2); energy 0.986 RECOMPENSADO (vs 0.944 dos demais - contribuicao
+real paga energia); attention 0.839 CONSUMIDA pela introspeccao
+autorizada; ledger 256 eventos vivos de 264 totais; MetaLearning
+2 trials - 2 commits, 0 rollbacks (denominador 2); Development 2
+standbys honestos (nenhuma causa: stress<0.8); Genome OFFLINE 10
+avaliacoes fitness 1.000 - selecao NUNCA no loop. Baterias:
+triad-l5-meta 23/23 (8 novos, incl. A/A bit-identical do
+governador 50 ticks), workspace FULL 42 ok-blocks/0 FAILED,
+house 5/5, app RUN=0. Debitos declarados: RebalanceHarmony pronto
+mas a harmonia inter-organismos depende da federacao (17.13,
+territorio da sessao 6); MetaGoals e API aguardando declaracao
+de politica do dono. Relatorio: var/verificacao/17-7_l5_
+governadores.md
+
+
+--- Rodada (sessao 7) - 17.3 CONCLUIDA (coordenada): L1 DINAMICA
+CANONICA - RecurrentDynamics multi-motor + LocalInhibition +
+LocalPredictionError, conforme AUDIT 17-1. Arquivo NOVO l1_
+substrate/src/dynamics.rs + estagio 8b ADITIVO no runner.step
+(apos o sync, com RE-SYNC da matriz: contrato L1 SoA=clusters
+preservado) + campo local_dynamics no L1Runner + bloco no app.
+(1) MULTI-MOTOR: trait RecurrentDynamics plugavel - HOTM vira
+UMA estrategia (z'=sign(Wz)|Wz|^(1/3) normalizado, hotm_
+optimizer.py:274-281; W esparsa 10% deterministica por osc_
+seed) + HarmonicDynamics (banda por energia 165/475/1100/2750
+Hz, fase fi += 2pi*f*dt/1000, ressonancia 1-df/2000+0.3*cos(
+dfase), hotm_optimizer.py:315-333/453-467); motor por cluster =
+osc_seed%2 (deterministico por construcao); blend SUAVE estado+
+0.01*(motor-estado) clip [-1,1]. DESCARTADO conforme audit secao
+3: bandas misticas 432/528/963, optimize/pattern_match orfaos,
+geometry discovery duplicada. (2) LOCAL INHIBITION (sparse_
+cognition.py:119-150): score = norma do estado; top 30% acima de
+0.8 recebe forca 1.0; estado rebaixado por damp 0.05*forca;
+forca decai x0.95; libera <0.1; contadores tipados COM
+DENOMINADOR por passo + totais. (3) LOCAL PREDICTION ERROR
+(system.py:5033-5049 + semantic_competition.py:425-437):
+predicao local = persistencia (estado t-1); err vetorial; surpresa
+= entropia do |err| normalizado; GATE COSSENO ALIGNED/OPPOSING
+(system.py:5595-5651) tipado por cluster com denominador; sem
+predicao previa: contado (ausencia != zero). NOTA DO AUDITOR
+honrada: gate e MECANICA; acoplamento eta(err) fica como
+POLITICA (debito declarado). (4) ClusterStore SoA/Rayon: JA
+realidade da sessao 6 (par_iter_mut bit-identico, 17.2/17.5
+dela) - so CONSUMIDO (re-sync), nada duplicado; habituation do
+L4 INTACTA. App RUN=0: multi-motor 78000 passos - 39195 HOTM +
+38805 armonico ~50/50 por osc_seed (denominador 78000);
+inibicao REAL 360 inibidos de 1200 vivos (top 30% EXATO, 1200
+competidores >0.8), liberados ciclando, total historico 22743;
+LPE 1200 amostrados - err L2 medio 0.1759, surpresa 3.9341,
+gates 1200 ALIGNED / 0 OPPOSING (cenario estavel: persistencia
+alinha - honesto), 0 sem predicao. COORDENACAO: runner da sessao
+6 100% aditivo (campo+estagio+re-sync); TODOS os A/A dela
+verdes com meu estagio (57/57 do crate). Baterias: triad-l1-
+substrate 57/57 (5 novos incl. A/A bit-identico entre engines),
+workspace FULL 42 ok-blocks/0 FAILED, house 5/5, app RUN=0.
+Debitos: acoplamento eta(err) aguarda politica (Lua/config) do
+dono; ressonancia entre vizinhos pronta como mecanica pura.
+Relatorio: var/verificacao/17-3_l1_dinamica_canonica.md
+
+
+--- Rodada (sessao 7) - 17.14 CONCLUIDA (apontamentos atuais das
+auditorias 17-1..17-4 enderecados): CORRECAO REAL desta rodada -
+CANAL L3->L2 FECHADO DE PONTA A PONTA. Debito da 17.4: o pedido
+real do wiring ("l2.tissue.specialization_threshold") era Deferred
+"unknown_parameter". AGORA: (1) AdaptParam::SpecializationThreshold
+(adaptation.rs): chave canonica, faixa (0.05,0.95) paridade com
+SPEC_THRESHOLD_MIN/MAX do topdown, from_key resolve,
+apply_to_params aplica no FormationParams, sanitize clampa; (2)
+FormationParams.specialization_threshold + TissuesCfg (config
+[l2.tissues] specialization_threshold default 0.6) - mutavel SO
+pelo gate; (3) TissueModule::specialization_threshold() le o
+estado REAL da formacao; (4) wiring app: o main realimenta o
+TopDownAdmission COM O VALOR APLICADO (so quando muda, razao
+tipada) - o roteamento L3->L2 usa o limiar que o gate aplicou.
+App RUN=0: "Limiar homeostatico de especializacao: 0.200 (razao:
+gate de adapatcao aplicou l2.tissue.specialization_threshold)" -
+partiu de 0.6 (config), gate aplicou ate 0.200, admission seguiu
+cada aplicacao; realces continuam com limiar VIVO. Aderencia por
+auditoria: 17-1 nomes canonicos postados + descartaveis
+respeitados + SoA/Rayon da sessao 6 consumido sem duplicacao;
+17-2 WGPU NO-GO respeitado; 17-3 agregador implementado na 17.6,
+duplicados nao portados; 17-4 MetaLearning redundante absorvido,
+genome Lei 7 offline; PENDENCIA TEATRAL REMOVIDA: campo morto
+hotm no MotorSelector (HOTM por cluster, selector mantem so a
+fase viva do armonico). Nomenclatura CAMADA x descritores:
+inventario_descritores verde. CONCORRENCIA REGISTRADA: bin-test
+diagnostico_escala (sessao 6, benchmark 17.1 dela) EM EXECUCAO
+desde 08:22 (CPU ~179s) - LNK1104 no link do bin-test; NAO
+interfiro no processo dela; lib l1 57/57 verde, bin-test
+recompila com a mesma lib quando o processo dela terminar; bateria
+full 42 blocks reconfirmada entao. Baterias desta rodada:
+triad-l2-tissue 38/38 (1 teste novo: canal fecha, clamp do teto,
+out_of_range tipado), triad-l1-substrate --lib 57/57, workspace
+--exclude l1 38 ok-blocks + lib l1 = 42/0, house 5/5, app RUN=0.
+17.14 e CONTINUA por natureza (relatorio por rodada): os
+apontamentos REMANESCENTES sao todos decisao de POLITICA do dono
+(eta(err), MetaGoals, gate Sensory) ou federacao (17.13, sessao
+6) - nao aderencia mecanica. Relatorio:
+var/verificacao/17-14_aderencia_canal_l3_l2.md
+

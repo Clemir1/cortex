@@ -133,10 +133,6 @@ impl LocalGraph {
         nb
     }
 
-    fn recompute_neighbors_of(&mut self, idx: usize, clusters: &[ClusterBio]) {
-        self.neighbors[idx] = self.compute_neighbors(idx, clusters);
-    }
-
     /// Reconstrução completa (gênese e compactação de população).
     /// 17.6: recomputes são independentes após TODOS os inserts (o
     /// hash está completo e as escritas vão para índices distintos)
