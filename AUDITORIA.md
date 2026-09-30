@@ -335,3 +335,22 @@ de 50 ms/tick da 17.1 foi escrito antes de a 17.6 descobrir que o
 por fração movida), app 65 passos em 6,9 s E2E, A/A bit-exato por
 construção entre pools de 1/4/8 threads, sem violação de leis. A SEÇÃO 17
 está integralmente fechada: 17.1-17.8 [x].
+
+## Série 18 — fechamento consolidado do neocórtex (sessão 6)
+
+### Diagnóstico (18.1, Graphify)
+God-nodes: L4Module(56), ModuleDescriptor(55), ClusterBio(54), L3Module(52), L1Runner(38), L5Module(36) — **L1-L5 todas no top-6**: a cadeia cognitiva é densa no grafo real. Diagnose: 3861 nós, 7052 arestas, zero quebradas. Lacunas: TraceEngine ausente; governança sem populations vivas.
+
+### Legado (18.2, 3 subagentes READ-ONLY, com arquivo:linha)
+- **Cadeias/cascatas**: 11 elos fecham SÓ com efeito observável; CASCADE_MAP declarativo com proveniência origin/parent; CascadeTracker com denominador.
+- **Federação**: inter-organismos NÃO existia (CNP interno, transporte stub); o ouro é o PADRÃO DE VALIDAÇÃO: applied_value+observed_effect+recibo+outcome t+1/t+5+active/sham.
+- **Ecologia/instrumentação**: soberana por tecido (nichos, custo 70%, GenDiv, renovação obrigatória); fingerprint canônico por subfase OBSERVACIONAL acha o primeiro (step,fase) divergente; budget por camada com throttle FIXO 1.0 em validação (nunca acoplar wall-clock à cognição).
+
+### 18.3 — TraceEngine + cascatas (commits bfd62e7/ffbed34)
+IDs derivados de (seed, passo, tag, seq) — determinísticos; CASCADE_MAP com as 3 cascatas reais (emergência→survival, mortes→compactação, divisões→matriz); linhagem E(t).parent==E(t-1) com órfão = erro; elo fecha só com efeito observável (ausência ≠ zero). A/A: trilha bit-exata entre runs.
+
+### 18.7 — hash e _ms em TODAS as camadas (commits eb0e1c5/da257ac)
+L1-L5 expõem state_hash observacional + latency_ms por módulo (aditivo, sem quebrar API da sessão 7); cascatas reconstruíveis do journal; A/A por camada bit-exato.
+
+### Estado na verificação (18.8 parcial)
+Escopo sessão 6: l1 60, l2 38, l3 24, l4 36, l5 23, runtime 10, observability 7, house_laws 5/5, app "sem violar as leis". Workspace completo: aguarda WIP da sessão 7 (governance 18.4-18.6, em execução ativa — E0277/E0499 transitórios do voo dela).
