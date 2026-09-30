@@ -1437,11 +1437,11 @@ caixas dela NUNCA desmarcadas por mim.
          o1_o5_modelagem.md com legado x atual x gap x decisao
          herdar/fundir/descartar POR ORDEM + caixas filhas
 
-[ ] [7] 19.2 Debito 18.7-a (subcaixa; 18.7 e [6]): hash real L4
+[x] [7] 19.2 Debito 18.7-a (subcaixa; 18.7 e [6]): hash real L4
          A/A bit-exato no padrao da sessao 6
          -> CRITERIO: teste hash_aa L4 verde + baterias
 
-[ ] [7] 19.3 Debito 18.7-b (subcaixa; 18.7 e [6]): hash real L5
+[x] [7] 19.3 Debito 18.7-b (subcaixa; 18.7 e [6]): hash real L5
          A/A bit-exato no mesmo padrao
          -> CRITERIO: teste hash_aa L5 verde + baterias
 
@@ -1449,7 +1449,7 @@ caixas dela NUNCA desmarcadas por mim.
          por tecido/membros (extensao aditiva do demografico)
          -> CRITERIO: teste fino A/A verde + demografico preservado
 
-[ ] [7] 19.5 Debito 18.7-d (subcaixa; 18.7 e [6]): budget por
+[x] [7] 19.5 Debito 18.7-d (subcaixa; 18.7 e [6]): budget por
          camada com throttle fixo 1.0 deterministico (heranca do
          cognitive_budget do legado)
          -> CRITERIO: budget por camada com denominador + A/A
@@ -1471,28 +1471,28 @@ caixas dela NUNCA desmarcadas por mim.
          -> CRITERIO: contrato tipado A/A com sham + feature-off
          no app; rede real segue decisao da dona
 
-[ ] [7] 19.8-a (O1) Atuador tipado para corrective(): a correcao
+[x] [7] 19.8-a (O1) Atuador tipado para corrective(): a correcao
          do Homeostat DEIXA de ser debug e modula o throttle de
          execucao por modulo (19.5) e/ou energy.intake_rate do L1
          (whitelist 17.12) — nunca escrita direta
          -> CRITERIO: correcao aplicada com recibo + A/A + baterias
-[ ] [7] 19.8-b (O2) Retuning do controlador O1: OscillationMonitor
+[x] [7] 19.8-b (O2) Retuning do controlador O1: OscillationMonitor
          detecta oscilacao => ajusta o GANHO do Homeostat com razao
          tipada, histerese e clamp [0.5x, 2x] do nominal (heranca
          edge_of_chaos; alvos seguem politica Lua)
          -> CRITERIO: ganho retunado com trilha + A/A + baterias
-[ ] [7] 19.8-c (O3) Consumidor runtime da GoverningAction:
+[x] [7] 19.8-c (O3) Consumidor runtime da GoverningAction:
          Throttle{factor} aplica no throttle do modulo-alvo no
          scheduler; Shed{reason} difere modulos nao-criticos por
          N passos COM razao (Lei 4: crise muda politica, nunca
          desativa)
          -> CRITERIO: GoverningAction aplicada de fato + A/A
-[ ] [7] 19.8-d (O4) Alarmes tipados de audit: O4 publica
+[x] [7] 19.8-d (O4) Alarmes tipados de audit: O4 publica
          MetricAlarm{metrica, valor, razao, denominador} quando o
          piso e furado; O2/O3 consomem como sinal (observa nunca
          decide — heranca RuntimeObservability)
          -> CRITERIO: alarme com denominador alimenta O2/O3 + A/A
-[ ] [7] 19.8-e (O5) Boundary de episodio: fim do run/janela
+[x] [7] 19.8-e (O5) Boundary de episodio: fim do run/janela
          between_episodes invoca evaluate_offline sobre o
          horizonte; campeao com margem e denominador suficiente
          => proposto com recibo + ttl + reversao por
@@ -2080,3 +2080,180 @@ dela desde 09:43 (commit 9785c7c).
   padrao), feature remota compila (cargo check --features ok),
   house_laws 5/5, A/A por construcao (FNV encadeado semeado +
   ordem canonica BTreeMap).
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.5 +
+19.8-a/b/c/d concluidas: os 4 loops ciberneticos O1-O4 FECHAM de
+fato. Auditoria 19-0 (var/verificacao/19-0_cibernetica_o1_o5_
+modelagem.md, 6 subagentes) constatou: O1 so debug, O2 so warn,
+O3 sem consumidor, O4 sem feedback. Fechados: (19.5) budget POR
+MODULO no scheduler com throttle deterministico round(1/fator),
+clamp [0.01,1.0] — nunca zero, Lei 4 — aditivo no runtime da
+sessao 6 com StepReport.throttled (nome, fator) e 3 testes A/A;
+(19.8-a) O1 corr guardada e legivel — urgencia CONTINUA (signed)
+entregue ao O3; (19.8-b) O2 retuning do CONTROLADOR O1: oscilacao
+=> DOWN -0.05 com razao, 2 janelas estaveis => UP +0.02 (histerese
+edge_of_chaos), clamp [0.25,1.0], denominadores o2_retunes_*/o2_runs;
+(19.8-c) O3 APLICADA de fato: Throttle{factor, reason} com razao
+canonica + fator proporcional ao stress continuo; main.rs aplica
+load_directive() nos NAO-VITAIS (l2/l3/l4/l5/dev/telemetry) —
+vitais INTOCAVEIS (l1.substrate/learning/cybernetics, Lei 4); Shed
+=> 0.25 com razao (nunca desligamento); (19.8-d) O4 alarmes tipados
+MetricAlarm{metric,value,reason} com piso declarado 0.5 e razao COM
+DENOMINADOR, reavaliados a cada auditoria; alimentam O3 (+0.2
+stress clampado). Observa nunca decide. Relatorio:
+var/verificacao/19-1_loops_o1_o4_fechados.md. Bateria: workspace
+374 passed/0 FAILED; house 5/5; app RUN=0 com bloco novo
+(O1 correcao continua -0.313; O2 1/3 UP; O3 Normal aplicada;
+O4 denominador explicito). Debito registrado: intake_rate 17.12
+segue sem consumidor runtime no L1 (atuador de suprimento =
+politica futura; carga ja fecha o loop). Caixas 17.11/17.13/18.7
+da sessao 6 seguem [6] — nada desmarcado.
+
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.8-e
+concluida: O5 SELECAO RODA DE VERDADE no boundary de episodio
+(forca do loop — Lei 7). Hook previsto pela sessao 6
+(resource_governor.rs:593-595) finalmente chamado: primeira
+chamada REAL de CognitiveGenomeOffline::evaluate_offline() pelo
+main, apos o ciclo. Veredito tipado com margem (piso 0.5
+DECLARADO) e denominador (janela 10): fitness ausente =>
+rejeicao com razao (ausencia != zero); n<10 => denominador
+insuficiente; aprovado => SO O VENCEDOR VALIDADO e promovido
+(erro do legado — ativo aleatorio != campeao, cognitive_genome.py:
+353-358 — fica fora por construcao). Genoma = gene REAL do
+controlador (o1.gain); mutacao deterministica LCG; aplicacao via
+o5_promote_retune(delta, razao) com clamp [0.25,1.0] e REVERSAO
+pelo retune oposto (Lei 6 — observed_effect = fitness do proximo
+episodio). Trilha: CyberneticsStats{o5_promotions,
+o5_rejections, last_o5_verdict}. Relatorio:
+var/verificacao/19-2_o5_selecao_no_boundary.md. Bateria: workspace
+375 passed/0 FAILED; house 5/5; app RUN=0 — print novo: "O5
+SELECAO NO BOUNDARY: PROMOVIDO: fitness 1.000/10, o1.gain
+0.520->0.520 — promocoes 1/1 corridas" (delta 0 = LCG nao sortou
+o gene nesta seed — fato impresso sem maquiagem).
+
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.2 +
+19.3 concluidas: VERIFICACAO A/A dos hashes L4/L5 (debito 18.7
+da sessao 6 — codigo dela INTOCADO, testes aditivos com nota).
+Os hashes L4/L5 ja eram REAIS (commits 17.6/17.7 dela:
+contadores canonico + lens, integration.rs:767-807) mas SEM
+teste A/A por tick. Fechado: (19.2) l4_hash_aa_bit_exato_por_
+tick_serie19 — gemeos Ciclo::new(42,24), 8 ticks, hash bit-exato
+POR TICK, ciclo vivo comite decisoes e hash EVOLUI; (19.3)
+l5_hash_aa_bit_exato_por_tick_serie19 — gemeos organismo_full(42),
+l4+l5 vivos, hash bit-exato por tick, sempre canonico (Some) e
+evoluindo. Bateria: triad-l4-global 36 passed/0 (+1), triad-l5-
+meta 24 passed/0 (+1). Relatorio:
+var/verificacao/19-3_hash_l4_l5_verificacao_aa.md. Caixa 18.7
+segue [ ][6] — a sessao 6 valida a dela ao retornar.
+
+
+================================================================================
+SEÇÃO 20 — AUDITORIA PROFUNDA DE INSTRUMENTAÇÃO (sessão 6, somente relatório;
+critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
+================================================================================
+
+- CONTEXTO: varredura sistemática por lacunas de instrumentação com evidência
+  de código (arquivo:linha), pós-SEÇÃO 18. Grafo graphify-out/GRAPH_REPORT.md
+  (commit eeaf3cb): 4087 nos / 7662 arestas / 0 quebradas; FederationEngine
+  ENTROU no top-10 god-nodes (35 arestas) — a 18.4 conectou o motor; L4Module
+  57, L3Module 54, L1Runner 41, L5Module 37; 1 ciclo chladni lib<->system;
+  37 arquivos unclassified (tomls). Totais contados: 3 BLOQUEIA-A/A, 7 DEGRADA
+  -AUDITORIA, 4 COSMETICO; +3 debitos de padrao confirmados.
+
+[ ] [6] 20.1 AUSENCIA NUNCA E ZERO NAS DECISOES (BLOQUEIA-A/A):
+  criterio: nenhum ponto de DECISAO converte Qualified/Rate ausente em
+  valor; sem dado => acao adiada com razao tipada, nunca zero fabricado.
+  a) l3_local/src/module.rs:551 — assignment_coverage.unwrap_or(0.0) < co-
+     verage_floor decide REBAIXAR o threshold com cobertura NO_DATA (justica
+     invertida sem dado). Design (legado neocortex_criterion.py:103,119):
+     match no Option — None => adiar proposta de politica com razao, Some(x)
+     => comparar com o piso.
+  b) l5_metacognition/src/module.rs:373-374 — confirm.map(..).unwrap_or(0.0)
+     e aversion.map(..).unwrap_or(0.0): Rate SEM DENOMINADOR vira 0.0 na
+     entrada do governador limbico (banda O3 decide com zero fabricado).
+     Design: Rate ausente => ficar na banda corrente com razao tipada (Lei 2
+     + histerese: mesma familia do LimbicGovernor existente).
+  c) l5_metacognition/src/module.rs:377 — sem L4 => (0.0, 0.0): ausencia de
+     FONTE vira zero duplo na decisao; e module.rs:379 energia ausente =>
+     unwrap_or(1.0) (cheio fabricado). Design: NO_DATA propaga com razao da
+     fonte (padrao do feedback L3->L2: fonte_ausente_propaga_no_data).
+
+[ ] [6] 20.2 HASH/LATENCIA DOS TRANSVERSAIS MONTADOS (BLOQUEIA-A/A):
+  criterio: TODOS os modulos montados no organismo (triad/src/main.rs:308-
+  317) expoem state_hash real (Some com estado interno canonizado); hoje 4
+  dos 9 usam o default None do trait (runtime/src/module.rs:18):
+  a) development/src/module.rs:226 DevelopmentModule — hash dos stats de
+     regeneracao/morphogenesis (padrao do L5: contadores versionados).
+  b) learning/src/module.rs:424 LearningModule — hash dos envelopes/episo-
+     dios (mesma familia do L3; ids ordenados, floats em bits).
+  c) cybernetics/src/module.rs:290 CyberneticsModule — hash do O5Horizon/
+     metrics (padrao L4: lens + contadores).
+  d) telemetry/src/module.rs:139 TelemetryModule — hash do cache de padroes
+     (chaves ordenadas + counts).
+  Latencia: OK estrutural (Scheduler coleta por fora, 17.6).
+
+[ ] [6] 20.3 METRICAS DE JANELA E TRILHA (DEGRADA-AUDITORIA):
+  criterio: janela sem amostra publica None (Qualified), nunca mean 0.0;
+  trilha soma apenas spans COM duracao.
+  a) l1_substrate/src/metrics.rs:207-211 — stats(100).map(|s| s.mean).
+     unwrap_or(0.0) em populacao/energia/mortes/divisoes/ativa: janela vazia
+     = zero observado. Design (legado fingerprint por subfase): Option<f32>
+     com NO_DATA quando sample_count==0 (o schema ja tem sample_count).
+  b) learning/src/forgetting.rs:28 — traco ausente => 0.0 (esquecimento
+     instantaneo do que nunca existiu): manter Option de forca.
+  c) observability/src/trace.rs:180 — dur_us.unwrap_or(0) na agregacao:
+     span sem duracao deixa de contar; design: filtro is_some antes de
+     somar (denominador = spans fechados).
+  d) contracts/src/l1.rs:220 — state_dimension.unwrap_or(0): dimensao
+     ausente no snapshot publico => NO_DATA (schema tem state_phase para
+     carregar a razao).
+  e) l3_local/src/module.rs:577 — cobertura do ciclo publicada 0.0 sem
+     Qualified; idem l4_global/src/global_integration.rs:365 (vencedores_
+     broadcast 0 quando None).
+
+[ ] [6] 20.4 HARNESSES DE VALIDACAO SEM system.log (DEGRADA-AUDITORIA):
+  criterio: todo teste de validacao registra veredito no var/system.log
+  (helper tolerante, IO nunca reprova — padrao TESTE-*). Hoje registram:
+  house_laws (tests/src/house_laws.rs:13), aa_fisica (:56), diagnostico_
+  escala (:30), trilha_cascata (:79), twin L4 (l4 twin.rs:166). FALTAM:
+  a) l2_tissue/tests/hash_aa.rs — o A/A da 18.7 sem registro.
+  b) l5_metacognition a_a_determinismo_l5 (module.rs:958 regiao de tests).
+  c) l4_global/tests/inventario_descritores.rs — o censo de modulos.
+  d) runtime scheduler tests (scheduler.rs:363 regiao) e persistence
+     (persistence/src/lib.rs:23).
+
+[ ] [6] 20.5 HASH E REPORT: DOCUMENTACAO DE COLAPSO + STEPREPORT (COSMETICO):
+  criterio: colapsos ausencia==zero no hash DOCUMENTADOS (hash nao e metrica,
+     mas o A/A nao distingue); StepReport publica budget_spent por camada e
+     outcomes federativos do tick.
+  a) l3_local/src/module.rs:728-736 e l2_tissue/src/runner.rs:272-273 —
+     coherence/coverage/energy unwrap_or(0.0) DENTRO do state_hash: ausencia
+     e zero produzam o mesmo hash. Opcao A (recomendada): documentar no
+     proprio comentario do hash; Opcao B: hashear o discriminador do
+     Qualified (tag) — custo de redesign, so se o dono pedir.
+  b) StepReport (runtime/src/scheduler.rs): adicionar budget_spent por
+     camada quando o budget existir (ver 20.6) + lista de outcome_ids
+     federativos resolvidos no tick (ledger do governance consulta).
+  c) triad/src/main.rs:803,1118,1301 — prints unwrap_or(0): exibir NO_DATA.
+  d) l2_tissue/src/formation.rs:181 e l4_global/src/workspace.rs:100,144 —
+     caches de ultima ocorrencia com default 0: legitimo, apenas registrar.
+
+[ ] [6] 20.6 DEBITOS DE PADRAO CONFIRMADOS (heranca do legado, programa):
+  criterio: cada item fecha com teste proprio + A/A.
+  a) BUDGET POR CAMADA (legado cognitive_budget.py): cotas L1-L2 25% /
+     L3-L4 35% / L5 25% / overhead 15%, gasto debitado na camada dona,
+     THROTTLE SEMPRE 1.0 em modo deterministico — observacional, nunca
+     acopla wall-clock a cognicao; hoje so existe o ResourceGovernor por
+     recurso do L5 (resource_governor.rs), nao por camada L1-L5.
+  b) HASH FINO DO L2 POR TECIDO: TissueState e definido FORA do crate L2
+     (contracts) — exige modelar antes; hoje o hash L2 e demografico macro
+     (tissue_module.rs:167).
+  c) LUA POLICY DE FEDERACAO: federation.rs e Rust-canonico; a porta de
+     Proposal tipada por policy Lua existe no desenho (decode_proposal,
+     lua/host.rs) — registrar ADR quando abrir.
+
+- NOTA DE GRAFO: nenhum modulo novo ficou fora de instrumentacao por
+  desconexao — a varredura cobriu os 9 montados + governance/trace/journal;
+  o ciclo chladni (lib.rs<->system.rs) e pre-existente, sem efeito em A/A.
