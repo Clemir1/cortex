@@ -1369,7 +1369,7 @@ ausencia ne zero; taxas com denominador; CPU canonica.
 Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
 ============================================================
 
-[ ] [6] 18.1 Auditoria Graphify + codigo: god-nodes, diagnose
+[x] [6] 18.1 Auditoria Graphify + codigo: god-nodes, diagnose
          multigraph, cadeias L1->L5 no GRAFO REAL vs CAMADA.txt
          -> CRITERIO: relatorio de lacunas com arquivo:linha,
          god-nodes top-12 listados, diagnose multigraph limpo
@@ -1429,3 +1429,20 @@ arbitration} (linha 1556-1560), FederationEngine/CAMADA:1143,
 EcologyEngine/CAMADA:1157, ArbitrationEngine/CAMADA:1172,
 TraceEngine/CAMADA:1058 (cascatas reconstruidas daqui).
 Subagentes do legado disparados (3 frentes, READ-ONLY).
+
+- SESSAO 6 (18.1 — auditoria Graphify, round 1 da SECAO 18):
+  GOD-NODES top-12 do grafo real: L4Module(56), ModuleDescriptor(55),
+  ClusterBio(54), L3Module(52), L1Runner(38), L5Module(36),
+  TissueModule(34), Qualified(34), ClusterModule(32), EventEnvelope(30),
+  TypedContext(29), LearningModule(27). LEITURA: as 5 camadas L1-L5
+  estao TODAS no top-6 — a cadeia cognitiva e DENSa no grafo real,
+  nao aspiracional; contratos (Qualified/EventEnvelope/TypedContext)
+  bem conectados (o barramento EventEnvelope existe e liga camadas).
+  DIAGNOSE multigraph: 3861 nos, 7052 arestas, ZERO quebradas/dangling
+  — grafo integro. LACUNA vs CAMADA.txt para as proximas caixas:
+  (a) TraceEngine (trace_id/span_id/parent_event, CAMADA:1058) NAO
+  existe no Rust — cascatas nao sao reconstrutiveis hoje; e o nucleo
+  das caixas 18.3/18.7; (b) arquétipos governance (federation/
+  ecology/arbitration) existem como esqueletos mas SEM populations/
+  protocolo vivos — caixas 18.4-18.6. => 18.1 FECHADA (criterio:
+  relatorio com god-nodes + diagnose limpo + lacunas com referencia).
