@@ -1374,7 +1374,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          -> CRITERIO: relatorio de lacunas com arquivo:linha,
          god-nodes top-12 listados, diagnose multigraph limpo
          (arestas quebradas = 0)
-[ ] [6] 18.2 Legado por subagentes READ-ONLY (3 frentes): (a)
+[x] [6] 18.2 Legado por subagentes READ-ONLY (3 frentes): (a)
          cadeias cognitivas + cascatas; (b) federacao inter-
          organismos; (c) ecologia de modulos + instrumentacao
          hash/_ms — como o legado FAZIA e VALIDAVA
@@ -1479,3 +1479,30 @@ Subagentes do legado disparados (3 frentes, READ-ONLY).
   dupla contagem wall+CPU; (3) ecologia LOCAL soberana por tecido
   (nichos, custo de nascimento, leis de diversidade/renovacao,
   predator de conceitos) — nunca global.
+
+- SESSAO 6 (18.2, relatorio 2/3 do legado — FEDERACAO, subagente
+  READ-ONLY): ACHADO DECISIVO: federação INTER-ORGANISMOS NAO
+  EXISTIA no legado. "Federação" era INTERNA: 5 federações de
+  MODULOS num único processo (Cognitiva/Biologica/Evolutiva/
+  Temporal/Social, federation_hub.py:1-17) negociando recursos por
+  CONTRACT NET PROTOCOL (rodadas proposta/acordo/troca, :663,201);
+  instância única FORÇADA por lock de processo (run_lock.py:1);
+  comunicação distribuída era STUB vazio (send→True/recv→None,
+  communicator.py:16-33); zero transportes reais. VALIDAÇÃO do
+  legado (o que vale OURO): contrato CAUSAL por troca (produtor/
+  sinal/consumidor/applied_value/observed_effect, :32-63) + SINK
+  AUDITAVEL (consumidor confirma leitura do valor EXATO aplicado,
+  federation_effects.py:35-58) + outcomes t+1/t+5 (esperado vs
+  observado vs erro) + CONTROLE ACTIVE/SHAM PAREADO (--federation-
+  sham, main.py:36). Armadilha documentada por eles mesmos:
+  "Federation Hub pode estar funcionando mais como agregador de
+  estado do que como federação causal" (analise_geral_v2.txt:647).
+  HERANCAS para 18.4: (1) federação interna CANÔNICA in-process:
+  Proposal tipada, Rust arbitra/valida/aplica, lock de instância
+  única; (2) herdar o PADRÃO DE VALIDAÇÃO, não o transporte: sem
+  applied_value+observed_effect+recibo do consumidor+outcome t+1/
+  t+5 NAO E federacão funcional — nunca métrica agregada; (3)
+  transporte remoto via trait FederationTransport com impl
+  InProcess padrão + feature-off; porta de aceitação = par active/
+  sham pareado A/A. => 18.2 FECHADA (3 relatórios com arquivo:linha
+  + decisões de herança explicitas herdar/fundir/descartar).
