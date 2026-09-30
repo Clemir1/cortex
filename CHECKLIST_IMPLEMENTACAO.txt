@@ -2054,3 +2054,29 @@ dela desde 09:43 (commit 9785c7c).
   preservam estado (recibo na trilha + denominador), active difere
   onde deve. Lua policy de federação segue como débito registrado
   (o desenho preferiu Rust-canônico; Proposal tipada coberta).
+
+- SESSAO 6 (18.4 [x] — DEBITOS FECHADOS, criterio por criterio):
+  (1) OUTCOME t+1/t+5 das trocas federativas: TradeRecord ganha
+  horizon_1/horizon_5/benefit_validated (Option<bool> — None ate
+  resolver, ausencia ne zero); PendingOutcome agenda pela identi-
+  dade estavel chain_hash (ledger faz trim, indice nao e identi-
+  dade) com baseline capturado pos-aplicacao; resolve_outcomes(
+  now) resolve MATCH (recurso oferecido persistiu no receptor) /
+  DRIFT (caiu abaixo); benefit_validated fecha SÓ com h1 E h5
+  observados (Lei 5) — teste com DRIFT real via troca (efeito
+  observavel, nunca estado editado por fora). (2) trait
+  FederationTransport (name + deliver) com impl InProcess PADRAO
+  (execucao local E a entrega) + porta remota #[cfg(feature =
+  "federation-remote")] DESLIGADA no Cargo.toml (stub tipado
+  recusa — recebeu sem mentir que entregou); entrega falhada =
+  recibo Rejected(TransportUnreachable{transport}) — nunca metrica
+  agregada. (3) ACTIVE/SHAM: set_sham/is_sham; sham rejeita com
+  razao tipada ShamControl SEM tocar estado (trajetoria intacta);
+  A/A da caixa: gemeos sham bit-identicos (recibos iguais, budgets
+  intactos) e o gemeo active DIFERE onde deve (aplicou — efeito
+  real comprovado). EVIDENCIAS: governance 26/26 (4 novos:
+  sham_controle_aa, outcomes_horizontes_fecham_sozinho,
+  outcomes_drift_nao_valida_beneficio, transport_in_process_
+  padrao), feature remota compila (cargo check --features ok),
+  house_laws 5/5, A/A por construcao (FNV encadeado semeado +
+  ordem canonica BTreeMap).
