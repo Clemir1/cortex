@@ -13,8 +13,9 @@
 
 use crate::cluster::ClusterBio;
 use crate::config as cfg;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use tracing::trace;
 
@@ -115,7 +116,12 @@ impl LocalGraph {
         }
     }
 
-    fn recompute_neighbors_of(&mut self, idx: usize, clusters: &[ClusterBio]) {
+    /// Adjacência de `idx` COMPUTADA (pura: lê spatial + posições,
+    /// retorna lista ordenada). 17.6: extraída para permitir rayon
+    /// nos movidos sem estado mutável compartilhado — a função não
+    /// toca em `self`, então o resultado é o mesmo em qualquer ordem
+    /// ou nível de paralelismo (determinismo por construção).
+    fn compute_neighbors(&self, idx: usize, clusters: &[ClusterBio]) -> Vec<usize> {
         let pos = clusters[idx].position;
         let cands = self.spatial.candidates(idx, pos);
         let mut nb: Vec<usize> = cands
@@ -124,19 +130,28 @@ impl LocalGraph {
             .collect();
         nb.sort_unstable();
         nb.dedup();
-        self.neighbors[idx] = nb;
+        nb
+    }
+
+    fn recompute_neighbors_of(&mut self, idx: usize, clusters: &[ClusterBio]) {
+        self.neighbors[idx] = self.compute_neighbors(idx, clusters);
     }
 
     /// Reconstrução completa (gênese e compactação de população).
+    /// 17.6: recomputes são independentes após TODOS os inserts (o
+    /// hash está completo e as escritas vão para índices distintos)
+    /// — rayon puro com commit por atribuição; bit-idêntico ao
+    /// caminho serial (mesma função pura `compute_neighbors`).
     pub fn rebuild(&mut self, clusters: &[ClusterBio]) {
         self.spatial = SpatialHash::new(self.radius);
-        self.neighbors = vec![Vec::new(); clusters.len()];
         for (i, c) in clusters.iter().enumerate() {
             self.spatial.insert(i, c.position);
         }
-        for i in 0..clusters.len() {
-            self.recompute_neighbors_of(i, clusters);
-        }
+        let lists: Vec<Vec<usize>> = (0..clusters.len())
+            .into_par_iter()
+            .map(|i| self.compute_neighbors(i, clusters))
+            .collect();
+        self.neighbors = lists;
         self.rebuild_count += 1;
         trace!(clusters = clusters.len(), "grafo local reconstruído");
         self.refresh_mean_degree();
@@ -163,9 +178,15 @@ impl LocalGraph {
             self.spatial.remove_stale(i);
             self.spatial.insert(i, clusters[i].position);
         }
-        // 3. MOVIDOS primeiro: adjacência nova (vizinhos reais no raio).
-        for &i in moved {
-            self.recompute_neighbors_of(i, clusters);
+        // 3. MOVIDOS primeiro (PARALELO — 17.6): cada lista nova é
+        // computada de forma pura sobre o hash já re-indexado e
+        // comitada em ordem canônica; sem escrita concorrente.
+        let mut lists: Vec<Vec<usize>> = moved
+            .par_iter()
+            .map(|&i| self.compute_neighbors(i, clusters))
+            .collect();
+        for (t, &i) in moved.iter().enumerate() {
+            self.neighbors[i] = std::mem::take(&mut lists[t]);
         }
         // 4. Vínculos dos AFETADOS com os MOVED apenas (17.6): quem
         // não se moveu mantém posição — só as ARESTAS com os movidos
@@ -244,7 +265,7 @@ impl LocalGraph {
     }
 
     /// Amostra até `k` vizinhos para o update_state (legado: min 1, ratio 4).
-    pub fn sample_neighbors(&self, idx: usize, rng: &mut StdRng) -> Vec<usize> {
+    pub fn sample_neighbors(&self, idx: usize, rng: &mut SmallRng) -> Vec<usize> {
         let nbs = self.neighbors_of(idx);
         if nbs.is_empty() {
             return Vec::new();
@@ -283,7 +304,7 @@ mod tests {
     use triad_foundation::id::ClusterId;
 
     fn clusters_at(positions: &[[f64; 3]]) -> Vec<ClusterBio> {
-        let mut rng = StdRng::seed_from_u64(7);
+        let mut rng = SmallRng::seed_from_u64(7);
         positions
             .iter()
             .map(|&p| {
@@ -313,7 +334,7 @@ mod tests {
     #[test]
     fn incremental_igual_rebuild_total() {
         // Propriedade: update incremental == rebuild completo.
-        let mut rng = StdRng::seed_from_u64(99);
+        let mut rng = SmallRng::seed_from_u64(99);
         let mut cs = clusters_at(&[]);
         for _ in 0..40 {
             let mut c = ClusterBio::new(ClusterId::new(), 0, &mut rng);
@@ -347,7 +368,7 @@ mod tests {
     /// ordenada nos vizinhos) é bit-idêntico ao rebuild completo.
     #[test]
     fn add_cluster_igual_ao_rebuild() {
-        let mut rng = StdRng::seed_from_u64(31);
+        let mut rng = SmallRng::seed_from_u64(31);
         let mut cs: Vec<ClusterBio> = (0..60)
             .map(|_| {
                 let mut c = ClusterBio::new(ClusterId::new(), 0, &mut rng);
@@ -385,7 +406,7 @@ mod tests {
     /// generosa: 500 ms.
     #[test]
     fn add_cluster_30k_cabe_no_tick() {
-        let mut rng = StdRng::seed_from_u64(42);
+        let mut rng = SmallRng::seed_from_u64(42);
         let n = 30_000;
         let mut cs: Vec<ClusterBio> = (0..n)
             .map(|_| ClusterBio::new(ClusterId::new(), 0, &mut rng))
@@ -411,7 +432,7 @@ mod tests {
         let cs = clusters_at(&positions); // todos próximos
         let mut g = LocalGraph::new(cs.len());
         g.rebuild(&cs);
-        let mut rng = StdRng::seed_from_u64(1);
+        let mut rng = SmallRng::seed_from_u64(1);
         let n_total = g.neighbors_of(4).len();
         assert!(n_total >= 2);
         let sample = g.sample_neighbors(4, &mut rng);

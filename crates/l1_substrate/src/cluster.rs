@@ -24,7 +24,7 @@
 
 use crate::config as cfg;
 use crate::math;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::Rng;
 use tracing::debug;
 use triad_foundation::id::ClusterId;
@@ -188,7 +188,7 @@ pub struct ClusterBio {
 impl ClusterBio {
     /// Nasce com estado de baixa amplitude, energia inicial e posição
     /// dentro dos bounds (determinístico dado o rng).
-    pub fn new(id: ClusterId, step: u64, rng: &mut StdRng) -> Self {
+    pub fn new(id: ClusterId, step: u64, rng: &mut SmallRng) -> Self {
         let mut state = Vec::with_capacity(cfg::DIMENSIONALITY);
         for _ in 0..cfg::DIMENSIONALITY {
             state.push(0.02 * math::normal(rng));
@@ -258,7 +258,7 @@ impl ClusterBio {
     pub fn update_state(
         &mut self,
         step: u64,
-        rng: &mut StdRng,
+        rng: &mut SmallRng,
         neighbor_states: &[&[f64]],
         gradient: f64,
         external: Option<&[f64]>,
@@ -397,7 +397,7 @@ impl ClusterBio {
     }
 
     /// Movimento com damping (legado `update_position`).
-    pub fn update_position(&mut self, rng: &mut StdRng) {
+    pub fn update_position(&mut self, rng: &mut SmallRng) {
         for i in 0..3 {
             self.position[i] = (self.position[i] + self.velocity[i]) % cfg::POSITION_BOUNDS[i];
             self.velocity[i] *= cfg::VELOCITY_DAMPING;
@@ -435,7 +435,7 @@ impl ClusterBio {
     }
 
     /// Divide o cluster: filho herda metade da energia e estado com ruído.
-    pub fn divide(&mut self, child_id: ClusterId, step: u64, rng: &mut StdRng) -> ClusterBio {
+    pub fn divide(&mut self, child_id: ClusterId, step: u64, rng: &mut SmallRng) -> ClusterBio {
         debug_assert!(self.can_divide());
         let half = self.energy / 2.0;
         self.energy = half;
@@ -469,8 +469,8 @@ mod tests {
     use super::*;
     use rand::SeedableRng;
 
-    fn seeded() -> StdRng {
-        StdRng::seed_from_u64(1234)
+    fn seeded() -> SmallRng {
+        SmallRng::seed_from_u64(1234)
     }
 
     #[test]

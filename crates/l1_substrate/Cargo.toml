@@ -21,7 +21,9 @@ triad-foundation = { workspace = true }
 triad-runtime = { path = "../runtime" }
 triad-contracts = { workspace = true }
 triad-chladni = { path = "../chladni" }
-rand = { workspace = true }
+# 17.6 — SmallRng (Xoshiro/PCG): ~20× mais rápido por draw que o
+# ChaCha12 do StdRng; a física @30K consumia ~300 draws por cluster.
+rand = { workspace = true, features = ["small_rng"] }
 uuid = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }

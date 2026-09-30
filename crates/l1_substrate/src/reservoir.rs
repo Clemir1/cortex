@@ -19,7 +19,7 @@
 use crate::cluster::ClusterBio;
 use crate::config as cfg;
 use crate::math;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::Rng;
 use std::collections::VecDeque;
 use tracing::{debug, trace};
@@ -86,7 +86,7 @@ pub struct HotmReservoir {
 }
 
 impl HotmReservoir {
-    pub fn new(rng: &mut StdRng) -> Self {
+    pub fn new(rng: &mut SmallRng) -> Self {
         let dim = cfg::RESERVOIR_MEMORY_DIM;
         let mut w = vec![0.0; dim * dim];
         // Inicialização esparsa determinística (legado: 10% densidade).
@@ -135,7 +135,7 @@ impl HotmReservoir {
     /// Hebbian REAL sobre a atividade projetada `a` (short_memory médio
     /// da amostra): `W_ij += eta·a_i·a_j` com máscara esparsa, clip e
     /// decaimento. **Retorna o delta medido (norma Frobenius)**.
-    fn hebbian_step(&mut self, a: &[f64], rng: &mut StdRng) -> f64 {
+    fn hebbian_step(&mut self, a: &[f64], rng: &mut SmallRng) -> f64 {
         let d = self.dim;
         let mut delta_sq = 0.0_f64;
         for i in 0..d {
@@ -168,7 +168,7 @@ impl HotmReservoir {
         &mut self,
         clusters: &[ClusterBio],
         order: &[usize],
-        rng: &mut StdRng,
+        rng: &mut SmallRng,
     ) -> ReadoutResult {
         self.steps += 1;
         let pop = order.len();
@@ -303,7 +303,7 @@ mod tests {
     use triad_foundation::id::ClusterId;
 
     fn clusters(n: usize) -> Vec<ClusterBio> {
-        let mut rng = StdRng::seed_from_u64(21);
+        let mut rng = SmallRng::seed_from_u64(21);
         (0..n)
             .map(|_| {
                 let mut c = ClusterBio::new(ClusterId::new(), 0, &mut rng);
@@ -318,7 +318,7 @@ mod tests {
         // A prova que faltou no legado: norm_delta > 0.
         let cs = clusters(64);
         let order: Vec<usize> = (0..64).collect();
-        let mut rng = StdRng::seed_from_u64(3);
+        let mut rng = SmallRng::seed_from_u64(3);
         let mut r = HotmReservoir::new(&mut rng);
         let out = r.update(&cs, &order, &mut rng);
         assert!(matches!(out.plasticity, PlasticityStatus::Hebbian { .. }));
@@ -330,7 +330,7 @@ mod tests {
 
     #[test]
     fn sem_populacao_e_bypass_com_razao() {
-        let mut rng = StdRng::seed_from_u64(4);
+        let mut rng = SmallRng::seed_from_u64(4);
         let mut r = HotmReservoir::new(&mut rng);
         let out = r.update(&[], &[], &mut rng);
         assert!(matches!(
@@ -352,7 +352,7 @@ mod tests {
     fn pesos_ficam_no_clip_e_amostro_respeita_teto() {
         let cs = clusters(1000);
         let order: Vec<usize> = (0..1000).collect();
-        let mut rng = StdRng::seed_from_u64(8);
+        let mut rng = SmallRng::seed_from_u64(8);
         let mut r = HotmReservoir::new(&mut rng);
         for _ in 0..10 {
             r.update(&cs, &order, &mut rng);

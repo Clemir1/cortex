@@ -34,8 +34,9 @@ use crate::metrics::L1Metrics;
 use crate::reservoir::{HotmReservoir, ReadoutResult};
 use crate::state_matrix::ClusterStateMatrix;
 use crate::survival::{CollectiveEmergency, SurvivalDecision, SurvivalState};
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
 use triad_contracts::l1::{L1Snapshot, L1StatePhase, SamplePolicy};
 use triad_foundation::id::ClusterId;
 use tracing::debug;
@@ -63,7 +64,7 @@ pub struct L1StepReport {
 /// Runner do substrato L1.
 pub struct L1Runner {
     pub seed: u64,
-    pub rng: StdRng,
+    pub rng: SmallRng,
     pub step: u64,
     /// Configuração vigente (importada de `config/default.toml [l1.*]`).
     pub config: cfg::L1Config,
@@ -97,7 +98,7 @@ impl L1Runner {
         initial_population: usize,
         config: cfg::L1Config,
     ) -> Self {
-        let mut rng = StdRng::seed_from_u64(seed);
+        let mut rng = SmallRng::seed_from_u64(seed);
         let n = initial_population.min(config.morphogenesis.max_population);
         let mut clusters = Vec::with_capacity(n);
         for _ in 0..n {
@@ -145,7 +146,7 @@ impl L1Runner {
             survival,
             graph,
             matrix,
-            reservoir: HotmReservoir::new(&mut StdRng::seed_from_u64(seed ^ 0x5eed)),
+            reservoir: HotmReservoir::new(&mut SmallRng::seed_from_u64(seed ^ 0x5eed)),
             energy,
             emergency: CollectiveEmergency::default(),
             ledger,
@@ -198,20 +199,70 @@ impl L1Runner {
             })
             .collect();
 
-        // Pré-coleta vizinhos (estados clonados — sem aliasing de mutação).
-        let mut moved: Vec<usize> = Vec::with_capacity(due.len());
-        for &i in &due {
-            let nbs = self.graph.sample_neighbors(i, &mut self.rng);
-            let states: Vec<Vec<f64>> = nbs.iter().map(|&j| self.clusters[j].state.clone()).collect();
-            let refs: Vec<&[f64]> = states.iter().map(|v| v.as_slice()).collect();
-            self.clusters[i].update_state(s, &mut self.rng, &refs, 0.0, None);
-            self.clusters[i].update_position(&mut self.rng);
-            moved.push(i);
-        }
+        // Pré-coleta vizinhos + física (17.6): PARALELA por due com rng
+        // DERIVADO de (seed, id, step) — determinismo POR CONSTRUÇÃO:
+        // cada cluster tem seu próprio stream, então o resultado não
+        // depende da ordem de execução ⇒ A/A bit-exato entre runs E
+        // entre níveis de paralelismo do rayon (ver teste
+        // `fisica_paralela_deterministica_entre_threads`). Dois está-
+        // gios SEM clones de ClusterBio: (a) snapshot PARALELO e puro
+        // dos vizinhos de cada due (buffer plano: 1 alloc por due);
+        // (b) física IN-PLACE em `par_iter_mut` — cada due muta só o
+        // seu cluster e lê apenas o snapshot já materializado.
+        let seed = self.seed;
+        // Streams separados por PROPÓSITO (tag): a amostragem de vi-
+        // zinhos e a mutação de estado não compartilham draws (sem
+        // correlação artificial), cada uma 100% determinística por
+        // (seed, id, step, tag).
+        let stream_for = |id: ClusterId, step: u64, tag: u64| -> u64 {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::hash::DefaultHasher::new();
+            seed.hash(&mut h);
+            id.hash(&mut h);
+            step.hash(&mut h);
+            tag.hash(&mut h);
+            h.finish()
+        };
+        let d = cfg::DIMENSIONALITY;
+        // (a) snapshots (puros): `due` vem em ordem canônica — o vec
+        // final alinha posição-t com due[t].
+        let snapshots: Vec<(Vec<usize>, Vec<f64>)> = due
+            .par_iter()
+            .map(|&i| {
+                let id = self.clusters[i].id;
+                let mut rng = SmallRng::seed_from_u64(stream_for(id, s, 0xA5));
+                let nbs = self.graph.sample_neighbors(i, &mut rng);
+                let k = nbs.len();
+                let mut flat: Vec<f64> = vec![0.0; k * d];
+                for (t, &j) in nbs.iter().enumerate() {
+                    flat[t * d..(t + 1) * d].copy_from_slice(&self.clusters[j].state);
+                }
+                (nbs, flat)
+            })
+            .collect();
+        let due_set: std::collections::HashSet<usize> = due.iter().copied().collect();
+        // (b) física in-place: due_set é o mapa posição→snapshot.
+        let snaps: Vec<&(Vec<usize>, Vec<f64>)> = snapshots.iter().collect();
+        self.clusters
+            .par_iter_mut()
+            .enumerate()
+            .filter(|(i, _)| due_set.contains(i))
+            .for_each(|(i, c)| {
+                let t = due
+                    .binary_search(&i)
+                    .expect("due contém todo índice filtrado");
+                let flat: &[f64] = &snaps[t].1;
+                let k = flat.len() / d;
+                let refs: Vec<&[f64]> = (0..k).map(|u| &flat[u * d..(u + 1) * d]).collect();
+                let mut rng = SmallRng::seed_from_u64(stream_for(c.id, s, 0x5A));
+                c.update_state(s, &mut rng, &refs, 0.0, None);
+                c.update_position(&mut rng);
+            });
+        let moved: Vec<usize> = due;
         if !moved.is_empty() {
             self.graph.update_positions(&self.clusters, &moved);
         }
-        let active_executed = due.len();
+        let active_executed = moved.len();
 
         // ---- 2. Energia: custo metabólico + intake O1 ----
         let emergency_bonus = self.emergency.energy_bonus();

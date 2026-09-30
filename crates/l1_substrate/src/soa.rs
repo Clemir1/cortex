@@ -174,7 +174,7 @@ mod tests {
     use triad_foundation::id::ClusterId;
 
     fn clusters(n: usize) -> Vec<ClusterBio> {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(21);
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(21);
         (0..n).map(|_| ClusterBio::new(ClusterId::new(), 0, &mut rng)).collect()
     }
 

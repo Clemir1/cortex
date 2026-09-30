@@ -1,4 +1,4 @@
-﻿=====================================================================
+=====================================================================
  TRIAD_AEE — CHECKLIST DE IMPLEMENTAÇÃO
  Coordenação: SESSÃO 6 (orquestradora) e SESSÃO 7 (colaboradora)
 =====================================================================
@@ -361,9 +361,9 @@ sessao 6; nota honesta DELA na secao 14: motor pronto p/ plugar):
 
 CAMADAS DE PONTE RESTANTES (config/README: mecanismo real primeiro,
 config depois -- nada teatral):
-[ ] [7] 16.5 [learning] transversal real: CreditAssigner consumindo
+[x] [7] 16.5 [learning] transversal real: CreditAssigner consumindo
          envelopes fechados do L4 (credito por modulo COM denominador)
-[ ] [7] 16.6 [development] estagios reais (P3 da 13-0): banda por
+[x] [7] 16.6 [development] estagios reais (P3 da 13-0): banda por
          estagio consumindo o sinal l1.substrate.chladni (JA
          publicado aditivo pela sessao 6 em 13.5)
 [x] [7] 16.7 [governance] com efeito observado (P5): Lei 6 revert
@@ -375,7 +375,7 @@ config depois -- nada teatral):
          camadas acima ganharem mecanismo (a chave nunca e apagada)
 
 PERSISTENCIA E ESCADA DE EVIDENCIA:
-[ ] [7] 16.10 Cross-run persistence (P4 da 13-0): ledgers/recibos/
+[x] [7] 16.10 Cross-run persistence (P4 da 13-0): ledgers/recibos/
          envelopes fechados sobrevivendo entre execucoes (serde em
          var/; replay com verificacao de procedencia)
 [x] [6] 16.11 E5 com gemea bit-identica por decisao L4 (sham pareado
@@ -499,12 +499,12 @@ consolidada com o que o CAMADA.txt pede e a auditoria validar):
          aqui (a 16.2 fecha L3; falta L2/L1 via credit)
 
 FASE 3 -- INFRAESTRUTURA DE ESCALA E TEMPO (distribuido/evolutivo):
-[ ] [7] 17.9 T/PERSISTENCE (absorve a 16.10): Checkpointer,
+[x] [7] 17.9 T/PERSISTENCE (absorve a 16.10): Checkpointer,
          Snapshot, Journal, Restore, Migration, Lineage, CrossRun --
          ledgers/recibos/envelopes sobrevivendo entre execucoes com
          verificacao de procedencia (serde em var/; sem banco
          prematuro)
-[ ] [7] 17.10 T/OBSERVABILITY: TraceEngine (trace_id/span_id/
+[x] [7] 17.10 T/OBSERVABILITY: TraceEngine (trace_id/span_id/
          parent_event -- cascatas reconstruiveis) + CausalProvenance
          + DeltaTelemetry/Aggregator -- a auditoria de eventos e o
          embriao; telemetria de performance com denominador
@@ -774,3 +774,97 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
   Telemetria permanente: StepReport.module_latency (perfil por
   camada em todo passo do app); teste diagnostico_escala.rs mantido
   como ferramenta de auditoria; workspace verde, house_laws 5/5.
+
+--- Rodada (sessao 7) — 16.5 concluida: T/learning REAL montado no app (7/7
+canonico): ponte read-only ao closed_log do L4 (so cicos fechados, Lei 5),
+credito POR MODULO com clamp +-max_update_rate, taxas com denominador
+(module_rates: 64/64 = 100,0% l3.prediction no app), esquecimento com decay
+0.0005 + poda INTERVALADA (PRUNE_INTERVAL=64 — janela de acumulo; prova no
+app: traco vivo no fim do run), eta adaptativo nunca suspenso (Lei 4),
+ausencia contada quando sem fonte. [learning] injetada 1:1. Relatorio:
+var/verificacao/17-8_learning_credito_real.md. Bateria: crate 6 testes +
+house 5/5 + app RUN=0; workspace aguarda l2_tissue da sessao 6 fechar
+edicao (StdRng->SmallRng em teste dela).
+
+--- Rodada (sessao 7) — 16.6 concluida: estagios reais EMBRYO->CLEAVAGE->
+CORTICALIZATION->MATURE por BANDA de ressonancia REAL (sinal
+l1.substrate.chladni; bandas calibradas POR EVIDENCIA: res real 0.564-0.568
+ medida no app) + dwell_steps=20 consecutivos; ausencia CONGELA (Lei 2,
+ nunca retrocede); orçamento de regeneracao por estagio (2/4/6/8, efeito
+REAL no organismo); corticalizacao com METRICAS VIVAS (energia media real
+dos clusters via shared_runner, estabilidade=ressonancia, capacidade
+vivos/total — fim dos literais 0.5/0.5/0.1), 1 iteracao por tick orçada;
+[development.stages] injetada; montado no app => inventario 7/7 CANONICO
+(T-dev, E3). Evidencia: MATURE com 3 avancos em 65 ticks (ticks ~20/40/60).
+Relatorio: var/verificacao/16-6_estagios_development.md.
+
+--- Rodada (sessao 7) — 17.8 PARCIAL (nao marcada): o nucleo REAL existe e
+esta montado (crate triad-learning, caixa 16.5): consumo de cicos fechados
+L4, credito por modulo COM denominador, prediction_error via net_effect
+(actual-sham do L4), forgetting, eta. FALTA para fechar a caixa: update
+downstream (L4 outcome -> L3/L2/L1 via credit — a cadeia do CAMADA.txt),
+transfer, horizonte t+5 (validacao multi-passo). Ver
+var/verificacao/17-8_learning_credito_real.md.
+
+--- Rodada (sessao 7) — 16.10 + 17.9 concluidas (17.9 absorve a 16.10): crate
+triad-persistence REAL — Snapshot serde completo (cicos fechados L4 com
+verified_future_effect + learning[tracos/taxas] + estagio do development),
+escrita ATOMICA (temp+sync+rename), schema versionado
+triad.persistence.v1, checksum FNV-1a-64 sobre o closed_log, REPLAY de
+procedencia (taxas por modulo reproduzem bit-identicas — Diverged rejeita),
+erros TIPADOS (Absent/SchemaUnknown/ChecksumMismatch/Corrupt/Io/
+ProvenanceDiverged; ausencia = Ok(None) limpo, Lei 2 em arquivo). App:
+boot restaura o snapshot mais recente de var/runs/ (procedencia VERIFICADA
+— rejeitada = boot limpo com aviso, nunca boota duvidoso) e o fim salva
+snapshot_tickNNNNNN_seedSS.json. PROVA cross-run no app (2 runs): run 1
+"nenhum snapshot — ausencia != zero, ontogenia do embrião" -> MATURE 3
+avancos -> salva (64 registros, checksum 6ac4204dc56bcde1); run 2
+"restaurado — 64 replayados, 1 modulo batido, estagio MATURE retomado".
+Bateria: crate 6/6 (corrupcao adulterada rejeitada; A/A mesma historia =>
+mesmo checksum), house 5/5, workspace 34 ok-blocks EXCLUINDO triad-l2-tissue
+(em edicao concorrente pela sessao 6: formation.rs:302 StdRng->SmallRng,
+territorio dela — retomo a bateria completa quando fechar), 2x app RUN=0.
+Relatorio: var/verificacao/17-9_persistence_cross_run.md.
+
+--- Rodada (sessao 7) — 17.10 concluida: TraceEngine em
+crates/observability/src/trace.rs (arquivo NOVO — SystemJournal da
+sessao 6 intocado: Journal = diario persistido, TraceEngine = procedencia
+causal da execucao em MEMORIA). trace_id/span_id/parent_span
+deterministicos (FNV-1a-64 no crate, A/A pela seed); cascata
+RECONSTRUIVEL tick->modulo->evento (cascade_of + render_cascade com
+d=? para ausencia); pai inexistente rejeitado TIPADO
+(UnknownParent/UnknownSpan); DeltaTelemetry: snapshot por nome
+(n_spans, us) e delta entre janelas com us MEDIO POR SPAN COM
+DENOMINADOR (Dspans=0 => media AUSENTE, nunca zero). App: 520 spans em
+65 ticks (8,0/tick); delta 1a->2a metade: l1.substrate 2795,1 us/span
+(33 spans), l2 1502,8, l4 987,7, l3 916,5, learning 41,8, development
+32,5, l5 10,2; cascata amostral tick:65 -> l1.substrate 1649us.
+Bateria: crate 7/7, house 5/5, workspace 34 ok (excl. l2_tissue em
+edicao da sessao 6), app RUN=0. Relatorio:
+var/verificacao/17-10_traceengine_cascata.md.
+
+- SESSAO 6 (17.6, round 7 — PARALELISMO DETERMINISTICO DA FISICA):
+  pequena troca de fundo: StdRng->SmallRng (feature small_rng no l1
+  e l2; ~20x mais rapido por draw; ZERO testes congelados quebraram
+  — 51 l1 verdes: os testes da casa sao de PROPRIEDADE). O fix do
+  round 6 (grafo) havia levado os pares @30K para 0,5-0,73 s; o custo
+  restante era a fisica serial. AGORA: fase 1 PARALELA por due em
+  dois estagios sem clone de ClusterBio — (a) snapshot puro e
+  paralelo dos vizinhos (buffer plano) e (b) fisica IN-PLACE em
+  par_iter_mut; RNG DERIVADO de (seed, id, step, tag) por proposito:
+  determinismo POR CONSTRUCAO (o resultado nao depende da ordem nem
+  do nivel de paralelismo). Prova: teste novo
+  aa_fisica_paralela.rs — bits identicos com pools de 1, 4 e 8
+  threads + run-vs-run bit-exato. Grafo tambem paralelo: recompute
+  dos movidos e rebuild completo via fn PURA compute_neighbors com
+  commit serial (bit-identico ao serial, 5/5 graph). NUMEROS @30K
+  (release, hardware do dono): pares 5,4 s -> 92-166 ms; impares
+  14-20 ms; transiente de juventude 0,82 -> ~0,13 s; APP E2E 65
+  passos: 204,7 s -> 7,4 s (28x; ~114 ms/tick com l2-l5+chladni+
+  regeneration; passo com compactacao TOTAL=158 ms). Workspace
+  verde, house_laws 5/5, twin/l4 A/A ok. DEBITO FINO de latencia
+  para os 50 ms/tick da 17.1 (media L1 pura hoje ~70 ms): arestas
+  seriais do grafo (~20-30 ms), fases 2-7 seriais O(n) (~15-20 ms),
+  matrix.rebuild na compactacao; todos ja mapeados para o mesmo
+  padrao par_iter_mut + commit serial. 17.6 segue [ ] ate a media
+  fechar 50 ms — app 30K VERDE funcional desde ja.

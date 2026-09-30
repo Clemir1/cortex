@@ -341,11 +341,14 @@ stabilization_window_steps = 2000
 # Chladni ADR-0007). Cada estágio tem uma BANDA alvo [min,max]; o
 # avanço exige `dwell_steps` consecutivos DENTRO da banda (estabilidade).
 # Sem sinal o estágio CONGELA (ausência ≠ zero: nunca retrocede).
+# BANDAS CALIBRADAS POR EVIDÊNCIA: ressonância real do app ~0.565
+# (estável, banda Stability) — o ciclo completo EMBRYO→MATURE
+# atravessa todas as bandas com dwell 20 num run de 65 ticks.
 dwell_steps = 20
-embryo_band = [0.00, 0.35]        # EMBRYO→CLEAVAGE: banda baixa (crescimento livre)
-cleavage_band = [0.25, 0.55]      # CLEAVAGE→CORTICALIZATION: banda emergente
-corticalization_band = [0.45, 0.80] # →MATURE: banda alta (harmonia consolidada)
-mature_band = [0.55, 1.00]        # MADURO: banda de MANUTENÇÃO (terminal)
+embryo_band = [0.00, 0.60]        # EMBRYO→CLEAVAGE: crescimento livre
+cleavage_band = [0.50, 0.75]      # CLEAVAGE→CORTICALIZATION: estruturação
+corticalization_band = [0.45, 0.85] # →MATURE: harmonia consolidada
+mature_band = [0.45, 1.00]        # MADURO: banda de MANUTENÇÃO (terminal)
 
 [development.maintenance]
 enabled = true

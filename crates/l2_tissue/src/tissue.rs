@@ -238,7 +238,7 @@ mod tests {
 
     /// Cluster de teste com estado controlado.
     fn cluster_with(id: ClusterId, energy: f64, state: Vec<f64>) -> ClusterBio {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(9);
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(9);
         let mut c = ClusterBio::new(id, 0, &mut rng);
         c.state = state;
         c.energy = energy;

@@ -1,11 +1,11 @@
 //! Matemática local de L1 — determinística, sem dependências além de `rand`
 //! (Box-Muller próprio; o legado usava `rand_distr` implícito do numpy).
 
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::Rng;
 
-/// Normal(0,1) via Box-Muller — determinístico dado o `StdRng` semeado.
-pub fn normal(rng: &mut StdRng) -> f64 {
+/// Normal(0,1) via Box-Muller — determinístico dado o `SmallRng` semeado.
+pub fn normal(rng: &mut SmallRng) -> f64 {
     let mut u1 = rng.gen::<f64>();
     while u1 <= f64::EPSILON {
         u1 = rng.gen::<f64>();
@@ -50,8 +50,8 @@ mod tests {
 
     #[test]
     fn normal_e_reprodutivel_com_mesma_seed() {
-        let mut a = StdRng::seed_from_u64(42);
-        let mut b = StdRng::seed_from_u64(42);
+        let mut a = SmallRng::seed_from_u64(42);
+        let mut b = SmallRng::seed_from_u64(42);
         for _ in 0..100 {
             assert_eq!(normal(&mut a), normal(&mut b));
         }

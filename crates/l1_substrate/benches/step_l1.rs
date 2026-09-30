@@ -61,7 +61,7 @@ fn kernel_dim_sums_17_3(c: &mut Criterion) {
     let mut group = c.benchmark_group("kernel_dim_sums/n=4096");
     group.warm_up_time(Duration::from_secs(1));
     group.measurement_time(Duration::from_secs(6));
-    let mut rng = rand::rngs::StdRng::seed_from_u64(21);
+    let mut rng = rand::rngs::SmallRng::seed_from_u64(21);
     let clusters: Vec<l1::ClusterBio> =
         (0..n).map(|_| l1::ClusterBio::new(ClusterId::new(), 0, &mut rng)).collect();
     let sample: Vec<usize> = (0..n).collect();

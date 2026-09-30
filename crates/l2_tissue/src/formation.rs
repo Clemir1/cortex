@@ -1,4 +1,4 @@
-﻿//! FormaÃ§Ã£o de tecidos por afinidade â€” determinÃ­stica (ordem canÃ´nica da
+//! FormaÃ§Ã£o de tecidos por afinidade â€” determinÃ­stica (ordem canÃ´nica da
 //! matriz do L1, first-fit por ordem de formaÃ§Ã£o, ids de tecido derivados
 //! de seed+sequÃªncia). Sem rng: a organizaÃ§Ã£o Ã© funÃ§Ã£o pura do estado.
 //!
@@ -294,7 +294,7 @@ mod tests {
     }
 
     fn substrato(n: usize, estado: f64) -> (Vec<ClusterBio>, HashMap<ClusterId, usize>) {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(3);
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(3);
         let mut clusters = Vec::with_capacity(n);
         let mut index = HashMap::new();
         for k in 0..n {
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn estados_opostos_formam_tecidos_distintos() {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(5);
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(5);
         let mut clusters = Vec::new();
         let mut index = HashMap::new();
         for k in 0..6 {
@@ -417,7 +417,7 @@ mod tests {
         // tecidos; o teto estrutural Ã© 32 â€” o excedente fica
         // nÃ£o-vinculado (estado honesto, nÃ£o erro fabricado).
         f.params.max_members = 1;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(7);
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(7);
         let mut clusters = Vec::new();
         let mut index = HashMap::new();
         for k in 0..40u64 {
