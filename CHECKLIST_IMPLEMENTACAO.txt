@@ -543,7 +543,7 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
 [x] [6] 17.3 Paralelismo deterministico da fisica L1: rayon par_chunks
         com reducao em ordem canonica (sem lock global no hot path),
         A/A bit-exato
-[ ] [6] 17.4 Concorrencia interna de modulos: modulos independentes em
+[x] [6] 17.4 Concorrencia interna de modulos: modulos independentes em
         paralelo com barrier por passo e ordem deterministica de
         eventos (eventos com step consistente)
 [x] [6] 17.5 Recursao Chladni na cognicao: RESOLVIDA pela 16.4
@@ -631,3 +631,24 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
   crescer (throughput por cluster da 17.1), o gate ativa rayon
   sozinho com bit-exatidao preservada. L1 49 verdes; workspace
   verde; house_laws 5/5.
+
+- SESSAO 6 (17.4 fechado, concorrencia interna de modulos): Scheduler
+  com GRUPOS DE CONCORRENCIA (with_concurrency): dentro do grupo os
+  modulos tickam em PARALELO (rayon map+collect, barreira implicita
+  ao fim do grupo), grupos executam na ORDEM DECLARADA, e a publicacao
+  de eventos e sempre na ORDEM CANONICA (indice ascendente) -- quem
+  termina primeiro NAO adianta a fila; eventos com o MESMO step do
+  passo. Skip decidido ANTES do tick (modulo inativo nunca roda --
+  semantica preservada). Default: grupos unitarios = caminho serial
+  INLINE (zero rayon, zero overhead) = bit-identico ao historico.
+  A/A provado: 4 modulos independentes, grupo unico [0,1,2,3] em rayon
+  == sequencial NA MESMA ORDEM de eventos (10 passos, assinatura
+  entity_id+version por passo); ordem declarada de grupos mistos
+  verificada passo a passo; validacao de cobertura exata (panic =
+  bug do chamador). CADEIA L1->L5 segue sequencial por DEPENDENCIA
+  REAL (cada camada le a anterior no mesmo passo); o mecanismo serve
+  aos substratos independentes (regioes) do plano horizontal do dono
+  e aos transversais. Runtime 6 verdes; workspace verde; house_laws
+  5/5. NOTA: integracao com o novo descritor da sessao 7
+  (ModuleDescriptor::new) e o novo crate triad-compute (T-compute,
+  wgpu feature-flag desligada por padrao) preservada.

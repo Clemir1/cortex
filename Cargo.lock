@@ -953,6 +953,7 @@ name = "triad-runtime"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
+ "rayon",
  "tracing",
  "tracing-subscriber",
  "triad-contracts",

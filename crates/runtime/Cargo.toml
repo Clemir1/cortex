@@ -7,5 +7,6 @@ edition = "2021"
 triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
 crossbeam-channel = "0.5"
+rayon = "1.10"
 tracing = "0.1"
 tracing-subscriber = "0.3"
