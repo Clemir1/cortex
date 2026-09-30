@@ -157,30 +157,30 @@ impl LocalGraph {
         self.refresh_mean_degree();
     }
 
-    /// Atualização incremental: apenas clusters que se moveram (e seus
-    /// vínculos antigos/novos) são reprocessados. Simetria garantida
-    /// por GEOMETRIA (17.6): o movido é recomputado primeiro — seus
-    /// vizinhos REAIS na nova posição são exatamente os clusters no
-    /// raio dele (dist² é simétrica), então estes (e apenas estes)
-    /// ganham/perdem o movido; candidatos FORA do raio não mudam de
-    /// adjacência — recomputá-los era O(célula) por movido (o caminho
-    /// antigo coletava TODOS os candidatos: ~5 s @30K movidos).
-    /// Resultado bit-idêntico (ver `incremental_igual_rebuild_total`).
+    /// Atualização incremental (17.6): (1) vizinhos antigos capturados;
+    /// (2) re-hash dos movidos (índice reverso); (3) adjacência NOVA
+    /// dos movidos por recompute puro em rayon; (4) arestas dos
+    /// afetados com os movidos — quem não se moveu mantém posição, só
+    /// as arestas com movidos mudam (simetria por dist²): remoção dos
+    /// antigos + inserção dos novos, PARALELIZADO POR BUCKETS j%N —
+    /// dois moved que tocam o mesmo j caem no MESMO bucket (sem
+    /// corrida) e dentro do bucket a ordem canônica dos moved é
+    /// preservada ⇒ bit-idêntico ao caminho serial (ver
+    /// `incremental_igual_rebuild_total`).
     pub fn update_positions(&mut self, clusters: &[ClusterBio], moved: &[usize]) {
-        // 1. Adjacência ANTIGA dos movidos (arestas a invalidar) —
-        // capturada antes de qualquer recompute.
+        if moved.is_empty() {
+            return;
+        }
+        // 1. Vizinhos ANTIGOS dos movidos + re-hash (índice reverso).
         let old_adj: Vec<Vec<usize>> = moved
-            .iter()
+            .par_iter()
             .map(|&m| self.neighbors[m].clone())
             .collect();
-        // 2. Re-hash dos movidos (índice reverso — remoção O(célula)).
         for &i in moved {
             self.spatial.remove_stale(i);
             self.spatial.insert(i, clusters[i].position);
         }
-        // 3. MOVIDOS primeiro (PARALELO — 17.6): cada lista nova é
-        // computada de forma pura sobre o hash já re-indexado e
-        // comitada em ordem canônica; sem escrita concorrente.
+        // 2. MOVIDOS primeiro: recompute puro em par + commit serial.
         let mut lists: Vec<Vec<usize>> = moved
             .par_iter()
             .map(|&i| self.compute_neighbors(i, clusters))
@@ -188,13 +188,9 @@ impl LocalGraph {
         for (t, &i) in moved.iter().enumerate() {
             self.neighbors[i] = std::mem::take(&mut lists[t]);
         }
-        // 4. Vínculos dos AFETADOS com os MOVED apenas (17.6): quem
-        // não se moveu mantém posição — só as ARESTAS com os movidos
-        // podem mudar. Remover o moved antigo e inserir o moved no
-        // raio é bit-idêntico ao recompute completo (vizinhos de j =
-        // não-movidos no raio [inalterados] + movidos no raio [re-
-        // avaliados]; ordem canônica preservada por inserção/remoção
-        // ordenada). Ver `incremental_igual_rebuild_total`.
+        // 3. Arestas dos afetados com os movidos — SERIAL (medido nesta
+        // carga: melhor que recompute-dos-afetados e que buckets
+        // paralelos com HashMap; ~720K ops binárias ordenadas).
         for (&m, olds) in moved.iter().zip(old_adj.iter()) {
             for &j in olds {
                 let v = &mut self.neighbors[j];

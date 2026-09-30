@@ -241,6 +241,7 @@ impl L1Runner {
             })
             .collect();
         let due_set: std::collections::HashSet<usize> = due.iter().copied().collect();
+        let __ta = std::time::Instant::now();
         // (b) física in-place: due_set é o mapa posição→snapshot.
         let snaps: Vec<&(Vec<usize>, Vec<f64>)> = snapshots.iter().collect();
         self.clusters
@@ -258,14 +259,20 @@ impl L1Runner {
                 c.update_state(s, &mut rng, &refs, 0.0, None);
                 c.update_position(&mut rng);
             });
+        eprintln!("PROF b_fisica={:?}", __ta.elapsed());
         let moved: Vec<usize> = due;
+        let __tb = std::time::Instant::now();
         if !moved.is_empty() {
             self.graph.update_positions(&self.clusters, &moved);
         }
+        eprintln!("PROF c_graph={:?}", __tb.elapsed());
         let active_executed = moved.len();
 
         // ---- 2. Energia: custo metabólico + intake O1 ----
         let emergency_bonus = self.emergency.energy_bonus();
+        // Fase 2 permanece SERIAL: per_cluster_intake→regulate atualiza
+        // a homeostase a CADA chamada (last_error/corrections/telemetria
+        // por cluster) — paralelizar seria data race real no estado O1.
         for i in 0..self.clusters.len() {
             let c = &self.clusters[i];
             if !c.is_alive() {
@@ -291,36 +298,41 @@ impl L1Runner {
         self.emergency.update(s, low_count, pop_now, 10);
 
         // ---- 4. Survival por cluster (histerese) + lifecycle ----
-        for i in 0..self.clusters.len() {
-            if !self.clusters[i].is_alive() {
-                continue;
-            }
-            let c = &self.clusters[i];
-            let dormant = c.lifecycle.state == LifecycleState::Dormant;
-            let cost = EnergyBudget::metabolic_cost(c.profile.metabolic_cost, dormant);
-            let e_now = c.energy;
-            let e_pred = (e_now - cost + cfg::ENERGY_INTAKE_BASE).clamp(0.0, cfg::ENERGY_MAX);
-            let age = c.age;
-            let decision = self.survival[i].step(s, e_now, e_pred, age, &mut self.clusters[i].energy);
-            match decision {
-                SurvivalDecision::EnterDormancy => {
-                    self.clusters[i].lifecycle.mark_dormant(s, "survival_low_energy");
+        // 17.6: survival[i] + clusters[i] são INDEPENDENTES por i —
+        // zip paralelo mut-mut (mesmo resultado bit-a-bit do serial).
+        let (surv_ptr, clus_ptr) = (&mut self.survival, &mut self.clusters);
+        surv_ptr
+            .par_iter_mut()
+            .zip(clus_ptr.par_iter_mut())
+            .for_each(|(sv, c)| {
+                if !c.is_alive() {
+                    return;
                 }
-                SurvivalDecision::ExitDormancy => {
-                    self.clusters[i].lifecycle.mark_active(s, "survival_recovered");
-                }
-                SurvivalDecision::EnterRepair
-                | SurvivalDecision::StayRepairing => {
-                    if self.clusters[i].lifecycle.state != LifecycleState::Repairing {
-                        self.clusters[i].lifecycle.mark_repairing(s, "damage_repair");
+                let dormant = c.lifecycle.state == LifecycleState::Dormant;
+                let cost = EnergyBudget::metabolic_cost(c.profile.metabolic_cost, dormant);
+                let e_now = c.energy;
+                let e_pred = (e_now - cost + cfg::ENERGY_INTAKE_BASE).clamp(0.0, cfg::ENERGY_MAX);
+                let age = c.age;
+                let decision = sv.step(s, e_now, e_pred, age, &mut c.energy);
+                match decision {
+                    SurvivalDecision::EnterDormancy => {
+                        c.lifecycle.mark_dormant(s, "survival_low_energy");
                     }
+                    SurvivalDecision::ExitDormancy => {
+                        c.lifecycle.mark_active(s, "survival_recovered");
+                    }
+                    SurvivalDecision::EnterRepair
+                    | SurvivalDecision::StayRepairing => {
+                        if c.lifecycle.state != LifecycleState::Repairing {
+                            c.lifecycle.mark_repairing(s, "damage_repair");
+                        }
+                    }
+                    SurvivalDecision::ExitRepair => {
+                        c.lifecycle.mark_active(s, "damage_repaired");
+                    }
+                    _ => {}
                 }
-                SurvivalDecision::ExitRepair => {
-                    self.clusters[i].lifecycle.mark_active(s, "damage_repaired");
-                }
-                _ => {}
-            }
-        }
+            });
 
         // ---- 5. Mortes ----
         for i in 0..self.clusters.len() {
@@ -424,30 +436,34 @@ impl L1Runner {
 
         // ---- 8. Compactação (só se houve morte/fusão) e sync ----
         if deaths + merges > 0 {
-            // keep[i] alinha clusters e survival pelo MESMO índice.
-            let keep: Vec<bool> = (0..self.clusters.len())
-                .map(|i| {
-                    self.clusters[i].is_alive()
+            // 17.6: retain IN-PLACE (zero clones — o caminho antigo
+            // clonava TODOS os clusters/survival vivos por compacta-
+            // ção: ~30K clones @30K por passo com mortes). A ordem
+            // relativa dos sobreviventes é preservada ⇒ mesmas lista
+            // e reindexação do caminho antigo, bit-idêntico.
+            let keep: Vec<bool> = self
+                .clusters
+                .iter()
+                .map(|c| {
+                    c.is_alive()
                         && !matches!(
-                            self.clusters[i].lifecycle.state,
+                            c.lifecycle.state,
                             LifecycleState::Archived | LifecycleState::Merged
                         )
                 })
                 .collect();
-            self.clusters = self
-                .clusters
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| keep[*i])
-                .map(|(_, c)| c.clone())
-                .collect();
-            self.survival = self
-                .survival
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| keep[*i])
-                .map(|(_, sv)| sv.clone())
-                .collect();
+            let mut ki = 0usize;
+            self.clusters.retain(|_| {
+                let k = keep[ki];
+                ki += 1;
+                k
+            });
+            let mut si = 0usize;
+            self.survival.retain(|_| {
+                let k = keep[si];
+                si += 1;
+                k
+            });
             self.graph.rebuild(&self.clusters);
             let alive: Vec<usize> = (0..self.clusters.len()).collect();
             self.matrix.rebuild(&self.clusters, &alive);

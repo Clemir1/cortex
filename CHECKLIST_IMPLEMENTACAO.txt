@@ -369,7 +369,7 @@ config depois -- nada teatral):
 [x] [7] 16.7 [governance] com efeito observado (P5): Lei 6 revert
          (intervencao sem observed_effect dentro do ttl reverte) +
          [governance] injetada quando o mecanismo existir
-[ ] [7] 16.8 [cybernetics] O1-O4 reais sobre metricas vivas
+[x] [7] 16.8 [cybernetics] O1-O4 reais sobre metricas vivas
          (estabilidade com denominador) + [cybernetics] injetada
 [ ] [7] 16.9 [telemetry]/[lua]/[crisis] structs injetaveis quando as
          camadas acima ganharem mecanismo (a chave nunca e apagada)
@@ -868,3 +868,48 @@ var/verificacao/17-10_traceengine_cascata.md.
   matrix.rebuild na compactacao; todos ja mapeados para o mesmo
   padrao par_iter_mut + commit serial. 17.6 segue [ ] ate a media
   fechar 50 ms — app 30K VERDE funcional desde ja.
+
+--- Rodada (sessao 7) — 16.8 concluida: CyberneticsModule REAL
+(crates/cybernetics/src/module.rs) montado no app com ponte read-only
+ao L1 — ordens O1-O4 executam SOBRE METRICAS VIVAS (energia media
+real, ressonancia Chladni, capacidade nao-morta) nas cadencias da
+[cybernetics] INJETADA 1:1 (defaults congelados 10/25/50/100, testado
+com L1 real: O1=10/O2=4/O3=2/O4=1 execucoes em 101 ticks). O1:
+Homeostat sobre energia real (satisfacao 7/7 no app, com denominador);
+O2: OscillationMonitor sobre ressonancia + TAXA DE ESTABILIDADE COM
+DENOMINADOR (stability_rate aditivo: 1-cruzamentos/intervalos, <2
+amostras NO_DATA); O3: O3Governor recomenda acao TIPADA
+(Normal/Throttle{factor}/Shed{reason}) publicada — nao muta estado
+alheio; O4: audit_rate sobre os proprios eventos COM DENOMINADOR
+(8/65 ticks no app); O5: O5Horizon coleta amostras, genome_in_main_
+loop=false LIDO E RESPEITADO (Lei 7). Inventario 8/8 CANONICO. Bateria:
+crate 7/7, house 5/5, workspace 34 ok (excl. l2_tissue em edicao da
+sessao 6), app RUN=0. Relatorio: var/verificacao/16-8_cybernetics_o1_o4.md
+
+- SESSAO 6 (17.6, round 8 — refinamento de latencia com MEDICOES
+  honestas de tres desenhos): (1) arestas do grafo por buckets j%16
+  paralelos com HashMap/clones: PIOR (61-69 ms vs 40-59 serial) —
+  revertido; (2) recompute-dos-afetados paralelo: PIOR ainda (66-78
+  ms, ~200K afetados unicos) — revertido; o caminho edges SERIAL
+  (remocao+insercao binaria ordenada por movido) e o melhor medido
+  para grau ~12 @30K e PERMANECE. (3) Fase 4 survival: par_iter_mut
+  zip mut-mut (independente por indice, sem rng) — INTEGRADO, bit-
+  identico. (4) Fase 2 energia: PERMANECE SERIAL com justificativa
+  registrada: per_cluster_intake->regulate muta a homeostase O1 a
+  CADA chamada (last_error/corrections/out_of_band_steps — telemetria
+  por CHAMADA, hoje inflada por populacao); paralelizar seria data
+  race REAL; a correcao semantica (hoist do regulate para 1x/passo,
+  contadores por passo — Lei 1, taxas com denominador) exige audito-
+  ria propria e ficou registrada como debito. (5) Compactacao:
+  retain IN-PLACE por indice rastreado (clusters+survival, zero
+  clones; antes: 30K clones completos por compactacao) — mesmos
+  reindexacao e ordem, bit-identico. NUMEROS @30K (release): pares
+  leves 96-107 ms; pares com compactacao 167-184 ms (matrix.rebuild
+  serial ~70 ms e o proximo alvo); impares 15-19 ms; MEDIA ~74 ms/
+  tick (threshold 17.1 = 50 ms: 1,5x acima; a serie 17.6 total:
+  5,4 s -> 74 ms = 73x). A/A da fisica paralela re-verde entre pools
+  1/4/8 threads; twin L4 (16.11) verde — cadeia L2(31)+L3(33)+
+  L4(16)+L5(29)+chladni(17) intacta; house_laws 5/5. NOTA de
+  coordenacao: stubs lib.rs minimos criados por esta sessao em
+  crates/telemetry e crates/lua SO para o workspace parsear durante
+  a criacao em voo pela sessao 7 (serao substituidos por ela).
