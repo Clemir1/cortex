@@ -10,6 +10,7 @@ pub mod identity;
 pub mod governor;
 pub mod meta_controller;
 pub mod module;
+pub mod resource_governor;
 pub mod wake;
 
 pub use config::L5Config;
@@ -17,4 +18,9 @@ pub use governor::{BandReason, LimbicBand, LimbicGovernor};
 pub use identity::{IdentityArc, IdentityStore, IdentityValues};
 pub use meta_controller::{InterventionOutcome, InterventionReport, MetaController};
 pub use module::{L5Module, L5Stats};
+pub use resource_governor::{
+    AllocationDecision, Budget, BudgetEvent, CognitiveGenomeOffline, DenyReason,
+    DevelopmentGovernor, HistoricalMetaLearner, MetaGoal, MetaGoals, MetaGoalState,
+    RecoverReason, Resource, ResourceGovernor, TrialVerdict, WakeVerdict,
+};
 pub use wake::{should_wake, WakeReason};

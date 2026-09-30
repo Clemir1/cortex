@@ -15,7 +15,7 @@
 //! verificação (nunca só um float).
 
 use std::sync::{Arc, Mutex};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 use triad_contracts as tc;
 use triad_foundation as tf;
 use triad_runtime as rt;
@@ -95,6 +95,29 @@ pub struct L4Stats {
     pub confirmed: u64,
     /// Reforços L4→L3 submetidos à memória episódica (seção 16.2).
     pub memory_submissions: u64,
+    /// Rollouts contrafactuais AVALIADOS (16.3): ciclos fechados
+    /// cujo eixo comensurável tinha crença viva no world model.
+    pub rollout_evaluations: u64,
+    /// Soma das divergências |observado − rollout(t+1)| (16.3);
+    /// a média honesta usa `rollout_evaluations` de denominador.
+    pub rollout_div_sum: f32,
+    /// Propostas de política ACEITAS no inbox (16.7, Lei 6).
+    pub policy_submitted: u64,
+    /// Políticas APLICADAS pelo dono (com previous guardado).
+    pub policy_applied: u64,
+    /// Políticas REVERTIDAS por TTL sem efeito (Lei 6 executável).
+    pub policy_reverted: u64,
+    /// Recusas tipadas: alvo já ativo/pendente (16.7).
+    pub policy_rejected_duplicate: u64,
+    /// Recusas tipadas: valor fora de 0..=1 (16.7).
+    pub policy_rejected_out_of_range: u64,
+    /// Recusas tipadas: TTL fora da faixa (16.7).
+    pub policy_rejected_invalid_ttl: u64,
+    /// Recusas tipadas: teto de políticas ativas (16.7).
+    pub policy_rejected_full: u64,
+    /// Políticas ATIVAS no instante da leitura (preenchida em
+    /// `stats()` — como `distinct_broadcasts`).
+    pub policy_active: u64,
     /// Não-confirmadas: conteúdo saiu do foco (razão tipada).
     pub content_gone: u64,
     /// Não-confirmadas: degradação além da tolerância (razão tipada).
@@ -102,8 +125,9 @@ pub struct L4Stats {
 }
 
 /// Registro de ciclo FECHADO (telemetria POR DECISÃO — insumo do
-/// experimento E5 com gêmea, checklist 16.11; cap `CLOSED_LOG_MAX`).
-#[derive(Debug, Clone)]
+/// experimento E5 com gêmea, checklist 16.11; cap `CLOSED_LOG_MAX`;
+/// serializável para a persistência cross-run — 17.9/16.10).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ClosedCycleRecord {
     /// Tick em que a decisão foi commitada (t).
     pub decided_tick: u64,
@@ -143,10 +167,16 @@ pub struct L4Module {
     /// Último passo de reforço por rótulo (throttle da trilha L4→L3:
     /// o MESMO conteúdo não reconsolida mais que 1× por janela).
     reinforcement_throttle: Mutex<std::collections::HashMap<String, u64>>,
+    /// Inbox de políticas de intervenção (16.7, Lei 6): o L5 propõe,
+    /// o L4 (dono) valida/aplica/reverte por TTL.
+    policy: Mutex<crate::policy::PolicyInbox>,
     stats: Mutex<L4Stats>,
     /// Últimos ciclos fechados (cap CLOSED_LOG_MAX) — telemetria por
     /// decisão, insumo do experimento E5 com gêmea (16.11).
     closed_log: Mutex<Vec<ClosedCycleRecord>>,
+    /// 17.6: agregador GlobalIntegration (thalamus/episódico/
+    /// abstração/navegador — contexto fundido com denominadores).
+    global_integration: Mutex<crate::global_integration::GlobalIntegration>,
     state: Mutex<rt::ModuleState>,
 }
 
@@ -174,12 +204,36 @@ impl L4Module {
         config: L4Config,
     ) -> Self {
         Self {
-            descriptor: tc::ModuleDescriptor {
-                module_id: tf::id::ModuleId::new(),
-                name: "l4.global".into(),
-                layer: tc::Layer::L4,
-                domain: "global-cognition".into(),
-            },
+            // Descritor canônico (CAMADA.txt, 17.1): L4 decide e
+            // coordena (O1+O3); ciclo fecha com efeito futuro
+            // VERIFICADO (Lei 5 = E5); atua na memória L3 apenas por
+            // SUBMISSÃO ao inbox do dono (trilha 16.2).
+            descriptor: tc::ModuleDescriptor::new(
+                tf::id::ModuleId::new(),
+                "l4.global",
+                tc::Layer::L4,
+                "global-cognition",
+            )
+            .with_orders(&[
+                tc::CyberneticOrder::O1Control,
+                tc::CyberneticOrder::O3Coordination,
+            ])
+            .with_state_owner("l4.global")
+            .with_inputs(&["runtime.tick", "l3.local"])
+            .with_outputs(&[
+                "l4.global",
+                "l4.workspace",
+                "l4.decision",
+                "l4.action",
+                "l4.learning",
+                "l4.policy",
+            ])
+            .with_actuators(&["inbox.l3.reinforcement"])
+            .with_backend(tc::ExecutionBackend::CpuSeq)
+            .with_criticality(tc::Criticality::Critical)
+            .with_dependencies(&["l1.substrate", "l2.tissue", "l3.local"])
+            .with_evidence(tf::evidence::EvidenceLevel::E5EffectValidated)
+            .with_recovery(tc::RecoveryPolicy::RestartModule),
             workspace: Mutex::new(GlobalWorkspace::with_config(config.workspace.clone())),
             world: Mutex::new(WorldModel::new()),
             causal: Mutex::new(CausalTracker::new()),
@@ -188,10 +242,13 @@ impl L4Module {
             open: Mutex::new(Vec::new()),
             distinct: Mutex::new(std::collections::HashSet::new()),
             reinforcement_throttle: Mutex::new(std::collections::HashMap::new()),
+            policy: Mutex::new(crate::policy::PolicyInbox::new()),
             config,
             l3,
             stats: Mutex::new(L4Stats::default()),
             closed_log: Mutex::new(Vec::new()),
+            // 17.6: agregador fundido do L4 (audit 17-3).
+            global_integration: Mutex::new(crate::global_integration::GlobalIntegration::new()),
             state: Mutex::new(rt::ModuleState::Active),
         }
     }
@@ -205,12 +262,27 @@ impl L4Module {
             .clone()
     }
 
+    /// 17.6: fotografia do agregador GlobalIntegration (thalamus/
+    /// episódico/abstração/navegador — COM DENOMINADORES).
+    pub fn global_integration_report(&self) -> crate::global_integration::GiReport {
+        self.global_integration
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .report()
+    }
+
     /// Telemetria corrente (auditoria); a diversidade de vencedores é
     /// preenchida do conjunto distinto no instante da leitura.
     pub fn stats(&self) -> L4Stats {
         let mut s = self.stats.lock().unwrap_or_else(|p| p.into_inner()).clone();
         s.distinct_broadcasts =
             self.distinct.lock().unwrap_or_else(|p| p.into_inner()).len() as u64;
+        s.policy_active = self
+            .policy
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .active()
+            .count() as u64;
         s
     }
 
@@ -241,6 +313,67 @@ impl L4Module {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .version()
+    }
+
+    /// Relatório do rollout contrafactual (16.3): (avaliações,
+    /// divergência média |observado − projetado t+1|). A média usa
+    /// o NÚMERO de avaliações de denominador; sem avaliações =
+    /// None (ausência ≠ zero — crença viva ausente não é erro).
+    pub fn rollout_report(&self) -> (u64, Option<f32>) {
+        let s = self.stats();
+        if s.rollout_evaluations == 0 {
+            return (0, None);
+        }
+        (
+            s.rollout_evaluations,
+            Some(s.rollout_div_sum / s.rollout_evaluations as f32),
+        )
+    }
+
+    /// PROTOCOLO de intervenção (16.7, Lei 6): o L5 submete uma
+    /// proposta de mudança de política na FILA do dono — o L4
+    /// valida (range, TTL, duplicada, teto), APLICA com previous
+    /// guardado e REVERTE por TTL sem efeito. A ponte L5→L4 é
+    /// read-only para ESTADO; a fila é protocolo (espelho do
+    /// `submit_reinforcement` L4→L3). Recusas são TIPADAS.
+    pub fn submit_policy(&self, p: crate::policy::PolicyProposal) -> Result<(), crate::policy::PolicyReject> {
+        let mut stats = self.stats.lock().unwrap_or_else(|p| p.into_inner());
+        let mut inbox = self.policy.lock().unwrap_or_else(|p| p.into_inner());
+        let res = inbox.submit(p);
+        match &res {
+            Ok(()) => stats.policy_submitted += 1,
+            Err(crate::policy::PolicyReject::DuplicateTarget) => {
+                stats.policy_rejected_duplicate += 1
+            }
+            Err(crate::policy::PolicyReject::Full) => stats.policy_rejected_full += 1,
+            Err(crate::policy::PolicyReject::OutOfRange) => {
+                stats.policy_rejected_out_of_range += 1
+            }
+            Err(crate::policy::PolicyReject::InvalidTtl) => {
+                stats.policy_rejected_invalid_ttl += 1
+            }
+        }
+        res
+    }
+
+    /// Limiar de commit EFETIVO: override de política ativa (16.7)
+    /// ou o valor base da config `[l4.decision] commit_threshold`.
+    pub fn effective_commit_threshold(&self) -> f32 {
+        let inbox = self.policy.lock().unwrap_or_else(|p| p.into_inner());
+        inbox.effective(
+            crate::policy::PolicyTarget::CommitThreshold,
+            self.config.decision.commit_threshold,
+        )
+    }
+
+    /// Políticas ativas correntes (auditoria; clones).
+    pub fn active_policies(&self) -> Vec<crate::policy::ActivePolicy> {
+        self.policy
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .active()
+            .cloned()
+            .collect()
     }
 
     /// Fecha os ciclos cujo outcome chegou (t+1) e expira os que
@@ -361,6 +494,38 @@ impl L4Module {
                             }
                         }
                     }
+
+                    // ROLLOUT CONTRAFACTUAL (16.3): trajetória rasa
+                    // DETERMINÍSTICA da crença do EIXO COMENSURÁVEL,
+                    // projetada do mundo observado — segundo
+                    // contrafactual INFORMATIVO ao lado do sham (a
+                    // Lei 5 continua sendo fechada pelo sham; o
+                    // rollout mede a qualidade da projeção do world
+                    // model, nunca decide). Sem crença viva: ausência
+                    // contada como ausência (não zero, não erro).
+                    if let Some(belief_key) = belief_key_for(&cycle.content_key) {
+                        let world = self.world.lock().unwrap_or_else(|p| p.into_inner());
+                        let depth = self.config.world_model.simulation_max_depth as usize;
+                        let proj = world.rollout(
+                            belief_key,
+                            depth,
+                            self.descriptor.module_id,
+                            tf::id::StepId::new(),
+                        );
+                        if let Some(path) = proj.as_ref_value() {
+                            if let Some(proj_t1) = path.first() {
+                                stats.rollout_evaluations += 1;
+                                stats.rollout_div_sum += (actual - proj_t1).abs();
+                                debug!(
+                                    chave_crenca = belief_key,
+                                    projetado_t1 = proj_t1,
+                                    observado = actual,
+                                    divergencia = (actual - proj_t1).abs(),
+                                    "rollout contrafactual avaliado (16.3)"
+                                );
+                            }
+                        }
+                    }
                     debug!(
                         decisao = %envelope.action,
                         efeito_liquido = net_effect,
@@ -426,7 +591,7 @@ impl L4Module {
         while i < deferred.len() {
             let (pending, born, deadline) = &deferred[i];
             match decide_best(pending) {
-                Ok(option) if option.confidence.value() >= self.config.decision.commit_threshold => {
+                Ok(option) if option.confidence.value() >= self.effective_commit_threshold() => {
                     // O alvo é o conteúdo prometido pela própria opção
                     // (comensurável); o sham é o valor corrente dele.
                     let content_key = content_key_of(&option.action);
@@ -545,6 +710,20 @@ fn content_key_of(action: &str) -> String {
     }
 }
 
+/// Crença do world model que corresponde ao EIXO COMENSURÁVEL do
+/// content_key (16.3): predição → confiança da predição L3;
+/// coerência → coerência L2; foco conceitual → SEM crença viva
+/// (ausência ≠ zero: sem rollout, contado como ausência).
+fn belief_key_for(content_key: &str) -> Option<&'static str> {
+    if content_key.starts_with("predicao:") {
+        Some("l3.prediction.confidence")
+    } else if content_key == "sinal:coesao" {
+        Some("l2.coherence")
+    } else {
+        None
+    }
+}
+
 /// Valor COMENSURÁVEL de um conteúdo na fotografia L3: foco pela
 /// identidade do conceito, predição pelo evento previsto, sinal de
 /// coerência pelo valor corrente. Conteúdo ausente = None (a razão
@@ -628,14 +807,15 @@ impl rt::CognitiveModule for L4Module {
             );
         }
 
-        // (4) World model: crenças com dados REAIS por intervalo.
+        // (4) World model: crenças com dados REAIS por intervalo —
+        // observações carregam o PASSO (insumo da tendência/rollout 16.3).
         if tick % self.config.world_model.update_interval_steps.max(1) == 0 {
             let mut world = self.world.lock().unwrap_or_else(|p| p.into_inner());
             if let Some(p) = &snapshot.prediction {
-                world.observe("l3.prediction.confidence", p.confidence);
+                world.observe("l3.prediction.confidence", p.confidence, tick);
             }
             if let Some(c) = snapshot.coherence_mean {
-                world.observe("l2.coherence", c as f32);
+                world.observe("l2.coherence", c as f32, tick);
             }
             self.stats.lock().unwrap_or_else(|p| p.into_inner()).world_updates += 1;
         }
@@ -648,14 +828,77 @@ impl rt::CognitiveModule for L4Module {
                 .prune(3);
         }
 
+        // (5.5) POLÍTICA de intervenção (16.7, Lei 6 executável):
+        // o dono expira overrides esgotados (reversão EXATA para o
+        // previous — antes de aplicar pendentes, liberando o alvo)
+        // e aplica as propostas aceitas (previous = efetivo REAL).
+        // Cada apply/revert publica evento de GOVERNANÇA com recibo.
+        {
+            let mut inbox = self.policy.lock().unwrap_or_else(|p| p.into_inner());
+            let reverted = inbox.expire(tick);
+            let eff_now = inbox.effective(
+                crate::policy::PolicyTarget::CommitThreshold,
+                self.config.decision.commit_threshold,
+            );
+            let applied = inbox.drain(tick, eff_now);
+            drop(inbox);
+            let mut stats = self.stats.lock().unwrap_or_else(|p| p.into_inner());
+            stats.policy_reverted += reverted.len() as u64;
+            stats.policy_applied += applied.len() as u64;
+            for ap in &applied {
+                info!(
+                    alvo = ap.proposal.target.key(),
+                    anterior = ap.previous,
+                    novo = ap.proposal.proposed,
+                    motivo = %ap.proposal.reason,
+                    expira = ap.expires_tick,
+                    "politica APLICADA pelo dono (16.7)"
+                );
+                out.push(rt::envelope(
+                    "l4.policy",
+                    tick,
+                    tc::EventType::Governance,
+                    tc::Priority::Normal,
+                ));
+            }
+            for ap in &reverted {
+                info!(
+                    alvo = ap.proposal.target.key(),
+                    anterior = ap.proposal.proposed,
+                    restaurado = ap.previous,
+                    ttl = ap.proposal.ttl_ticks,
+                    "politica REVERTIDA por TTL sem efeito (Lei 6)"
+                );
+                out.push(rt::envelope(
+                    "l4.policy",
+                    tick,
+                    tc::EventType::Governance,
+                    tc::Priority::Normal,
+                ));
+            }
+        }
+
         // (6) Workspace: candidatos REAIS competem por broadcast com
         // SALIÊNCIA EFETIVA (habituação — o spotlight circula).
         if self.config.decision.enabled
             && tick % self.config.workspace.broadcast_interval_steps.max(1) == 0
         {
             let mut workspace = self.workspace.lock().unwrap_or_else(|p| p.into_inner());
+            // 17.6 — ThalamicRouter: gate ANTES do workspace (o foco
+            // fraco não entra na competição; repetidos na TTL
+            // habituem). Recusas tipadas com denominador no agregador.
+            let mut gi = self
+                .global_integration
+                .lock()
+                .unwrap_or_else(|p| p.into_inner());
             for (concept, salience) in &snapshot.foci {
-                workspace.submit(crate::WorkspaceStage::Local, &format!("foco:{concept:?}"), *salience);
+                let key = format!("foco:{concept:?}");
+                if matches!(
+                    gi.thalamus.gate(tick, &key, *salience),
+                    crate::global_integration::GateVerdict::Admitted { .. }
+                ) {
+                    workspace.submit(crate::WorkspaceStage::Local, &key, *salience);
+                }
             }
             if let Some(p) = &snapshot.prediction {
                 workspace.submit(
@@ -669,6 +912,36 @@ impl rt::CognitiveModule for L4Module {
             }
             let winner: Option<WorkspaceEntry> = workspace.broadcast();
             drop(workspace);
+
+            // 17.6 — GlobalIntegration: contexto fundido por tick
+            // (focos/competição/ressonância como UMA métrica);
+            // episódio fechado por delta ALIMENTA a memória L3 pela
+            // trilha 16.2 (fila no dono, o L4 apenas submete).
+            let episodio = gi.observe_tick(
+                tick,
+                &snapshot.foci,
+                winner.as_ref(),
+                snapshot.coherence_mean,
+            );
+            drop(gi);
+            if let Some(ep) = episodio {
+                if let Some(l3) = &self.l3 {
+                    // Efeito líquido do episódio = coerência do
+                    // último keyframe (estado real empurrado — nada
+                    // inventado; ausência vira 0 declarado).
+                    let net_effect = ep
+                        .keyframes
+                        .last()
+                        .and_then(|k| k.last().copied())
+                        .unwrap_or(0.0);
+                    l3.submit_reinforcement(triad_l3_local::reinforcement::Reinforcement {
+                        label: format!("episodio:{}", ep.started_tick),
+                        step: tick,
+                        net_effect,
+                        reconsolidate: true,
+                    });
+                }
+            }
 
             if let Some(winner) = winner {
                 self.stats.lock().unwrap_or_else(|p| p.into_inner()).broadcasts += 1;
@@ -757,7 +1030,7 @@ impl rt::CognitiveModule for L4Module {
                             tc::EventType::Decision,
                             tc::Priority::Normal,
                         ));
-                        if option.confidence.value() >= self.config.decision.commit_threshold {
+                        if option.confidence.value() >= self.effective_commit_threshold() {
                             // Expectativa comensurável: o valor corrente
                             // do conteúdo que a ação promete operar.
                             let content_key = content_key_of(&option.action);
@@ -814,7 +1087,7 @@ mod tests {
     use triad_l1_substrate as l1;
     use triad_l2_tissue as l2;
     use triad_l3_local as l3;
-    use triad_runtime::{CognitiveModule as _, TypedContext};
+    use triad_runtime::TypedContext;
 
     /// Ciclo REAL L1→L2→L3→L4 por tick, com relógio que avança.
     struct Ciclo {
@@ -979,6 +1252,25 @@ mod tests {
         assert!(confirm.value() > 0.5, "conteúdos estáveis confirmam");
         // Causal global com denominador (pares observados).
         assert!(ciclo.l4.causal_pct().is_some());
+    }
+
+    #[test]
+    fn rollout_contrafactual_tem_denominador_e_dominio_16t3() {
+        let mut ciclo = Ciclo::new(42, 24);
+        for _ in 0..8 {
+            ciclo.tick();
+        }
+        let s = ciclo.l4.stats();
+        let (n, mean) = ciclo.l4.rollout_report();
+        // Ciclos fechados com eixo `predicao:*` ⇒ crença viva no
+        // world model ⇒ o rollout contrafactual é AVALIADO (seed
+        // fixa: determinístico).
+        assert!(n >= 1, "denominador não silencioso: rollout avaliado");
+        // Denominador honesto: o report usa EXATAMENTE as avaliações.
+        assert_eq!(n, s.rollout_evaluations, "denominador = avaliações reais");
+        let m = mean.expect("n>=1 ⇒ média presente (nunca zero silencioso)");
+        assert!((0.0..=1.0).contains(&m), "divergência média em [0,1]: {m}");
+        assert_eq!(m, s.rollout_div_sum / s.rollout_evaluations as f32);
     }
 
     #[test]

@@ -5,14 +5,22 @@ pub mod causal;
 pub mod config;
 pub mod decision;
 pub mod degraded;
+pub mod global_integration;
 pub mod integration;
 pub mod memory;
+pub mod policy;
 pub mod twin;
 pub mod workspace;
 pub mod world_model;
 
 pub use config::L4Config;
-pub use integration::{L4Module, L4Stats};
+pub use global_integration::{
+    EpisodeBuffer, GateVerdict, GiReport, GlobalIntegration, ThalamicRouter,
+};
+pub use integration::{ClosedCycleRecord, L4Module, L4Stats};
+pub use policy::{
+    ActivePolicy, PolicyInbox, PolicyProposal, PolicyReject, PolicyTarget, MAX_ACTIVE_POLICIES,
+};
 pub use twin::{twin_verdicts, TwinDecision, TwinVerdict};
 
 use triad_contracts as tc;

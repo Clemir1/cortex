@@ -37,6 +37,11 @@ pub struct MetaControllerCfg {
     pub max_concurrent_interventions: usize,
     /// Proposta sem razão é rejeitada.
     pub require_reason: bool,
+    /// 16.7: passo de alívio do limiar de commit proposto ao L4
+    /// (crise muda POLÍTICA, nunca suspende — Lei 4).
+    pub commit_threshold_step: f32,
+    /// 16.7: piso do limiar — a proposta nunca desce além disso.
+    pub commit_threshold_floor: f32,
 }
 
 impl Default for MetaControllerCfg {
@@ -47,6 +52,8 @@ impl Default for MetaControllerCfg {
             intervention_ttl_steps: 50,
             max_concurrent_interventions: 4,
             require_reason: true,
+            commit_threshold_step: 0.10,
+            commit_threshold_floor: 0.25,
         }
     }
 }

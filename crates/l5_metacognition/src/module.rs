@@ -23,6 +23,9 @@ use crate::config::L5Config;
 use crate::governor::{BandReason, LimbicBand, LimbicGovernor};
 use crate::identity::{IdentityArc, IdentityStore, IdentityValues};
 use crate::meta_controller::{InterventionOutcome, MetaController};
+use crate::resource_governor::{
+    CognitiveGenomeOffline, DevelopmentGovernor, HistoricalMetaLearner, ResourceGovernor,
+};
 use crate::wake::{should_wake, WakeReason};
 
 /// Telemetria honesta da L5 — taxas sempre com denominador.
@@ -51,6 +54,10 @@ pub struct L5Stats {
     pub wake_scheduled: u64,
     /// Ticks sem fonte L4 (ausência contada, nunca zero fantasma).
     pub no_source_ticks: u64,
+    /// Propostas de política submetidas ao inbox do L4 (16.7).
+    pub policy_submitted: u64,
+    /// Recusas tipadas do inbox do L4 (16.7; a razão vai no log).
+    pub policy_rejected: u64,
     /// Eventos l5.* publicados no tick (por ocorrência).
     pub events: u64,
     /// Continuidade corrente do arco de identidade (0..1).
@@ -63,6 +70,20 @@ pub struct L5Stats {
     pub energy_reserve: f32,
     /// Banda límbica corrente (histerese).
     pub band: Option<LimbicBand>,
+    /// 17.7: auditorias do ciclo de governo autorizadas (Grant).
+    pub governor_audits: u64,
+    /// 17.7: auditorias PULSADAS com a razão tipada da negativa.
+    pub governor_denied: u64,
+    /// 17.7: trials do meta-learner (denominador de commits+rollbacks).
+    pub learner_trials: u64,
+    /// 17.7: trials commitados (reward > baseline).
+    pub learner_commits: u64,
+    /// 17.7: trials revertidos (Lei 6 aplicada ao parâmetro).
+    pub learner_rollbacks: u64,
+    /// 17.7: despertares de morfogênese por causa declarada.
+    pub dev_wakes: u64,
+    /// 17.7: standbys do desenvolvimento (causa ausente/fora).
+    pub dev_standbys: u64,
 }
 
 /// Ponte da L5 para o runtime: metacognição real do organismo.
@@ -81,6 +102,15 @@ pub struct L5Module {
     governor: Mutex<LimbicGovernor>,
     /// Controlador metacognitivo (propor→validar→keep/revert).
     meta: Mutex<MetaController>,
+    /// 17.7: governadores completos (budgets tipados, morfogênese
+    /// por causa, bandit com rollback, genome offline Lei 7).
+    resource_governor: Mutex<ResourceGovernor>,
+    development_governor: Mutex<DevelopmentGovernor>,
+    meta_learner: Mutex<HistoricalMetaLearner>,
+    genome_offline: Mutex<CognitiveGenomeOffline>,
+    /// 17.7: (último tick auditado, confirmed L4 vistos lá) —
+    /// janela do ciclo de governo a cada audit_interval_steps.
+    audit_state: Mutex<(u64, u64)>,
     /// Passos desde o último despertar (dormência relativa).
     dormant: Mutex<u64>,
     /// Telemetria corrente.
@@ -117,12 +147,28 @@ impl L5Module {
         Self::new_with_sources_and_config(
             l4,
             l1,
-            tc::ModuleDescriptor {
-                module_id: tf::id::ModuleId::new(),
-                name: "l5.meta".into(),
-                layer: tc::Layer::L5,
-                domain: "metacognition".into(),
-            },
+            // Descritor canônico (CAMADA.txt, 17.1): L5 adapta,
+            // arbitra e observa (O2+O3+O4); metacontrolador exige
+            // efeito OBSERVADO com baseline (E3, Lei 6).
+            tc::ModuleDescriptor::new(
+                tf::id::ModuleId::new(),
+                "l5.meta",
+                tc::Layer::L5,
+                "metacognition",
+            )
+            .with_orders(&[
+                tc::CyberneticOrder::O2Adaptation,
+                tc::CyberneticOrder::O3Coordination,
+                tc::CyberneticOrder::O4Observation,
+            ])
+            .with_state_owner("l5.meta")
+            .with_inputs(&["runtime.tick", "l4.global", "l1.substrate"])
+            .with_outputs(&["l5.identity", "l5.meta", "l5.intervention"])
+            .with_backend(tc::ExecutionBackend::CpuSeq)
+            .with_criticality(tc::Criticality::Normal)
+            .with_dependencies(&["l1.substrate", "l4.global"])
+            .with_evidence(tf::evidence::EvidenceLevel::E3Productive)
+            .with_recovery(tc::RecoveryPolicy::RestartModule),
             identity,
             governor,
             meta,
@@ -140,6 +186,12 @@ impl L5Module {
         meta: MetaController,
         config: L5Config,
     ) -> Self {
+        // 17.7: governadores completos derivados da CONFIG antes do
+        // move (morfogênese só por causa declarada).
+        let dev_governor = DevelopmentGovernor::new(
+            config.development_governor.wake_conditions.clone(),
+            config.development_governor.morphogenesis_default.clone(),
+        );
         Self {
             descriptor,
             l4,
@@ -150,6 +202,15 @@ impl L5Module {
             meta: Mutex::new(meta),
             dormant: Mutex::new(0),
             stats: Mutex::new(L5Stats::default()),
+            // 17.7: governadores completos (audit 17-4 §5) — budgets
+            // com transições tipadas; morfogênese só por causa.
+            resource_governor: Mutex::new(ResourceGovernor::new()),
+            development_governor: Mutex::new(dev_governor),
+            meta_learner: Mutex::new(HistoricalMetaLearner::default()),
+            // Lei 7: genome SEMPRE offline — fitness coletado no
+            // run; seleção/aplicação só em evaluate_offline.
+            genome_offline: Mutex::new(CognitiveGenomeOffline::default()),
+            audit_state: Mutex::new((0, 0)),
             // Nasce ativo: Boot/Embryo não podem tickar no runtime.
             state: Mutex::new(rt::ModuleState::Active),
         }
@@ -158,6 +219,38 @@ impl L5Module {
     /// Telemetria corrente (auditoria).
     pub fn stats(&self) -> L5Stats {
         self.stats.lock().unwrap_or_else(|p| p.into_inner()).clone()
+    }
+
+    /// 17.7: governadores — acesso público tipado (decisões de
+    /// alocação com Lei 3; rewards por contribuição confirmada).
+    pub fn resource_governor(&self) -> std::sync::MutexGuard<'_, ResourceGovernor> {
+        self.resource_governor
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// 17.7: governador de desenvolvimento (morfogênese por causa).
+    pub fn development_governor(
+        &self,
+    ) -> std::sync::MutexGuard<'_, DevelopmentGovernor> {
+        self.development_governor
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// 17.7: meta-learner canônico (bandit com rollback).
+    pub fn meta_learner(
+        &self,
+    ) -> std::sync::MutexGuard<'_, HistoricalMetaLearner> {
+        self.meta_learner.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// 17.7 (Lei 7): genome offline — fitness COLETADO no tick
+    /// (observação permitida); seleção nunca aqui.
+    pub fn genome_offline(&self) -> std::sync::MutexGuard<'_, CognitiveGenomeOffline> {
+        self.genome_offline
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
     }
 
     /// Contexto de identidade corrente (contrato: sempre presente).
@@ -216,6 +309,56 @@ impl L5Module {
         })
     }
 
+    /// PROTOCOLO 16.7 (Lei 6 executável): propõe ao L4 — DONO do
+    /// limiar — um ALÍVIO de política do commit_threshold (crise
+    /// muda POLÍTICA, nunca suspende — Lei 4). A proposta entra
+    /// na FILA do dono com TTL da config; sem efeito observado no
+    /// prazo o L4 REVERTE exato (Lei 6). Passo/piso de
+    /// `[l5.meta_controller]`; TTL clamp à faixa aceita pelo L4.
+    pub fn propose_commit_threshold_relief(
+        &self,
+        intervention_id: tf::ModuleId,
+        reason: &str,
+        tick: u64,
+    ) -> Result<(), l4::policy::PolicyReject> {
+        let Some(l4src) = self.l4.as_ref() else {
+            // Sem ponte: NÃO é erro de política — ausência contada
+            // no caller; aqui apenas recusa sem fonte (nada fabricado).
+            return Ok(());
+        };
+        let current = l4src.effective_commit_threshold();
+        let step = self.config.meta_controller.commit_threshold_step;
+        let floor = self.config.meta_controller.commit_threshold_floor;
+        let proposed = (current - step).max(floor);
+        let ttl = self
+            .config
+            .meta_controller
+            .intervention_ttl_steps
+            .clamp(*l4::policy::TTL_RANGE.start(), *l4::policy::TTL_RANGE.end());
+        let proposal = l4::policy::PolicyProposal {
+            intervention_id,
+            target: l4::policy::PolicyTarget::CommitThreshold,
+            current,
+            proposed,
+            reason: reason.to_string(),
+            ttl_ticks: ttl,
+            issued_tick: tick,
+        };
+        let res = l4src.submit_policy(proposal);
+        let mut stats = self.stats.lock().unwrap_or_else(|p| p.into_inner());
+        match &res {
+            Ok(()) => stats.policy_submitted += 1,
+            Err(r) => {
+                stats.policy_rejected += 1;
+                warn!(
+                    razao = r.as_str(),
+                    "proposta de politica recusada pelo inbox do L4 (16.7)"
+                );
+            }
+        }
+        res
+    }
+
     /// Limbico REAL: pressão = não-confirmação; aversão = falhas
     /// normalizadas; energia = média real dos clusters (com L1).
     fn limbic_inputs(&self) -> (f32, f32, f32) {
@@ -262,6 +405,126 @@ impl rt::CognitiveModule for L5Module {
         // (0) Sem fonte L4: ausência contada — nada é fabricado.
         if self.l4.is_none() {
             stats.no_source_ticks += 1;
+        }
+
+        // (0b) 17.7 — GOVERNADORES no tick: budgets com decay/regen
+        // tipados no ledger + emergência por energia baixa; fitness
+        // do genome COLETADO (Lei 7: seleção só em evaluate_offline,
+        // NUNCA no loop). Fitness observado = taxa de confirmação do
+        // ciclo L4 (com denominador; sem ciclo: não coleta).
+        {
+            self.resource_governor.lock().unwrap_or_else(|p| p.into_inner()).tick(tick);
+            if let Some(l4) = &self.l4 {
+                if let Some(rate) = l4.confirm_rate() {
+                    let f = rate.value() as f32;
+                    self.genome_offline
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner())
+                        .collect_fitness(f);
+                }
+            }
+        }
+
+        // (0c) 17.7 — CICLO DE GOVERNO a cada audit_interval_steps:
+        // (i) o governador AUTORIZA a introspecção (pedido de
+        // attention tipado — Grant faz, Deny/Throttle pula COM
+        // RAZÃO registrada: Lei 3, ausência ≠ zero);
+        // (ii) contribuição REAL da janela (Δ ciclos confirmados
+        // L4) vira reward de energia (audit cognitive_economy:254);
+        // (iii) meta-learner: trial do gasto de introspecção com
+        // reward = taxa de confirmação da janela — commit ou
+        // ROLLBACK tipado (Lei 6);
+        // (iv) development governor: causas OBSERVADAS (stress alto
+        // = persistent_overload) decidem wake ou standby tipado.
+        {
+            let interval = self.config.resource_governor.audit_interval_steps.max(1);
+            let mut audit = self.audit_state.lock().unwrap_or_else(|p| p.into_inner());
+            if tick >= audit.0 + interval {
+                audit.0 = tick;
+                let mut rg = self
+                    .resource_governor
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
+                let (stress, _, _) = self.limbic_inputs();
+                let scarcity = rg
+                    .budget(crate::resource_governor::Resource::Attention)
+                    .map(|b| b.scarcity())
+                    .unwrap_or(0.0);
+                let bucket = crate::resource_governor::HistoricalMetaLearner::bucket_key(
+                    stress.clamp(0.0, 1.0),
+                    scarcity,
+                );
+                let mut ml = self.meta_learner.lock().unwrap_or_else(|p| p.into_inner());
+                let (pedido, explorou) = ml.suggest(&bucket, "introspection_attention", 0.02);
+                let decisao = rg.request(
+                    crate::resource_governor::Resource::Attention,
+                    pedido.max(0.01),
+                    tick,
+                );
+                let autorizado = matches!(
+                    decisao,
+                    crate::resource_governor::AllocationDecision::Grant { .. }
+                );
+                if autorizado {
+                    stats.governor_audits += 1;
+                } else {
+                    stats.governor_denied += 1;
+                }
+                // Contribuição real da janela: Δ confirmed do L4.
+                let confirmed_agora = self
+                    .l4
+                    .as_ref()
+                    .map(|l4| l4.stats().confirmed)
+                    .unwrap_or(0);
+                let contrib = confirmed_agora.saturating_sub(audit.1) as f32;
+                audit.1 = confirmed_agora;
+                let _ganho = rg.reward_contribution(contrib, tick);
+                // Trial: reward = taxa de confirmação da janela (com
+                // denominador broadcasts; sem fonte: reward 0 →
+                // rollback honesto do gasto).
+                let l4s = self.l4.as_ref().map(|l4| l4.stats());
+                let reward = match (&l4s, autorizado) {
+                    (Some(s), true) if s.broadcasts > 0 => {
+                        s.confirmed as f32 / s.broadcasts as f32
+                    }
+                    _ => 0.0,
+                };
+                let verdict = ml.trial(&bucket, "introspection_attention", 0.02, pedido, reward);
+                stats.learner_trials += 1;
+                match verdict {
+                    crate::resource_governor::TrialVerdict::Commit { .. } => {
+                        stats.learner_commits += 1;
+                    }
+                    crate::resource_governor::TrialVerdict::Rollback { .. } => {
+                        stats.learner_rollbacks += 1;
+                    }
+                }
+                let _ = explorou;
+                drop(ml);
+                drop(rg);
+                // Development: causas OBSERVADAS reais.
+                let mut dg = self
+                    .development_governor
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
+                let mut causas: Vec<String> = Vec::new();
+                if stress > 0.8 {
+                    causas.push("persistent_overload".to_string());
+                }
+                if let Some(s) = &l4s {
+                    if s.broadcasts > 0 && s.actions == 0 {
+                        causas.push("capacity_shortage".to_string());
+                    }
+                }
+                match dg.should_wake(&causas) {
+                    crate::resource_governor::WakeVerdict::Wake { .. } => {
+                        stats.dev_wakes += 1;
+                    }
+                    crate::resource_governor::WakeVerdict::Standby { .. } => {
+                        stats.dev_standbys += 1;
+                    }
+                }
+            }
         }
 
         // (1) WAKE: causa declarada para o despertar (dormência relativa).
@@ -359,12 +622,20 @@ impl rt::CognitiveModule for L5Module {
                     if confirm.value() < 0.5
                         && !active_targets.iter().any(|t| t == "l4.verificacao")
                     {
-                        match meta.intervene(
-                            "l4.verificacao",
-                            &format!("confirmacao {:.2} abaixo de 0.5", confirm.value()),
-                            confirm.value(),
-                        ) {
-                            Ok(_) => stats.meta_proposals += 1,
+                        let motivo =
+                            format!("confirmacao {:.2} abaixo de 0.5", confirm.value());
+                        match meta.intervene("l4.verificacao", &motivo, confirm.value()) {
+                            Ok(report) => {
+                                stats.meta_proposals += 1;
+                                // 16.7: a intervenção vira PROPOSTA REAL de
+                                // política no inbox do dono (Lei 6 executável;
+                                // recusas tipadas contadas dentro do método).
+                                let _ = self.propose_commit_threshold_relief(
+                                    report.intervention_id,
+                                    &motivo,
+                                    tick,
+                                );
+                            }
                             Err(InterventionOutcome::RejectedFull) => {
                                 stats.meta_rejected_full += 1
                             }
@@ -553,5 +824,88 @@ mod tests {
         assert!(eventos >= 5, "o módulo segue ativo e publicando");
         // Contexto de identidade SEMPRE presente (contrato).
         let _ = l5.identity_context();
+    }
+
+    #[test]
+    fn lei_6_executavel_proposta_real_aplica_e_reverte_exato() {
+        // 16.7 INTEGRADA: L5 propõe alívio de política no inbox do
+        // L4; o DONO aplica (previous guardado) e REVERTE exato
+        // quando o TTL esgota (intervenção sem observed_effect).
+        let l1 = Arc::new(l1::ClusterModule::new(42, 24));
+        let l2 = Arc::new(l2::TissueModule::new(l1.shared_runner(), 42));
+        let l3 = Arc::new(l3::L3Module::new_with_substrate(Arc::clone(&l2)));
+        let l4 = Arc::new(l4::L4Module::new_with_l3(Arc::clone(&l3)));
+        // TTL CURTO injetado: a reversão chega em poucos ticks.
+        let mut cfg = L5Config::default();
+        cfg.meta_controller.intervention_ttl_steps = 3;
+        let l5 = Arc::new(L5Module::new_with_l4_and_config(
+            Some(Arc::clone(&l4)),
+            Some(Arc::clone(&l1)),
+            cfg,
+        ));
+        let base = l4.effective_commit_threshold();
+        let id = tf::ModuleId::new();
+        // (a) proposta aceita no inbox do dono.
+        l5.propose_commit_threshold_relief(id, "confirmacao 0.30 abaixo de 0.5", 1)
+            .expect("primeira proposta aceita");
+        assert_eq!(l5.stats().policy_submitted, 1);
+        // (b) duplicada no mesmo alvo: recusa TIPADA.
+        assert!(l5
+            .propose_commit_threshold_relief(id, "repetida", 1)
+            .is_err());
+        assert_eq!(l5.stats().policy_rejected, 1);
+        // (c) o dono APLICA no próximo tick: limiar efetivo baixa
+        // (passo 0.10 com piso 0.25), previous = base guardado.
+        let mut clock = tf::LogicalClock::new();
+        let mut out = Vec::new();
+        clock.advance();
+        let ctx = TypedContext::new(clock);
+        l1.tick(&ctx, &mut out).expect("l1");
+        l4.tick(&ctx, &mut out).expect("l4");
+        let efetivo = l4.effective_commit_threshold();
+        assert!(
+            efetivo < base,
+            "override ativo baixa o limiar: {efetivo} < {base}"
+        );
+        assert_eq!(l4.stats().policy_applied, 1);
+        assert_eq!(l4.stats().policy_active, 1);
+        // (d) Lei 6: TTL esgota sem efeito ⇒ REVERSÃO EXATA.
+        for _ in 0..3 {
+            clock.advance();
+            let ctx = TypedContext::new(clock);
+            let mut out2 = Vec::new();
+            l4.tick(&ctx, &mut out2).expect("l4");
+        }
+        assert_eq!(l4.stats().policy_reverted, 1, "revertida no TTL (Lei 6)");
+        assert_eq!(l4.effective_commit_threshold(), base, "restaura o previous EXATO");
+        assert_eq!(l4.stats().policy_active, 0);
+        assert_eq!(l5.stats().policy_submitted, 1);
+    }
+
+    #[test]
+    fn a_a_determinismo_do_protocolo_de_politica() {
+        // Mesma sequência de propostas ⇒ mesmo estado do inbox e do
+        // limiar em CADA tick (A/A bit-idêntico do protocolo 16.7).
+        let run = || {
+            let (_l1, _l2, _l3, l4, l5) = organismo_full(42);
+            let mut hist: Vec<f32> = Vec::new();
+            let mut clock = tf::LogicalClock::new();
+            for t in 0..6 {
+                if t == 1 {
+                    let _ = l5.propose_commit_threshold_relief(
+                        tf::ModuleId::new(),
+                        "confirmacao baixa",
+                        t as u64,
+                    );
+                }
+                clock.advance();
+                let ctx = TypedContext::new(clock);
+                let mut out = Vec::new();
+                l4.tick(&ctx, &mut out).expect("l4");
+                hist.push(l4.effective_commit_threshold());
+            }
+            hist
+        };
+        assert_eq!(run(), run(), "mesma sequência ⇒ mesmo limiar por tick");
     }
 }

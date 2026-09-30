@@ -1408,7 +1408,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          -> CRITERIO: teste de conflito real resolvido com
          prioridade deterministica + trilha de auditoria da
          decisao
-[ ] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
+[x] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
          hash bit-exato do estado por camada (to_bits) +
          latencia _ms por modulo no StepReport L1->L5 +
          spans com parent_event para reconstrucao de cascatas
@@ -1546,3 +1546,13 @@ execucao de codigo no legado, zero arquivo Python em D:\cortex.
   API da sessao 7. PENDENTE para fechar a caixa: L4 e L5 (mesmo
   padrao, aditivo). Caixa 18.7 permanece [ ] ate TODAS as camadas
   exporem state_hash + latency_ms com A/A por camada.
+
+- SESSAO 6 (18.7 FECHADA — hash e _ms em TODAS as camadas):
+  L1 (padrao 17.6: mean_state_hash + module_latency), L2 (38
+  verdes), L3 (24 verdes), L4 (36 verdes: integration/world_model/
+  lib), L5 (23 verdes) — cada camada expoe state_hash determinis-
+  tico OBSERVACIONAL (hash do estado canonizado, nunca wall-clock)
+  + latency_ms por modulo, diffs ADITIVOS sem quebrar API da
+  sessao 7; cascatas reconstrutiveis do journal via TraceEngine da
+  18.3. A/A por camada: mesma seed => mesmo state_hash bit-exato.
+  Commits: eb0e1c5 (L2+L3) + este (L4+L5).
