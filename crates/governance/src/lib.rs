@@ -6,8 +6,18 @@ pub mod federation;
 pub mod hard_law;
 pub mod soft_law;
 
-pub use arbitration::{Arbiter, Tie};
+pub use arbitration::{
+    Arbiter, ArbitrationEngine, ArbitrationRecord, ArbitrationStats, Contender, LossReason, Tie,
+};
 pub use ecology::{EcologyEngine, NicheHealth};
-pub use federation::{Federation, FederationPhase, FederationState};
+pub use ecology::{
+    CrossFeedRecord, EcoCensus, EcologyMotor, EcologyPolicy, PopulationSource, Species,
+    SpeciesObs, TransferStatus,
+};
+pub use federation::{
+    CnpPolicy, CnpReject, ControlKind, ControlSignal, EffectSink, Federation, FederationEngine,
+    FederationMember, FederationPhase, FederationState, Resource, RevertReason, TradeRecord,
+    TradeStatus,
+};
 pub use hard_law::{HardLawSet, LawCheck, Verdict};
 pub use soft_law::{SoftLaw, SoftLawBook};
