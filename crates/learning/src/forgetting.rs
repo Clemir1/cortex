@@ -71,4 +71,28 @@ impl ForgettingEngine {
     pub fn len(&self) -> usize {
         self.traces.len()
     }
+
+    /// EXPORT cross-run (17.9): traços vivos ordenados por chave —
+    /// snapshot determinístico (mesma história ⇒ mesmo export).
+    pub fn export(&self) -> Vec<(String, f32)> {
+        let mut v: Vec<(String, f32)> = self
+            .traces
+            .iter()
+            .map(|(k, s)| (k.clone(), *s))
+            .collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0));
+        v
+    }
+
+    /// IMPORT cross-run (17.9): substitui os traços pelos do snapshot
+    /// (cap respeitado: excesso mais fraco descartado como no prune).
+    pub fn import(&mut self, snapshot: Vec<(String, f32)>) {
+        self.traces.clear();
+        for (k, s) in snapshot {
+            self.traces.insert(k, s.clamp(0.0, 1.0));
+        }
+        if self.traces.len() > self.cap {
+            let _ = self.prune();
+        }
+    }
 }

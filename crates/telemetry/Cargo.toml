@@ -1,0 +1,28 @@
+# =============================================================================
+# triad-telemetry — T/telemetry (transversal, camada NONE)
+#
+# 16.9: [telemetry] INJETADA com consumidor real — a escada de
+# evidência E0–E5 AUDITADA por módulo (descritores vivos vs alvo da
+# config), recibos de evidência COM DENOMINADOR e GAPS tipados (a
+# escada só sobe com verificação — nunca promoção automática; Lei 1).
+# Inclui as STRUCTS de [crisis] validadas (máquina aguarda consumidor
+# real — a chave nunca é apagada; Lei 4 congelada nas validações).
+#
+# FORA de escopo: capturar payloads do hot path ([telemetry.heavy]
+# off é LIDO e RESPEITADO); promover níveis sem verificação.
+# =============================================================================
+
+[package]
+name = "triad-telemetry"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+triad-runtime = { path = "../runtime" }
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+
+[dev-dependencies]
+toml = "0.8"

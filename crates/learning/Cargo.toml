@@ -6,4 +6,13 @@ edition = "2021"
 [dependencies]
 triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
+triad-runtime = { path = "../runtime" }
+triad-l4-global = { path = "../l4_global" }
+serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
+
+[dev-dependencies]
+toml = "0.8"
+triad-l1-substrate = { path = "../l1_substrate" }
+triad-l2-tissue = { path = "../l2_tissue" }
+triad-l3-local = { path = "../l3_local" }
