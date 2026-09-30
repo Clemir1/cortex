@@ -127,6 +127,22 @@ impl rt::CognitiveModule for ClusterModule {
         *self.state.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    /// 18.7 — hash observacional da camada L1: combina o hash da
+    /// média de estado 97D com o hash da ordem dos clusters (os dois
+    /// canônicos da matriz versionada) — função pura do estado, A/A
+    /// bit-exato entre runs (mesma seed ⇒ mesmo hash; o tick avança o
+    /// estado ⇒ hash muda). Observação, nunca causa.
+    fn state_hash(&self) -> Option<u64> {
+        let runner = self.runner.lock().unwrap_or_else(|p| p.into_inner());
+        let mean = runner.matrix.mean_state_hash?;
+        let order = runner.matrix.cluster_order_hash?;
+        let mut h = std::hash::DefaultHasher::new();
+        use std::hash::{Hash, Hasher};
+        mean.hash(&mut h);
+        order.hash(&mut h);
+        Some(h.finish())
+    }
+
     fn tick(
         &self,
         ctx: &rt::TypedContext,

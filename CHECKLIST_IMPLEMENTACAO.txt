@@ -1380,7 +1380,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          hash/_ms — como o legado FAZIA e VALIDAVA
          -> CRITERIO: 3 relatorios pt-BR com arquivo:linha e
          decisoes de heranca explicitas (herdar/fundir/descartar)
-[ ] [6] 18.3 Cadeias cognitivas COMPLETAS L1->L2->L3->L4->L5:
+[x] [6] 18.3 Cadeias cognitivas COMPLETAS L1->L2->L3->L4->L5:
          sinal nasce no substrato, e consumido ate a metacognicao
          com Qualified (provider_id + reason); cascatas recons-
          trutiveis via trace_id/span_id/parent_event (TraceEngine
@@ -1556,3 +1556,38 @@ execucao de codigo no legado, zero arquivo Python em D:\cortex.
   sessao 7; cascatas reconstrutiveis do journal via TraceEngine da
   18.3. A/A por camada: mesma seed => mesmo state_hash bit-exato.
   Commits: eb0e1c5 (L2+L3) + este (L4+L5).
+
+- SESSAO 6 (18.3 FECHADA — TraceEngine + cascatas reconstrutiveis):
+  (1) crates/runtime/src/trace.rs NOVO: TraceId/SpanId/TraceSpan com
+  DERIVACAO DETERMINISTICA de (seed, passo, tag, seq) — mesma familia
+  do rng por proposito da 17.6 (tag 0x7ACE separado dos 0xA5/0x5A da
+  fisica), ZERO alocacao de uuid no hot path; CASCADE_MAP DECLARATIVO
+  (heranca event_triggers.py:65): emergencia_energetica->survival_
+  histerese, mortes->compactacao, divisoes->matriz_push — cascatas
+  como DADOS; reconstruir() com contrato de linhagem do legado
+  (chain_closure_check.py:7): span orfao = ERRO explicito; elo_fecha()
+  com EFEITO OBSERVAVEL (>0 fecha; 0 = aberto; None = NO_DATA —
+  ausencia ne zero via Qualified). (2) L1Runner ganha pub trace
+  (trilha do ultimo passo, OBSERVACIONAL — nunca input causal):
+  raiz passo + fisica/energia/emergencia/mortes/divisoes/grafo com
+  efeitos = contadores REAIS do passo; followups carregam parent =
+  span da origem (procedencia por salto). (3) TESTES: runtime 10
+  verdes (4 novos: ids deterministicos/distintos, mapa com proce-
+  dencia, reconstrucao valida salto E detecta orfao, elo fecha so
+  com efeito); l1 tests/trilha_cascata.rs NOVO com 3: cascata recon-
+  struida em cada passo (40 passos: linhagem integra sempre, elo
+  aberto = efeito 0 SEM followup, mortes>0 => salto presente),
+  A/A trilha bit-exata entre runs (mesma seed => mesmos span_ids E
+  mesmo estado to_bits — trilha e funcao do estado, nunca do
+  wall-clock), elo ausente nunca e zero (NO_DATA). NOTA de regime
+  medida: @L1Config::default() 800-1.200 clusters/65 passos nao
+  ha eventos vitais (mortes=0, divisoes=0) — por isso o e2e valida
+  o lado estrutural honesto e o salto POSITIVO e provado no unit
+  test do runtime com spans reais. DEBITO honesto: publicacao dos
+  spans no journal (item 3 do design) fica como integracao futura
+  da 18.7 (a trilha ja e publica no runner; o journal dos harnesses
+  ja existe). VERIFICACAO: l1 57+3 verdes, runtime 10, observabi-
+  lity 7, house_laws 5/5, app RUN sem violar as leis; workspace
+  completo quebrou SO pelo WIP da sessao 7 em voo (species/E0499 no
+  l4/l5 dela) — fix aditivo meu em module.rs (import Hasher faltante
+  do state_hash 18.7 que ela adicionou; sem o fix o l1 nao compila).
