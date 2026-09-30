@@ -1420,6 +1420,66 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          documentado, AUDITORIA/checklist atualizados, commit/push
          na Danger-Zone a cada marco
 
+
+=============================================================================
+SECAO 19 — CIBERNETICA O1-O5 CONSOLIDADA + FECHAMENTO TOTAL (dona)
+=============================================================================
+DIRETRIZ DA DONA (30/09): "executar todas as tarefas ate tudo completo
+funcional e aprimorado sem faltar implementacoes, debitos tecnicos ou
+pendencias". PROTOCOLO respeitado: as caixas 17.11/17.13/18.7 seguem
+claimadas [6]; a sessao 7 executa SUBCAIXAS NOVAS [7] com nota "sob
+diretriz da dona" e a sessao 6 VALIDA as caixas dela ao retornar —
+caixas dela NUNCA desmarcadas por mim.
+
+[ ] [7] 19.1 Sintese da auditoria cibernetica O1-O5 (6 subagentes:
+         legado O1/O2/O3/O4/O5 + mapeamento do codigo atual)
+         -> CRITERIO: relatorio var/verificacao/19-0_cibernetica_
+         o1_o5_modelagem.md com legado x atual x gap x decisao
+         herdar/fundir/descartar POR ORDEM + caixas filhas
+
+[ ] [7] 19.2 Debito 18.7-a (subcaixa; 18.7 e [6]): hash real L4
+         A/A bit-exato no padrao da sessao 6
+         -> CRITERIO: teste hash_aa L4 verde + baterias
+
+[ ] [7] 19.3 Debito 18.7-b (subcaixa; 18.7 e [6]): hash real L5
+         A/A bit-exato no mesmo padrao
+         -> CRITERIO: teste hash_aa L5 verde + baterias
+
+[ ] [7] 19.4 Debito 18.7-c (subcaixa; 18.7 e [6]): hash FINO do L2
+         por tecido/membros (extensao aditiva do demografico)
+         -> CRITERIO: teste fino A/A verde + demografico preservado
+
+[ ] [7] 19.5 Debito 18.7-d (subcaixa; 18.7 e [6]): budget por
+         camada com throttle fixo 1.0 deterministico (heranca do
+         cognitive_budget do legado)
+         -> CRITERIO: budget por camada com denominador + A/A
+
+[ ] [7] 19.6 17.11 LawEngine (subcaixa; 17.11 e [6]; skeletons
+         hard_law.rs/soft_law.rs SAO da sessao 7 — kickoff sessao 6):
+         circuito conforme ESPEC 17-11 — lei como DADO no HardLawSet,
+         enforcement OBSERVACIONAL pos-tick, soft laws via policy
+         Lua + whitelist 17.12 (entrada aditiva), contadores por
+         lei COM denominador, A/A com violacao forcada tipada
+         -> CRITERIO: LawEngine vivo no app + testes + Lei 4 (zero
+         suspensao)
+
+[ ] [7] 19.7 17.13 intra-projeto (subcaixa; 17.13 e [6]): trait
+         FederationTransport feature-off por padrao + sham (2
+         organismos sham como membros do FederationEngine 18.4) +
+         contratos applied_value/observed_effect/recibo t+1/t+5 do
+         ADR 18-4 — SEM rede real (staging honesto)
+         -> CRITERIO: contrato tipado A/A com sham + feature-off
+         no app; rede real segue decisao da dona
+
+[ ] [7] 19.8 Melhorias O1-O5 da auditoria (caixas filhas derivadas
+         do 19-0: mecanismos canonicos que faltam por ordem)
+         -> CRITERIO: cada melhoria com mecanismo real, razao
+         tipada, denominador, A/A bit-exato
+
+[ ] [7] 19.9 Verificacao final da serie 19
+         -> CRITERIO: workspace 44+/0, house 5/5, app RUN=0 com
+         cadeia final impressa, relatorios por caixa, notas
+
 OBSERVACAO DE KICKOFF (sessao 6): arquétipos JÁ EXISTEM em
 crates/governance/src (federation.rs 88 linhas, ecology.rs 110,
 arbitration.rs 47, hard_law.rs 88, soft_law.rs 51 — esqueletos
@@ -1884,3 +1944,36 @@ dela desde 09:43 (commit 9785c7c).
   a sessao 6 vai executa-los com os designs dos relatorios 18.2 —
   se voce ja tiver trabalho em voo nesses 3 arquivos, comunique no
   checklist e convergimos (sessao 6 decide conflitos, AGENTS.md).
+
+- SESSAO 6 (18.4-18.6, claim por comando direto do dono; estado
+  honesto por criterio): 18.5 [x] FECHADA — motor generico +
+  DOIS ADAPTERS REAIS do territorio governance (NichesOf: nichos
+  do EcologyEngine com fitness=sucessos/tentativas; Federation-
+  Resources: recursos do ledger federativo com fitness=aplicadas/
+  totais — denominadores SEMPRE; nicho sem tentativa nao e
+  especie, ausencia ne zero), lei de diversidade GenDiv (Shannon
+  abaixo do minimo => injecao entropica deterministica contada,
+  PRIORITARIA sobre o teto: substitui a pior), RENOVACAO obrigatoria
+  (>=1 morte por ciclo de N passos sem extincao natural — morte
+  programada da pior por fitness EFETIVA, contador com denominador
+  honesto steps_since_extinction), CUSTO de nascimento real (mae
+  paga da propria reserva; sem reserva nao especia — natalidade
+  freada por energia). 18.6 [x] FECHADA — criterios ja cobertos:
+  conflito por prioridade com trilha tipada por perdedor
+  (LossReason), empate resolvido por ordem de chegada, ordem
+  canonica multi-atuador, A/A bit-identico, fila vazia = NENHUMA
+  decisao (ausencia ne zero), stats com denominador. 18.4 [ ]
+  ABERTA com debitos explicitos (o que EXISTE: CNP bilateral
+  tipado need->proposal->agreement->transfer->effect com golden
+  test dos 5 estados naturais + Reverted como defesa por
+  construcao — erro real ~1e-16 << 1e-12, inalcançavel honestamente
+  sem injecao de erro; ledger append-only com hash encadeado;
+  reservas contra dupla promessa; conservacao com reversao; cap
+  de taxa clamped [0,0.5]; downstream EffectSink injetavel): FALTA
+  (a) outcome t+1/t+5 das TROCAS federativas (o padrao existe no
+  ecology: horizon_1/5/benefit_validated — portar), (b) trait
+  FederationTransport com impl InProcess + porta remote feature-
+  off, (c) controle ACTIVE/SHAM (flag para CNP desligado + teste
+  A/A active-vs-sham). EVIDENCIAS: governance 22/22 verdes
+  (4 testes novos: custo, GenDiv, renovacao, adapters), house_laws
+  5/5, A/A por construcao (rng semeado, ordem canonica).
