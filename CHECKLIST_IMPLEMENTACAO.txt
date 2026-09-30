@@ -1358,3 +1358,74 @@ apontamentos REMANESCENTES sao todos decisao de POLITICA do dono
 6) - nao aderencia mecanica. Relatorio:
 var/verificacao/17-14_aderencia_canal_l3_l2.md
 
+
+============================================================
+SECAO 18 — FECHAMENTO CONSOLIDADO DO NEOCORTEX (diretriz do
+dono, round novo da sessao 6): cadeias, cascatas, federacoes,
+leis, ecologias e instrumentacao por hash e _ms. Alvo:
+doc/CAMADA.txt (neocortex funcional consolidado). Padrao da casa
+mantido: criterios EVIDENCIADOS antes de medir; A/A bit-exato;
+ausencia ne zero; taxas com denominador; CPU canonica.
+Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
+============================================================
+
+[ ] [6] 18.1 Auditoria Graphify + codigo: god-nodes, diagnose
+         multigraph, cadeias L1->L5 no GRAFO REAL vs CAMADA.txt
+         -> CRITERIO: relatorio de lacunas com arquivo:linha,
+         god-nodes top-12 listados, diagnose multigraph limpo
+         (arestas quebradas = 0)
+[ ] [6] 18.2 Legado por subagentes READ-ONLY (3 frentes): (a)
+         cadeias cognitivas + cascatas; (b) federacao inter-
+         organismos; (c) ecologia de modulos + instrumentacao
+         hash/_ms — como o legado FAZIA e VALIDAVA
+         -> CRITERIO: 3 relatorios pt-BR com arquivo:linha e
+         decisoes de heranca explicitas (herdar/fundir/descartar)
+[ ] [6] 18.3 Cadeias cognitivas COMPLETAS L1->L2->L3->L4->L5:
+         sinal nasce no substrato, e consumido ate a metacognicao
+         com Qualified (provider_id + reason); cascatas recons-
+         trutiveis via trace_id/span_id/parent_event (TraceEngine
+         do CAMADA:1064)
+         -> CRITERIO: teste ponta-a-ponta da cadeia com trilha
+         verificada + A/A bit-exato da cadeia completa
+[ ] [ ] 18.4 Federacao (FederationEngine RUST+LUA, CAMADA:1143):
+         protocolo tipado need -> proposal -> agreement ->
+         transfer -> effect; staging feature-off; ADR; Lua so
+         retorna Proposal (nunca escreve estado)
+         -> CRITERIO: golden test do protocolo (cada estado
+         alcancavel e tipado) + policy Lua de federacao retorna
+         Proposal validada pelo Rust + feature desligada por
+         padrao + ADR registrado
+[ ] [ ] 18.5 Ecologia de modulos (EcologyEngine RUST+LUA,
+         CAMADA:1157): UM motor generico; adapters fornecem
+         populations (binding/symbol/causal); demografia com
+         denominador (Lei 1: taxas SEMPRE x/y)
+         -> CRITERIO: 1 motor generico + >=2 adapters reais +
+         testes de nascimento/morte/selecao com denominadores
+         explicitos + ausencia ne zero nos censos
+[ ] [ ] 18.6 Arbitragem (ArbitrationEngine, CAMADA:1172):
+         conflitos de controller, actuator ownership, prioridade,
+         resolucao — deterministico
+         -> CRITERIO: teste de conflito real resolvido com
+         prioridade deterministica + trilha de auditoria da
+         decisao
+[ ] [6] 18.7 Instrumentacao por HASH e _MS em TODAS as camadas:
+         hash bit-exato do estado por camada (to_bits) +
+         latencia _ms por modulo no StepReport L1->L5 +
+         spans com parent_event para reconstrucao de cascatas
+         -> CRITERIO: StepReport de cada camada expoe
+         state_hash + latency_ms; A/A documentado por camada;
+         cascatas reconstrutiveis do journal
+[ ] [6] 18.8 Verificacao final consolidada: workspace verde,
+         house_laws 5/5, app 1.200 E 30K verdes, A/A bit-exato
+         documentado, AUDITORIA/checklist atualizados, commit/push
+         na Danger-Zone a cada marco
+
+OBSERVACAO DE KICKOFF (sessao 6): arquétipos JÁ EXISTEM em
+crates/governance/src (federation.rs 88 linhas, ecology.rs 110,
+arbitration.rs 47, hard_law.rs 88, soft_law.rs 51 — esqueletos
+da sessao 7): a SECAO 18 fecha o CIRCUITO deles com as cadeias
+reais. CAMADA.txt mapeado: governance/{laws,federation,ecology,
+arbitration} (linha 1556-1560), FederationEngine/CAMADA:1143,
+EcologyEngine/CAMADA:1157, ArbitrationEngine/CAMADA:1172,
+TraceEngine/CAMADA:1058 (cascatas reconstruidas daqui).
+Subagentes do legado disparados (3 frentes, READ-ONLY).
