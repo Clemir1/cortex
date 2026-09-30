@@ -130,18 +130,33 @@ impl EnergyBudget {
         }
     }
 
+    /// Regulação do O1 POR PASSO (17.6/Lei-1): chamada 1× por tick do
+    /// runner — os contadores da homeostase (corrections, out_of_
+    /// band_steps, applied_last) passam a ter denominador PASSO e não
+    /// CHAMADA (antes o runner chamava `regulate` uma vez por CLUSTER:
+    /// contadores inflados pela população — taxa sem denominador
+    /// honesto). O intake de cada cluster vira função PURA do rate
+    /// retornado (bit-idêntico ao estado anterior: `regulate` já era
+    /// chamada N vezes com o MESMO mean_energy, produzindo o MESMO
+    /// rate a cada chamada).
+    pub fn regulate_step(&mut self, mean_energy: f64, emergency_bonus: f64) -> f64 {
+        if emergency_bonus > 0.0 {
+            warn!(emergency_bonus, mean_energy, "emergência energética ativada");
+        }
+        self.homeostasis.regulate(mean_energy)
+    }
+
     /// Intake de um cluster neste step (fechamento com o O1 do passo
-    /// anterior — o loop real: medir→atuar→medir).
+    /// anterior — o loop real: medir→atuar→medir). Mantido para os
+    /// testes unitários do O1 (regulação por CHAMADA); o runner usa
+    /// `regulate_step` + intake puro por cluster (17.6).
     pub fn per_cluster_intake(
         &mut self,
         mean_energy: f64,
         dormant: bool,
         emergency_bonus: f64,
     ) -> f64 {
-        let rate = self.homeostasis.regulate(mean_energy);
-        if emergency_bonus > 0.0 {
-            warn!(emergency_bonus, mean_energy, "emergência energética ativada");
-        }
+        let rate = self.regulate_step(mean_energy, emergency_bonus);
         let base = if dormant {
             self.base_per_cluster * cfg::DORMANT_INTAKE_FACTOR
         } else {

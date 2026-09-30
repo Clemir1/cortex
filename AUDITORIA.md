@@ -250,3 +250,76 @@ Cadeia completa da harmonia Cluster/HOTM/Chladni (seção 13 do checklist):
 
 `graphify-mcp.exe` existe na `.venv` para integrar o grafo a assistentes.
 Configuração fica a critério do usuário (não faz parte do scaffold).
+
+## Série 17 — escala, paralelismo determinístico e A/A por construção (sessão 6)
+
+Evidência completa da diretriz de escala do dono (boot 1.200, teto 30K,
+alta-concorrência interna), com todos os números medidos em release no
+hardware do dono. Cada decisão de performance foi medida — inclusive as
+que REVERTERAM desenhos mais "paralelos".
+
+### Cadeia de diagnóstico (17.6) — como o gargalo foi caçado
+
+1. Telemetria permanente: `StepReport.module_latency` (perfil por camada
+   por passo; o app imprime quando o passo excede 50 ms).
+2. Perfil por FASE do runner (instrumentação temporária removida): física
+   5,37 s vs resto < 20 ms — dentro dela, `graph.update_positions` = 4,94 s.
+3. Dois custos no grafo: `remove_stale` varrendo TODAS as células por movido
+   (O(moved × células)) + affected coletando ~540 candidatos por movido
+   quando só ~12 são vizinhos reais.
+4. INVALIDAÇÃO do baseline da 17.1: `n = min(pop, max_population)` — o
+   baseline "30K" rodava com 1024 clusters REAIS; o tick @30K real custava
+   5,4 s em TODA configuração. Os thresholds 10/20/50 ms foram escritos
+   contra esse baseline inválido.
+
+### Correções (bit-idênticas, provadas por propriedade == rebuild e A/A)
+
+- Índice reverso `where_is` no SpatialHash (remoção O(célula)).
+- Física PARALELA por due em 2 estágios sem clone: snapshot puro paralelo
+  dos vizinhos (buffer plano) + física in-place `par_iter_mut`; RNG derivado
+  de (seed, id, step, tag) por propósito — determinismo POR CONSTRUÇÃO: o
+  resultado não depende da ordem nem do nível de paralelismo.
+- Grafo: recompute puro em rayon (movidos + rebuild) com commit serial;
+  edges seriais por movido (melhor dos 3 desenhos medidos).
+- Survival fase 4 par (zip mut-mut por índice); compactação `retain`
+  in-place por índice rastreado (zero clones de 30K clusters).
+- O1/Lei-1: `regulate_step` 1×/passo — contadores da homeostase passam a
+  ter denominador PASSO (antes inflados por chamada/população).
+- Matriz: cópia de linhas e ids em rayon (`par_chunks_mut`), SOMA serial na
+  ordem canônica (bit-exato), `SmallRng` no L1/L2 (~20× por draw; zero
+  testes congelados quebrados).
+
+### Provas A/A
+
+- `tests/aa_fisica_paralela.rs`: bits idênticos com pools de 1, 4 e 8
+  threads + run-vs-run bit-exato.
+- Testes do grafo 5/5 (incremental == rebuild total; add_cluster == rebuild).
+- Twin L4 (16.11) verde: duas runs completas do organismo bit-idênticas.
+
+### Números finais @30K (release)
+
+| Métrica | Antes da série | Depois | Ganho |
+|---|---|---|---|
+| Passo par (banda madura, ~30K devidos) | 5,4 s | 97-184 ms | ~40× |
+| Passo ímpar | 28 ms | 13-20 ms | ~1,7× |
+| App E2E 65 passos | 204,7 s | 7,4 s | 28× |
+| Média L1 por tick | ~3,15 s | ~74 ms | 73× |
+
+### Decisões medidas (inclusive reversões)
+
+| Desenho | Medido @30K | Veredito |
+|---|---|---|
+| Edges seriais (binário ordenado) | 40-59 ms | MELHOR — permanece |
+| Edges por buckets j%16 + HashMap | 61-69 ms | pior — revertido |
+| Recompute dos afetados par | 66-78 ms | pior — revertido |
+
+### 17.7 — GPU: NO-GO por dados
+
+- f32 na CPU: zero benefício medido (bench 17.3).
+- @1.200 (carga operacional): tick ~1-4 ms — GPU desnecessária.
+- @30K: física já paralela CPU com A/A por construção; resto do tick
+  (arestas, fases O(n)) não é workload GPU.
+- Transferência PCIe 23 MB/tick em f64 + reduções GPU sem ordem canônica
+  ameaçam o A/A bit-exato permanente por ~25% em UMA fase.
+- CPU permanece canônica; reserva arquitetural wgpu (feature off) no
+  triad-compute (sessão 7).

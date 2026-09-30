@@ -15,6 +15,10 @@ use triad_l5_meta as l5;
 use triad_platform as platform;
 use triad_development as dev;
 use triad_learning as lrn;
+use triad_persistence as per;
+use triad_cybernetics as cyb;
+use triad_telemetry as tel;
+use triad_lua as lua_host;
 use triad_runtime as rt;
 
 fn main() {
@@ -167,6 +171,138 @@ fn main() {
         .with_l4_source(Arc::clone(&l4_handle));
     let lrn_handle = Arc::new(lrn_mod);
 
+    // T/CYBERNETICS (16.8): ordens O1–O4 REAIS sobre métricas vivas
+    // do L1 (energia/ressonância/capacidade) nas cadências da config;
+    // O5 coleta horizonte, genome FORA do loop (Lei 7).
+    let cybcfg: cyb::CyberneticsCfg = match cfg.get_section("cybernetics") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("FALHA NO BOOT: seção [cybernetics] ausente: {e:?}");
+            return;
+        }
+    };
+    let cyb_mod = cyb::CyberneticsModule::new_with_config(cybcfg)
+        .with_l1_source(Arc::clone(&l1_handle));
+    let cyb_handle = Arc::new(cyb_mod);
+
+    // T/TELEMETRY (16.9): [telemetry] INJETADA — auditor da escada
+    // E0–E5 com descritores VIVOS de TODOS os módulos montados
+    // (incluindo o próprio auditor: gap tipado, nunca promoção).
+    let telcfg: tel::TelemetryCfg = match cfg.get_section("telemetry") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("FALHA NO BOOT: seção [telemetry] ausente: {e:?}");
+            return;
+        }
+    };
+    // [crisis] estruturada e VALIDADA no boot (Lei 4 congelada):
+    // máquina inválida é erro de boot — nunca silenciada.
+    let crisis_cfg: tel::CrisisCfg = match cfg.get_section("crisis") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("FALHA NO BOOT: seção [crisis] ausente: {e:?}");
+            return;
+        }
+    };
+    if let Err(e) = crisis_cfg.validate() {
+        eprintln!("FALHA NO BOOT: [crisis] inválida: {e:?}");
+        return;
+    }
+    let tel_mod = {
+        let descs = vec![
+            rt::CognitiveModule::descriptor(&*l1_handle).clone(),
+            rt::CognitiveModule::descriptor(&*l2_mod).clone(),
+            rt::CognitiveModule::descriptor(&*l3_handle).clone(),
+            rt::CognitiveModule::descriptor(&*l4_handle).clone(),
+            rt::CognitiveModule::descriptor(&*l5_handle).clone(),
+            rt::CognitiveModule::descriptor(&*dev_handle).clone(),
+            rt::CognitiveModule::descriptor(&*lrn_handle).clone(),
+            rt::CognitiveModule::descriptor(&*cyb_handle).clone(),
+        ];
+        let mut m = tel::TelemetryModule::new_with_config(telcfg).with_descriptors(descs);
+        // O auditor se inclui na auditoria (gap próprio é tipado).
+        m.include_self();
+        m
+    };
+    let tel_handle = Arc::new(tel_mod);
+
+    // 17.12 — LUA POLICY HOST: Lua é APENAS política (retorna
+    // Proposal ou nil); Rust valida (whitelist+faixas+Lei 3) e
+    // aplica. Sandbox rígido; hashes versionados por arquivo.
+    let luacfg: lua_host::LuaCfg = match cfg.get_section("lua") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("FALHA NO BOOT: seção [lua] ausente: {e:?}");
+            return;
+        }
+    };
+    let mut policy_host = lua_host::PolicyHost::boot(&luacfg, std::path::Path::new("."))
+        .unwrap_or_else(|e| {
+            eprintln!("FALHA NO BOOT: PolicyHost: {e}");
+            std::process::exit(1);
+        });
+    for (nome, hash) in policy_host.policies() {
+        println!("  policy Lua registrada: {nome} (hash {:016x})", hash);
+    }
+    for (nome, hash) in policy_host.modules() {
+        println!("  módulo Lua utilitário: {nome} (hash {:016x})", hash);
+    }
+    for issue in policy_host.load_issues() {
+        eprintln!("  policy com problema (boot segue): {} — {}", issue.file, issue.message);
+    }
+    for err in policy_host.registry_errors() {
+        eprintln!("  erro de registro Lua (boot segue): {err}");
+    }
+    // Contadores do wiring (aplicação com denominador).
+    let mut lua_aplicadas: u64 = 0;
+    let mut lua_rejeitadas: u64 = 0;
+    let mut lua_banda_morta: u64 = 0;
+    let mut lua_chamadas: u64 = 0;
+
+    // ---- Cross-run (17.9, absorve 16.10): RESTORE com verificação de
+    // procedência — o snapshot mais recente em var/runs/ é carregado,
+    // checksumado, REPLAYado (as taxas do learning têm que reproduzir
+    // os cicos do snapshot) e então o learning retoma as taxas/traços
+    // e o development retoma o ESTÁGIO alcançado. Ausência de snapshot
+    // é estado limpo INFORMADO (nunca silenciado); corrupção/adulteração
+    // é rejeitada com erro tipado — o organismo não boota sobre
+    // procedência duvidosa.
+    let runs_dir = std::path::Path::new(per::RUNS_DIR);
+    match per::Checkpointer::latest(runs_dir) {
+        Ok(Some(path)) => match per::Checkpointer::load(&path)
+            .and_then(|snap| {
+                per::verify_provenance(&snap).map(|rep| (snap, rep))
+            }) {
+            Ok((snap, rep)) => {
+                lrn_handle.restore_snapshot(&snap.learning);
+                dev_handle.restore_snapshot(&snap.development);
+                println!(
+                    "Cross-run (17.9): restaurado {} — tick {}, seed {}; procedência VERIFICADA: {} registros replayados, {} módulos batidos; estágio {} retomado",
+                    path.display(),
+                    snap.meta.created_tick,
+                    snap.meta.seed,
+                    rep.records_replayed,
+                    rep.modules_matched,
+                    snap.development.stage.as_str(),
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "Cross-run (17.9): snapshot rejeitado por procedência: {e:?} — boot limpo sem restore"
+                );
+            }
+        },
+        Ok(None) => {
+            println!(
+                "Cross-run (17.9): nenhum snapshot anterior em {}/ — ausência ≠ zero: ontogenia começa do embrião",
+                per::RUNS_DIR
+            );
+        }
+        Err(e) => {
+            eprintln!("Cross-run (17.9): falha ao procurar snapshots: {e:?}");
+        }
+    }
+
     let modules: Vec<Arc<dyn rt::CognitiveModule>> = vec![
         l1_handle.clone() as Arc<dyn rt::CognitiveModule>,
         l2_mod as Arc<dyn rt::CognitiveModule>,
@@ -175,6 +311,8 @@ fn main() {
         l5_handle.clone() as Arc<dyn rt::CognitiveModule>,
         dev_handle.clone() as Arc<dyn rt::CognitiveModule>,
         lrn_handle.clone() as Arc<dyn rt::CognitiveModule>,
+        cyb_handle.clone() as Arc<dyn rt::CognitiveModule>,
+        tel_handle.clone() as Arc<dyn rt::CognitiveModule>,
     ];
     let mut scheduler = rt::Scheduler::new(
         modules,
@@ -202,6 +340,8 @@ fn main() {
             ("5", &*l5_handle),
             ("T-dev", &*dev_handle),
             ("T-lrn", &*lrn_handle),
+            ("T-cyb", &*cyb_handle),
+            ("T-tel", &*tel_handle),
         ];
         println!("=== Inventário canônico (doc/CAMADA.txt) ===");
         let mut completos = 0usize;
@@ -213,13 +353,73 @@ fn main() {
             }
         }
         println!(
-            "Descritores canônicos completos: {completos}/{} — T/DEVELOPMENT e T/LEARNING montados no app (16.6/17.8, E3)",
+            "Descritores canônicos completos: {completos}/{} — transversais T montados no app (16.6/17.8/16.8/16.9, E3)",
             inventario.len()
         );
     }
 
+    // 17.10 — TraceEngine: tracing em memória do run (cascatas
+    // reconstruíveis + telemetria de performance COM denominador).
+    let mut tracer = triad_observability::TraceEngine::new(seed);
+    let mut agg_before: std::collections::HashMap<String, (u64, u64)> =
+        std::collections::HashMap::new();
+    let metade = ticks / 2;
+    let mut span_amostra: Option<u64> = None;
+
     for t in 1..=ticks {
         let report = scheduler.step();
+        // 17.10: cada tick é um span RAIZ; cada módulo executado é
+        // filho (proveniência causal tick→módulo reconstruível).
+        let root = tracer.root_span(t);
+        for (nome, us) in &report.module_latency {
+            match tracer.module_span(root, t, nome, *us) {
+                Ok(id) => {
+                    if span_amostra.is_none() && t == ticks && nome == "l1.substrate"
+                    {
+                        span_amostra = Some(id);
+                    }
+                }
+                Err(e) => eprintln!("TraceEngine rejeitou span: {e:?}"),
+            }
+        }
+        if t == metade {
+            agg_before = tracer.snapshot();
+        }
+        // 17.12 — Lua policy wiring FORA do hot path (janela longa):
+        // a cada 10 ticks a policy "learning" recebe o erro preditivo
+        // MÉDIO COM DENOMINADOR (ausência = None → default do Lua).
+        if policy_host.policy_hash("learning").is_some() && t % 10 == 0 {
+            let ls = lrn_handle.stats();
+            let mean_err = if ls.credits_awarded + ls.skipped_unconfirmed > 0 {
+                Some(
+                    (ls.abs_effect_sum / (ls.credits_awarded + ls.skipped_unconfirmed) as f32)
+                        as f64,
+                )
+            } else {
+                None
+            };
+            lua_chamadas += 1;
+            match policy_host.call(
+                "learning",
+                lua_host::PolicyContext {
+                    prediction_error: mean_err,
+                    ..Default::default()
+                },
+            ) {
+                Ok(None) => lua_banda_morta += 1,
+                Ok(Some(proposal)) => {
+                    match lrn_handle.apply_policy_eta(
+                        proposal.value as f32,
+                        &proposal.reason,
+                        proposal.policy_hash,
+                    ) {
+                        Ok(_) => lua_aplicadas += 1,
+                        Err(_) => lua_rejeitadas += 1,
+                    }
+                }
+                Err(_) => lua_rejeitadas += 1,
+            }
+        }
         // 17.6 — perfil de escala: passos demorados mostram a latência
         // por módulo (µs, ordem canônica) — onde o tempo do passo está.
         let total_us: u64 = report.module_latency.iter().map(|(_, us)| *us).sum();
@@ -472,12 +672,204 @@ fn main() {
             }
         };
         println!(
-            "Crédito por módulo (traço vivo): l3.prediction {}, l2.tissue {}, l3.attention {} — eta {:.4} (nunca suspenso), traços podados {}, ticks sem fonte {} de {}",
+            "Crédito por módulo (traço vivo): l3.prediction {}, l2.tissue {}, l3.attention {} — eta {:.4} (nunca suspenso), traços podados {} em {} rodadas de poda, ticks sem fonte {} de {}",
             credito_fmt("l3.prediction"),
             credito_fmt("l2.tissue"),
             credito_fmt("l3.attention"),
-            ls.eta, ls.pruned_traces, ls.no_source_ticks, ls.ticks,
+            ls.eta, ls.pruned_traces, ls.prune_rounds, ls.no_source_ticks, ls.ticks,
         );
+        let taxas = lrn_handle.module_rates();
+        if taxas.is_empty() {
+            println!("Taxa por módulo: AUSENTE (nenhum registro consumido)");
+        } else {
+            for (modulo, creditos, registros) in taxas {
+                let taxa = if registros == 0 {
+                    "n/d".to_string()
+                } else {
+                    format!("{:.1}%", creditos as f32 * 100.0 / registros as f32)
+                };
+                println!(
+                    "Taxa por módulo: {modulo} — {creditos}/{registros} confirmados ({taxa})"
+                );
+            }
+        }
+    }
+
+    // T/CYBERNETICS (16.8): ordens O1–O4 sobre métricas VIVAS nas
+    // cadências da config — satisfação/taxas COM denominador; O3
+    // recomenda ação TIPADA; O5 amostra horizonte (genome fora, Lei 7).
+    {
+        println!("=== Cybernetics (T, 16.8) ===");
+        let cs = cyb_handle.stats();
+        let sat = if cs.o1_runs == 0 {
+            "n/d (sem execução)".to_string()
+        } else {
+            format!(
+                "{:.1}% ({}/{})",
+                cs.o1_satisfied as f32 * 100.0 / cs.o1_runs as f32,
+                cs.o1_satisfied,
+                cs.o1_runs
+            )
+        };
+        let acao = match &cs.last_action {
+            Some(cyb::GoverningAction::Normal) => "Normal",
+            Some(cyb::GoverningAction::Throttle { .. }) => "Throttle",
+            Some(cyb::GoverningAction::Shed { .. }) => "Shed",
+            None => "nenhuma (sem execução ainda)",
+        };
+        println!(
+            "O1 energia em banda: {} — O2 oscilador: {} execuções, O3 governador: {} execuções (última ação: {}), {} throttles / {} sheds",
+            sat, cs.o2_runs, cs.o3_runs, acao, cs.o3_throttles, cs.o3_sheds,
+        );
+        println!(
+            "O4 auto-auditoria: {} execuções; eventos publicados {} de {} ticks (denominador explícito); ticks sem métrica viva {} (ausência ≠ zero)",
+            cs.o4_runs, cs.events_published, cs.ticks, cs.no_source_ticks,
+        );
+    }
+
+    // T/TELEMETRY (16.9): auditoria da escada de evidência E0–E5 com
+    // descritores VIVOS vs alvo da config — CONFORMIDADE com
+    // denominador; gaps tipados (nunca promoção automática).
+    {
+        println!("=== Telemetry (T, 16.9) ===");
+        let ts = tel_handle.stats();
+        let gaps = tel_handle.last_gaps();
+        if ts.audits == 0 {
+            println!("Auditoria de evidência: AUSENTE (sem execução no intervalo)");
+        } else {
+            let taxa = if ts.last_audited == 0 {
+                "n/d".to_string()
+            } else {
+                format!(
+                    "{:.1}%",
+                    ts.last_compliant as f32 * 100.0 / ts.last_audited as f32
+                )
+            };
+            println!(
+                "Escada E0–E5 auditada: {}/{} módulos no alvo ({}) em {} auditorias",
+                ts.last_compliant, ts.last_audited, taxa, ts.audits,
+            );
+            if gaps.is_empty() {
+                println!("Gaps de evidência: nenhum (última auditoria)");
+            } else {
+                println!(
+                    "Gaps tipados da última auditoria ({}): {} — escada só sobe com verificação (Lei 1); total acumulado: {}",
+                    gaps.len(),
+                    gaps.iter()
+                        .map(|g| format!("{} {}<{}", g.module, g.declared, g.target))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    ts.gap_events,
+                );
+            }
+        }
+    }
+
+    // 17.12 — Lua PolicyHost: proposals COM DENOMINADOR; hashes
+    // versionados; aplicação validada por Rust (nunca estado em Lua).
+    {
+        println!("=== Lua PolicyHost (17.12) ===");
+        let total = lua_aplicadas + lua_rejeitadas + lua_banda_morta;
+        let taxa = if lua_chamadas == 0 {
+            "n/d (sem chamada)".to_string()
+        } else {
+            format!(
+                "{:.1}% ({}/{})",
+                lua_aplicadas as f32 * 100.0 / lua_chamadas as f32,
+                lua_aplicadas,
+                lua_chamadas
+            )
+        };
+        println!(
+            "Chamadas: {} — proposals aplicadas: {}, rejeitadas: {}, banda morta (nil): {} de {} resultados",
+            lua_chamadas, lua_aplicadas, lua_rejeitadas, lua_banda_morta, total,
+        );
+        println!("Aplicação sobre 'learning.eta': {} de {} chamadas válidas ({})", lua_aplicadas, lua_chamadas, taxa);
+        println!(
+            "eta corrente da política: {:.4} (faixa da casa [0.005, 0.02] — aprendizagem NUNCA suspensa, Lei 4)",
+            lrn_handle.current_eta(),
+        );
+        let npol = policy_host.policies().len();
+        let nmod = policy_host.modules().len();
+        println!(
+            "Policies registradas: {npol}; módulos utilitários: {nmod}; arquivos com problema: {} (boot segue — o host nunca cai)",
+            policy_host.load_issues().len(),
+        );
+    }
+
+    // 17.10 — TraceEngine: delta de performance ENTRE JANELAS (1ª vs
+    // 2ª metade do run) com denominador + amostra de cascata
+    // reconstruída (proveniência causal tick→módulo).
+    {
+        println!("=== TraceEngine (T, 17.10) ===");
+        let after = tracer.snapshot();
+        let deltas = triad_observability::delta(&agg_before, &after);
+        let total_spans = tracer.spans().len();
+        println!(
+            "Trace {} — {} spans em {} ticks (média {:.1} spans/tick, denominador explícito)",
+            tracer.trace_id,
+            total_spans,
+            ticks,
+            total_spans as f64 / ticks as f64,
+        );
+        if deltas.is_empty() {
+            println!("Delta entre janelas: AUSENTE (sem spans na 2ª metade)");
+        } else {
+            println!(
+                "Delta 1ª→2ª metade (Δµs, Δspans, µs médio POR SPAN com denominador):"
+            );
+            for d in deltas.iter().take(8) {
+                let media = match d.avg_us_per_span {
+                    Some(m) => format!("{m:.1}µs/span"),
+                    None => "AUSENTE (Δspans=0)".to_string(),
+                };
+                println!(
+                    "  {} — Δ{}µs em Δ{} spans ({})",
+                    d.name, d.delta_us, d.delta_spans, media
+                );
+            }
+        }
+        if let Some(span) = span_amostra {
+            match tracer.render_cascade(span) {
+                Ok(arvore) => {
+                    println!("Cascata reconstruída (amostra do último tick):");
+                    for linha in arvore.lines() {
+                        println!("  {linha}");
+                    }
+                }
+                Err(e) => eprintln!("Cascata não renderizável: {e:?}"),
+            }
+        }
+    }
+
+    // ---- Cross-run (17.9): SAVE atômico do snapshot final — os cicos
+    // fechados (histórico de aprendizagem), o learning e o estágio do
+    // organismo sobrevivem à execução em var/runs/ (serde, checksum,
+    // schema versionado — sem banco prematuro).
+    {
+        let snap = per::Checkpointer::build(
+            ticks,
+            seed,
+            &l4_handle,
+            &lrn_handle,
+            &dev_handle,
+        );
+        match per::Checkpointer::save(
+            std::path::Path::new(per::RUNS_DIR),
+            &snap,
+        ) {
+            Ok(path) => {
+                println!(
+                    "Snapshot salvo (17.9): {} — {} registros, checksum {:016x}",
+                    path.display(),
+                    snap.meta.records,
+                    snap.meta.closed_log_checksum,
+                );
+            }
+            Err(e) => {
+                eprintln!("FALHA ao salvar snapshot (17.9): {e:?}");
+            }
+        }
     }
 
     // T-observability (diretriz do dono): telemetria profunda por RUN
@@ -545,7 +937,7 @@ fn main() {
             &[
                 ("selected_backend", "CPU".to_string()),
                 ("available", "['CPU']".to_string()),
-                ("f32_staging", "reservado (17.7 GO/NO-GO)".to_string()),
+                ("f32_staging", "reservado (17.7 NO-GO por dados)".to_string()),
             ],
         );
         let _ = journal.event(

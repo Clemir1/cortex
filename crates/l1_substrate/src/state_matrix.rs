@@ -19,6 +19,7 @@
 
 use crate::cluster::ClusterBio;
 use crate::config as cfg;
+use rayon::prelude::*;
 use std::collections::VecDeque;
 use triad_contracts::hash::{hash_cluster_order, hash_f64_slice};
 use triad_foundation::id::ClusterId;
@@ -75,18 +76,34 @@ impl ClusterStateMatrix {
     }
 
     /// Rebuild total (gênese e compactação de população).
+    /// 17.6: cópia das linhas e coleta de ids em PARALELO (escritas
+    /// disjuntas por índice); a SOMA por coluna permanece SERIAL na
+    /// ordem canônica de `alive` — mudar a ordem de acumulação float
+    /// mudaria bits (A/A) — e é barata (adds simples).
     pub fn rebuild(&mut self, clusters: &[ClusterBio], alive: &[usize]) {
         let d = cfg::DIMENSIONALITY;
         self.rows = vec![0.0; clusters.len() * d];
         self.n_rows = 0;
         self.sum = vec![0.0; d];
-        self.order = Vec::with_capacity(alive.len());
-        self.order_ids = Vec::with_capacity(alive.len());
+        let mut alive_flag: Vec<bool> = vec![false; clusters.len()];
         for &i in alive {
-            self.add_row(i, &clusters[i].state);
-            self.order.push(i);
-            self.order_ids.push(clusters[i].id);
+            alive_flag[i] = true;
         }
+        self.rows
+            .par_chunks_mut(d)
+            .enumerate()
+            .for_each(|(i, row)| {
+                if alive_flag[i] {
+                    row.copy_from_slice(&clusters[i].state);
+                }
+            });
+        for &i in alive {
+            for dd in 0..d {
+                self.sum[dd] += clusters[i].state[dd];
+            }
+        }
+        self.order = alive.to_vec();
+        self.order_ids = alive.par_iter().map(|&i| clusters[i].id).collect();
         self.n_rows = alive.len();
         self.dirty_rows_last = alive.len();
         self.finalize();

@@ -270,22 +270,27 @@ impl L1Runner {
 
         // ---- 2. Energia: custo metabólico + intake O1 ----
         let emergency_bonus = self.emergency.energy_bonus();
-        // Fase 2 permanece SERIAL: per_cluster_intake→regulate atualiza
-        // a homeostase a CADA chamada (last_error/corrections/telemetria
-        // por cluster) — paralelizar seria data race real no estado O1.
-        for i in 0..self.clusters.len() {
-            let c = &self.clusters[i];
+        // 17.6/Lei-1: O1 regula UMA vez por PASSO (contadores com
+        // denominador passo — antes inflados por chamada/população);
+        // o intake por cluster é função PURA do rate ⇒ fase 2 PARALELA
+        // sem data race (bit-idêntico: o rate era o mesmo nas N
+        // chamadas do caminho antigo).
+        let rate = self.energy.regulate_step(self.last_mean_energy, emergency_bonus);
+        let base_per_cluster = self.energy.base_per_cluster;
+        self.clusters.par_iter_mut().for_each(|c| {
             if !c.is_alive() {
-                continue;
+                return;
             }
             let dormant = c.lifecycle.state == LifecycleState::Dormant;
             let cost = EnergyBudget::metabolic_cost(c.profile.metabolic_cost, dormant);
-            let intake =
-                self.energy
-                    .per_cluster_intake(self.last_mean_energy, dormant, emergency_bonus);
-            let c = &mut self.clusters[i];
+            let base = if dormant {
+                base_per_cluster * cfg::DORMANT_INTAKE_FACTOR
+            } else {
+                base_per_cluster
+            };
+            let intake = base * rate + emergency_bonus;
             c.energy = (c.energy - cost + intake).clamp(0.0, cfg::ENERGY_MAX);
-        }
+        });
         let mean_energy = self.mean_energy_of();
 
         // ---- 3. Emergência coletiva (quorum com histerese) ----

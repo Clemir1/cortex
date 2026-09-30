@@ -551,7 +551,7 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
         ponte read-only; o L4 ve a harmonia via read_for_l4)
 [ ] [6] 17.6 Carga 30K verde: app roda 30K clusters com budget/latencia
         dentro dos thresholds da 17.1, sem violar as leis
-[ ] [6] 17.7 GPU compute SO SE GO: decisao GO/NO-GO pelos benchmarks
+[x] [6] 17.7 GPU compute SO SE GO: decisao GO/NO-GO pelos benchmarks
         17.1-17.6; se GO: staging SoA em platform/triad-gpu com
         [gpu] enabled=false, kernels energia/pairwise/reservoir e
         golden tests CPU<->GPU; CPU permanece canonica (fallback)
@@ -913,3 +913,31 @@ sessao 6), app RUN=0. Relatorio: var/verificacao/16-8_cybernetics_o1_o4.md
   coordenacao: stubs lib.rs minimos criados por esta sessao em
   crates/telemetry e crates/lua SO para o workspace parsear durante
   a criacao em voo pela sessao 7 (serao substituidos por ela).
+
+- SESSAO 6 (17.6 round 9 + 17.7 FECHADA): (1) matrix.rebuild paralelo
+  (linhas por par_chunks_mut + ids em rayon; SOMA serial na ordem
+  canonica — bit-exato) e compactacao dos passos com mortes caiu
+  ~10-15 ms; (2) O1/Lei-1 CORRIGIDO: regulate_step 1x/passo no
+  runner — os contadores da homeostase (corrections, out_of_band_
+  steps) agora tem denominador PASSO (antes inflados por CHAMADA =
+  x30.000 por passo fora da banda: taxa sem denominador honesto);
+  estado dos clusters BIT-IDENTICO (o rate era o mesmo nas N
+  chamadas); fase 2 energia agora PARALELA (intake puro por rate)
+  sem data race; per_cluster_intake preservado para os testes
+  unitarios do O1. (3) NUMEROS @30K: media ~74 ms/tick estavel;
+  threshold 17.1 de 50 ms foi escrito contra o baseline FALSO
+  (media 1024 clusters reais) — RE-BASELINE proposto ao dono com a
+  media real: serie 5,4 s -> 74 ms (73x) com A/A por construcao e
+  app 30K E2E 7,4 s/65 passos verde; debito fino documentado se o
+  dono quiser perseguir 50 ms (arestas seriais comprovadas o melhor
+  dos 3 desenhos; proximos ganhos exigem redesign, nao tunnning).
+  17.6 permanece [ ] AGUARDANDO DECISAO DO DONO sobre o re-baseline
+  do threshold (criterio funcional verde: app 30K roda sem violar
+  leis). (4) 17.7 GPU: NO-GO por dados (detalhe na AUDITORIA.md,
+  secao Serie 17): f32 zero beneficio; @1.200 tick 1-4 ms; @30K
+  fisica ja paralela CPU com A/A por construcao; PCIe 23 MB/tick +
+  reducoes GPU sem ordem canonica ameacariam o A/A permanente por
+  ~25% em uma fase; CPU canonica; reserva wgpu (feature off) no
+  triad-compute. AUDITORIA.md: secao Serie 17 completa com a cadeia
+  de diagnostico, correcoes, provas A/A, numeros finais, decisoes
+  medidas (com reverteracoes) e o NO-GO da GPU.
