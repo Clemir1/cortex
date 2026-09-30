@@ -18,6 +18,14 @@ impl OscillationMonitor {
         }
     }
 
+    /// Cria um monitor com janela explícita (clamp 2..=4096).
+    pub fn with_window(window: usize) -> Self {
+        Self {
+            history: Vec::new(),
+            window: window.clamp(2, 4096),
+        }
+    }
+
     /// Registra uma amostra, mantendo apenas as últimas `window` leituras.
     pub fn observe(&mut self, value: f32) {
         self.history.push(value);
@@ -60,6 +68,42 @@ impl OscillationMonitor {
             debug!(cruzamentos = crossings, "sem oscilação");
         }
         oscillating
+    }
+
+    /// TAXA DE ESTABILIDADE COM DENOMINADOR (16.8): 1 − cruzamentos/n
+    /// onde n = amostras retidas na janela. Menos de 2 amostras ⇒
+    /// NO_DATA (ausência ≠ zero); série degenerada ⇒ INVALID.
+    pub fn stability_rate(
+        &self,
+        source: triad_foundation::id::ModuleId,
+        step: triad_foundation::id::StepId,
+    ) -> triad_contracts::Qualified<triad_foundation::Rate> {
+        let n = self.history.len();
+        if n < 2 {
+            return triad_contracts::Qualified::no_data(
+                "sem amostras suficientes",
+                source,
+                step,
+            );
+        }
+        // n−1 intervalos entre n amostras: denominador natural do
+        // cruzamento de zero.
+        let intervals = (n - 1) as f32;
+        let crossings = self.zero_crossings() as f32;
+        let stability = 1.0 - (crossings / intervals).clamp(0.0, 1.0);
+        match triad_foundation::Rate::construct(stability) {
+            Some(rate) => triad_contracts::Qualified::value(rate, source, step),
+            None => triad_contracts::Qualified::invalid(
+                "estabilidade fora do dominio",
+                source,
+                step,
+            ),
+        }
+    }
+
+    /// Amostras retidas na janela (denominador visível).
+    pub fn samples(&self) -> usize {
+        self.history.len()
     }
 }
 

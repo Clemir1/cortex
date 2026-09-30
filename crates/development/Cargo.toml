@@ -12,3 +12,6 @@ triad-l1-substrate = { path = "../l1_substrate" }
 tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
+
+[dev-dependencies]
+toml = "0.8"

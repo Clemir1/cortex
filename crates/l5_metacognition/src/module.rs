@@ -54,6 +54,9 @@ pub struct L5Stats {
     pub wake_scheduled: u64,
     /// Ticks sem fonte L4 (ausência contada, nunca zero fantasma).
     pub no_source_ticks: u64,
+    /// SEÇÃO 20: ticks em que o límbico ficou em NO_DATA (banda
+    /// corrente mantida — Lei 2: ausência nunca vira 0.0/1.0).
+    pub limbic_no_data_ticks: u64,
     /// Propostas de política submetidas ao inbox do L4 (16.7).
     pub policy_submitted: u64,
     /// Recusas tipadas do inbox do L4 (16.7; a razão vai no log).
@@ -361,7 +364,9 @@ impl L5Module {
 
     /// Limbico REAL: pressão = não-confirmação; aversão = falhas
     /// normalizadas; energia = média real dos clusters (com L1).
-    fn limbic_inputs(&self) -> (f32, f32, f32) {
+    /// SEÇÃO 20: cada sinal é Option — Rate SEM denominador e fonte
+    /// ausente NUNCA viram 0.0/1.0 fabricados (Lei 2).
+    fn limbic_inputs(&self) -> (Option<f32>, Option<f32>, Option<f32>) {
         let (stress, aversion) = match self.l4.as_ref() {
             Some(l4) => {
                 let s = l4.stats();
@@ -370,13 +375,13 @@ impl L5Module {
                 let aversion =
                     tf::Rate::from_ratio(s.content_gone + s.degraded_beyond_tolerance, verified);
                 (
-                    confirm.map(|r| 1.0 - r.value()).unwrap_or(0.0),
-                    aversion.map(|r| r.value()).unwrap_or(0.0),
+                    confirm.map(|r| 1.0 - r.value()),
+                    aversion.map(|r| r.value()),
                 )
             }
-            None => (0.0, 0.0),
+            None => (None, None), // ausência tipada, não zero
         };
-        let energy = self.mean_energy().unwrap_or(1.0);
+        let energy = self.mean_energy(); // NO_DATA propaga (nunca 1.0 cheio)
         (stress, energy, aversion)
     }
 }
@@ -948,5 +953,31 @@ mod tests {
             hist
         };
         assert_eq!(run(), run(), "mesma sequência ⇒ mesmo limiar por tick");
+    }
+
+    /// 19.3 (sessao 7 — verificacao do debito 18.7 sob diretriz
+    /// da dona; codigo L5 da sessao 6 intocado): hash A/A L5
+    /// bit-exato POR TICK em gemeos completos + evolucao real.
+    #[test]
+    fn l5_hash_aa_bit_exato_por_tick_serie19() {
+        use triad_runtime::CognitiveModule as _;
+        let run = || {
+            let (_l1, _l2, _l3, l4, l5) = organismo_full(42);
+            let mut clock = tf::LogicalClock::new();
+            let mut hashes: Vec<Option<u64>> = Vec::new();
+            for _ in 0..8 {
+                clock.advance();
+                let ctx = TypedContext::new(clock);
+                let mut out = Vec::new();
+                l4.tick(&ctx, &mut out).expect("l4");
+                l5.tick(&ctx, &mut out).expect("l5");
+                hashes.push(l5.state_hash());
+            }
+            hashes
+        };
+        let h = run();
+        assert_eq!(run(), h.clone(), "gemeos bit-exatos por tick (A/A)");
+        assert!(h.iter().all(|x| x.is_some()), "hash L5 canonico sempre presente");
+        assert!(h.windows(2).any(|w| w[0] != w[1]), "hash evolui com o estado");
     }
 }

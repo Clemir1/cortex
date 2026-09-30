@@ -6,10 +6,13 @@ use tracing::{debug, warn};
 pub enum GoverningAction {
     /// Operação normal.
     Normal,
-    /// Redução proporcional de carga.
+    /// Redução proporcional de carga COM razão canônica (trilha
+    /// de auditoria da decisão — herança policy_arbitrator.py:406).
     Throttle {
-        /// Fator multiplicador aplicado à carga.
+        /// Fator multiplicador aplicado à carga [0.25, 1.0].
         factor: f32,
+        /// Razão legível da redução.
+        reason: String,
     },
     /// Carga derrubada: energia crítica.
     Shed {
@@ -18,7 +21,10 @@ pub enum GoverningAction {
     },
 }
 
-/// Governador O3: modula atividade conforme estresse e reserva de energia.
+/// Governador O3: modula atividade conforme estresse e energia.
+/// `stress` é CONTÍNUO [0..1] (19.8-a: a urgência do O1 deixa de
+/// ser binária — herança homeostasis_network.py:71, urgência por
+/// |erro|; o O1 entrega |corrective| clampado com razão).
 #[derive(Debug, Clone)]
 pub struct O3Governor {
     /// Limiar de estresse aceitável (0.0..=1.0).
@@ -39,8 +45,12 @@ impl O3Governor {
         })
     }
 
-    /// Decide a ação de governança a partir de estresse e reserva de energia.
+    /// Decide a ação de governança a partir de estresse contínuo e
+    /// reserva de energia. Fator PROPORCIONAL ao estresse (herança
+    /// CONTEXT_ADJUST por regime, policy_arbitrator.py:82-87: crise
+    /// muda POLÍTICA de precedência, nunca desativa sistemas).
     pub fn assess(&self, stress: f32, energy_reserve: f32) -> GoverningAction {
+        let stress = stress.clamp(0.0, 1.0);
         if energy_reserve < self.energy_floor / 2.0 {
             warn!(
                 floor = self.energy_floor,
@@ -51,13 +61,29 @@ impl O3Governor {
                 reason: "energia critica".to_string(),
             };
         }
-        if energy_reserve < self.energy_floor || stress > self.stress_threshold {
+        if energy_reserve < self.energy_floor {
             debug!(
-                stress = stress,
+                stress,
                 reserva = energy_reserve,
-                "estresse ou energia baixa: carga reduzida pela metade"
+                "reserva abaixo do piso: carga reduzida pela metade"
             );
-            return GoverningAction::Throttle { factor: 0.5 };
+            return GoverningAction::Throttle {
+                factor: 0.5,
+                reason: "reserva de energia abaixo do piso".to_string(),
+            };
+        }
+        if stress > self.stress_threshold {
+            // Fator contínuo: threshold ⇒ ~0.5; stress máximo ⇒ 0.25.
+            let factor = (1.0 - 0.75 * stress).clamp(0.25, 1.0);
+            debug!(
+                stress,
+                fator = factor,
+                "estresse acima do limiar: carga reduzida proporcionalmente"
+            );
+            return GoverningAction::Throttle {
+                factor,
+                reason: "estresse acima do limiar".to_string(),
+            };
         }
         GoverningAction::Normal
     }

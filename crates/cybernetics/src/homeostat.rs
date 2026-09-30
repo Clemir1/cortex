@@ -43,4 +43,25 @@ impl Homeostat {
         }
         self.gain * (self.target - self.current) + 0.1 * self.integral
     }
+
+    /// 19.8-b (O2 retuning) — adapta o GANHO do controlador O1
+    /// (herança edge_of_chaos.py:431-452: o O2 retuna o controlador,
+    /// não o alvo). Clamp do ganho em [0.5×, 2×] do NOMINAL 0.5
+    /// (nunca zero — controle nunca desliga); razão canônica para a
+    /// trilha. Devolve o ganho RESULTANTE (telemetria honesta).
+    pub fn retune_gain(&mut self, delta: f32, reason: &str) -> f32 {
+        self.gain = (self.gain + delta).clamp(0.25, 1.0);
+        debug!(
+            ganho = self.gain,
+            delta,
+            razao = reason,
+            "O2 retuning do ganho do O1"
+        );
+        self.gain
+    }
+
+    /// Ganho corrente (observação para telemetria A/A).
+    pub fn gain(&self) -> f32 {
+        self.gain
+    }
 }
