@@ -1977,3 +1977,21 @@ dela desde 09:43 (commit 9785c7c).
   A/A active-vs-sham). EVIDENCIAS: governance 22/22 verdes
   (4 testes novos: custo, GenDiv, renovacao, adapters), house_laws
   5/5, A/A por construcao (rng semeado, ordem canonica).
+
+- SESSAO 6 (18.5 e 18.6 FECHADAS por mapeamento criterio->teste,
+  governance 22/22 verde, commit 6503bc0): 18.5 ECOLOGIA [x] —
+  motor generico + adapters_reais_alimentam_o_motor, selecao_com_
+  denominador (Lei 1), renovacao_obrigatoria_mata_a_pior, shannon_
+  baixo_injeta_ruido_entropico (GenDiv), custo_de_nascimento_frena_
+  especiacao, extincao_contada_e_censo_sem_zero (ausencia ne zero),
+  especiacao_deterministica_aa. 18.6 ARBITRAGEM [x] — conflito_
+  resolvido_por_prioridade_com_trilha, arbitragem_e_deterministica_
+  aa, empate_por_ordem_de_chegada (canonica), fila_vazia_nao_gera_
+  decisao_fabricada (ausencia ne zero). 18.4 FEDERACAO permanece
+  [ ] com DEBITO PEQUENO explicito: nucleo todo verde (cnp_todos_os_
+  estados_sao_tipados, conserva_recursos, downstream clampa no
+  sucesso = outcome, ledger_restauravel_e_deterministico_aa,
+  reservas_evitam_dupla_promessa, trade_cap, scarcest tipado) mas
+  faltam: policy Lua de federacao retornando Proposal, ADR regis-
+  trado e a feature flag explicita do FederationTransport (trait
+  InProcess existe; a porta cfg precisa ser verificada/escrita).
