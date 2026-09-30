@@ -51,4 +51,21 @@ fn fisica_paralela_deterministica_entre_threads() {
     let (b, cb) = run(4);
     assert_eq!(a, b, "A/A: duas runs com mesma seed devem ser bit-idênticas");
     assert_eq!(ca, cb);
+    // Diretriz do dono: evidência da validação no var/system.log
+    // (append; falha de I/O nunca reprova o teste).
+    if let Ok(j) = triad_observability::SystemJournal::open_workspace() {
+        let _ = j.event(
+            "TESTE-AA-FISICA",
+            &[
+                ("escopo", "17.6 física paralela".to_string()),
+                ("resultado", "bit-idêntico".to_string()),
+                (
+                    "detalhe",
+                    "pools 1/4/8 threads + run-vs-run (400 clusters, 12 passos)"
+                        .to_string(),
+                ),
+                ("rng", "f(seed,id,step,tag) por propósito".to_string()),
+            ],
+        );
+    }
 }

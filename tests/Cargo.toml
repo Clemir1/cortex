@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 triad-foundation = { path = "../crates/foundation" }
 triad-contracts = { path = "../crates/contracts" }
+triad-observability = { path = "../crates/observability" }

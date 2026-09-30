@@ -491,7 +491,7 @@ consolidada com o que o CAMADA.txt pede e a auditoria validar):
          declarada) + CausalGovernor (politica por informacao causal,
          sem duplicar o CausalModel L4) + MetaGoals -- conforme
          auditoria 17-4; CognitiveGenome O5 SEMPRE offline (Lei 7)
-[ ] [7] 17.8 T/LEARNING REAL: crate learning consumindo os envelopes
+[x] [7] 17.8 T/LEARNING REAL: crate learning consumindo os envelopes
          fechados L4/L5 (prediction_error, credit_assignment COM
          DENOMINADOR por modulo, update, validation t+1/t+5 com sham,
          transfer, forgetting) -- a caixa 16.5 e o caso de uso; a
@@ -1026,3 +1026,45 @@ structs.md + 17-12_lua_policy_host.md
   O(n) seriais (~20-25 ms; counts sao par-able com integers, ja
   mapeado). Media realista pos-otimizacoes restantes: ~60 ms.
   A decisao do re-baseline vs perseguir 50 ms segue com o DONO.
+
+--- Rodada (sessao 7) — 17.8 CONCLUIDA (validacao temporal + transfer)
+JANELAS de validacao t+1/t+5 FIEIS AO LEGADO (audit READ-DO: core/
+learning_effect_validation.py + system.py:8014-8059/8313-8378): abre a
+cada credito (base=|efeito liquido|, rotulo de proveniencia — o audit
+mostra que cadeia numerica L4->L3->L2->L1 NAO existe no legado; credito
+e ROTULO), horizontes da config [1,5] lidos no open; observacao por
+idade 1..5 (decisao futura + erro no bucket do horizonte); fecha em
+age>=h5 com VEREDITO TIPADO: T1Incomplete/T5Incomplete (ausencia de
+amostra: contadas SEM penalidade — ausencia != zero, o legado publica
+incompletas sem validar), FutureDecisionMissing/ErrNotLower (penalizadas
+com -0.01 DECLARADO no traco — credito nao sustentado decai mais),
+Validated (erro < base nos DOIS horizontes + decisao futura).
+TRANSFER fiel ao legado (core/layer_transfer.py): TAXA DE FLUXO por
+fronteira, nunca migracao de pesos — transfer_rates(): fronteira
+l4.global->learning, quinteto (input/accepted/acted/effect/learned),
+F1..F4 COM DENOMINADOR + GARGALO. App RUN=0: janelas 118 fechadas
+(59 incompletas sem penalidade + 59 penalizadas ErrNotLower + 0
+validadas — HONESTO: cenario estavel nao produz queda de |efeito|,
+E5 exige efeito real, nada de validacao fantasma); input 128 (64 do
+restore 17.9 + 64 novos), gargalo F4. Snapshot/restore estendido
+(janelas + vereditos sobrevivem cross-run, serde default retrocompat).
+Baterias: triad-learning 8/8 (integrado L1..L4 real), workspace FULL
+40 ok-blocks/0 FAILED, house 5/5, app RUN=0. Relatorio:
+var/verificacao/17-8_learning_credito_real.md
+
+- SESSAO 6 (PENDENCIA DO DONO system.log NOS HARNESSES — FECHADA,
+  round 12): a diretriz "cada teste e validacao" agora registra no
+  var/system.log RAIZ (formato legado [TAG] k=v + bloco de diagnostico
+  + telemetria estruturada no system.json): (1) house_laws 5/5 —
+  cada lei registra [TESTE-HOUSE-LAW] lei=... resultado=ok detalhe=...
+  (2) A/A da fisica paralela — [TESTE-AA-FISICA] resultado=bit-
+  identico (pools 1/4/8 + run-vs-run); (3) diagnostico de escala —
+  bloco com Populacao maxima | Passos | Media ms/tick | Pico ms.
+  BUG CAUSA-RAIZ da duplicacao var/ (que o dono pediu para revisar):
+  o cargo executa cada binario de teste com cwd = DIRETORIO DO CRATE —
+  o journal relativo criava var/ duplicados dentro de crates. FIX
+  estrutural: SystemJournal::open_workspace() resolve a raiz pelo
+  manifest DO OBSERVABILITY (constante em compile-time, nunca pelo
+  cwd do processo que chama); var/ duplicados em tests/ e l1
+  REMOVIDOS; o app (cwd raiz) inalterado — sem duplicacao. IO do
+  journal NUNCA reprova teste (let _ =), como pede a telemetria.

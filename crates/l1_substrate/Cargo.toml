@@ -32,6 +32,8 @@ rayon = "1.10"
 [dev-dependencies]
 toml = "0.8"
 criterion = "0.5"
+# Diretriz do dono: testes/validações registram no var/system.log.
+triad-observability = { path = "../observability" }
 
 # 17.1 — benchmark baseline do passo L1 (criterion, sem harness).
 [[bench]]

@@ -49,6 +49,21 @@ impl SystemJournal {
         Self::open(".")
     }
 
+    /// Abre no `var/` da RAIZ DO WORKSPACE — para harnesses de teste:
+    /// o cargo executa cada binário de teste com cwd = diretório do
+    /// CRATE; abrir relativo criaria `var/` duplicados dentro dos
+    /// crates. A raiz é resolvida pelo manifest DO OBSERVABILITY
+    /// (constante em compile time: `crates/observability/../../` =
+    /// raiz), nunca pelo cwd do processo que chama.
+    pub fn open_workspace() -> std::io::Result<Self> {
+        let manifest = env!("CARGO_MANIFEST_DIR");
+        let root = Path::new(manifest)
+            .parent()
+            .and_then(Path::parent)
+            .unwrap_or_else(|| Path::new(manifest));
+        Self::open(root)
+    }
+
     /// Bloco de abertura (formato do system_02.log do legado):
     /// linha de `=`, título central indentado, linha de `=`.
     pub fn section(&self, titulo: &str) -> std::io::Result<()> {
