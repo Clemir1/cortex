@@ -241,15 +241,30 @@ impl Default for MorphogenesisCfg {
 }
 
 /// Seção `[l1]` consumida pelo substrato real.
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct L1Config {
+    /// `[l1].population` — população inicial (BOOT). Default do dono:
+    /// iniciar com 1.200 clusters (diretriz de escala, checklist 17.6);
+    /// o teto operacional (30K) fica em `[l1.morphogenesis].max_population`.
+    pub population: usize,
     /// `[l1.energy]`.
     pub energy: EnergyCfg,
     /// `[l1.homeostasis]`.
     pub homeostasis: HomeostasisCfg,
     /// `[l1.morphogenesis]`.
     pub morphogenesis: MorphogenesisCfg,
+}
+
+impl Default for L1Config {
+    fn default() -> Self {
+        Self {
+            population: 1_200,
+            energy: EnergyCfg::default(),
+            homeostasis: HomeostasisCfg::default(),
+            morphogenesis: MorphogenesisCfg::default(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -259,6 +274,7 @@ mod config_tests {
     #[test]
     fn defaults_congelados_batem_com_as_consts_historicas() {
         let d = L1Config::default();
+        assert_eq!(d.population, 1_200, "boot do dono (diretriz de escala 17.6)");
         assert!((d.energy.initial_level - 0.8).abs() < 1e-9);
         assert!((d.energy.target_level - 0.8).abs() < 1e-9);
         assert!((d.homeostasis.band[0] - 0.6).abs() < 1e-9, "banda do default.toml");

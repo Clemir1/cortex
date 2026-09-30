@@ -42,6 +42,8 @@ require_declared_termination = true  # recursões legítimas (HOTM, Workspace, W
 # L1 Substrato — fisiologia computacional: clusters, energia, atividade,
 # lifecycle, plasticidade, grafo local, HOTM/Reservoir.
 # Fora de escopo: conceitos, identidade, World Model, metacognição, leis.
+# 17.6: BOOT do dono — 1.200 clusters (teto 30K; ver [l1.morphogenesis]).
+population = 1200
 
 [l1.energy]
 # Energia normalizada 0..1 — base da homeostase (O1 atua sobre isto).
@@ -89,7 +91,9 @@ fusion_threshold = 0.15        # distância média |Δstate| que autoriza fusão
 min_cluster_size = 16
 max_cluster_size = 256
 max_divisions_per_step = 1     # crescimento sob demanda — nunca explosivo
-max_population = 1024          # teto populacional do substrato (A3)
+# 17.6 (diretriz de escala do dono): boot 1.200, teto 30K — o teto de
+# divisão acompanha o alvo operacional (32K de folga sobre 30K).
+max_population = 32000         # teto populacional do substrato (A3)
 
 [l1.survival]
 # Sobrevivência dos clusters: histerese de emergência/dormência e quorum.
@@ -242,6 +246,11 @@ proposal_interval_steps = 50
 intervention_ttl_steps = 50      # sem observed_effect dentro do ttl ⇒ reversão automática
 max_concurrent_interventions = 4
 require_reason = true            # proposta sem reason é rejeitada
+# 16.7 (Lei 6 executável): alívio de POLÍTICA proposto ao inbox do L4
+# quando a verificação cai — passo e piso do commit_threshold (Lei 4:
+# crise muda política, nunca suspende; o L4 reverte exato sem efeito).
+commit_threshold_step = 0.10     # cada proposta alivia o limiar em 0.10
+commit_threshold_floor = 0.25    # piso: o limiar nunca desce além disso
 
 [l5.resource_governor]
 enabled = true
@@ -326,6 +335,17 @@ enabled = true
 specialization_target = 0.6        # alvo de especialização dos tecidos
 integration_target = 0.5
 stabilization_window_steps = 2000
+
+[development.stages]
+# 16.6: maturação guiada pela RESSONÂNCIA REAL do substrato (sinal
+# Chladni ADR-0007). Cada estágio tem uma BANDA alvo [min,max]; o
+# avanço exige `dwell_steps` consecutivos DENTRO da banda (estabilidade).
+# Sem sinal o estágio CONGELA (ausência ≠ zero: nunca retrocede).
+dwell_steps = 20
+embryo_band = [0.00, 0.35]        # EMBRYO→CLEAVAGE: banda baixa (crescimento livre)
+cleavage_band = [0.25, 0.55]      # CLEAVAGE→CORTICALIZATION: banda emergente
+corticalization_band = [0.45, 0.80] # →MATURE: banda alta (harmonia consolidada)
+mature_band = [0.55, 1.00]        # MADURO: banda de MANUTENÇÃO (terminal)
 
 [development.maintenance]
 enabled = true

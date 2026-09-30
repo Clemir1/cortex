@@ -36,6 +36,9 @@ pub struct StepReport {
     pub events_published: usize,
     pub budget_exceeded: bool,
     pub degraded: bool,
+    /// 17.6 — latência por módulo (nome, µs) na ordem canônica:
+    /// o perfil de escala do organismo (telemetria profunda).
+    pub module_latency: Vec<(String, u64)>,
 }
 
 /// Escalonador que executa módulos cognitivos e publica eventos no barramento.
@@ -121,12 +124,16 @@ impl Scheduler {
     pub fn step(&mut self) -> StepReport {
         let (mut executed, mut skipped, mut published) = (0usize, 0usize, 0usize);
         let (mut budget_exceeded, mut degraded) = (false, false);
+        // 17.6 — telemetria de latência POR MÓDULO (µs), sempre na
+        // ordem canônica de registro: o perfil de escala do dono.
+        let mut latencias: Vec<(String, u64)> = Vec::new();
         for grupo in self.concurrency.clone() {
             // FASE 1 (serial): decide quem está ativo ANTES de tickar
             // — módulo inativo nunca roda (a semântica do skip é a
             // mesma do escalonador sequencial histórico).
             let clock_snap = self.clock;
             let mut outcomes: Vec<TickOutcome> = vec![TickOutcome::Skipped; self.modules.len()];
+            let mut micros: Vec<u64> = vec![0; self.modules.len()];
             let ativos: Vec<usize> = grupo
                 .iter()
                 .copied()
@@ -139,16 +146,22 @@ impl Scheduler {
             // próprio do MESMO passo e fila própria de eventos.
             if ativos.len() <= 1 {
                 for &i in &ativos {
-                    outcomes[i] = Self::tick_one(&self.modules[i], clock_snap);
+                    let (o, us) = Self::tick_one(&self.modules[i], clock_snap);
+                    outcomes[i] = o;
+                    micros[i] = us;
                 }
             } else {
                 use rayon::prelude::*;
-                let resultados: Vec<(usize, TickOutcome)> = ativos
+                let resultados: Vec<(usize, TickOutcome, u64)> = ativos
                     .par_iter()
-                    .map(|&i| (i, Self::tick_one(&self.modules[i], clock_snap)))
+                    .map(|&i| {
+                        let (o, us) = Self::tick_one(&self.modules[i], clock_snap);
+                        (i, o, us)
+                    })
                     .collect();
-                for (i, o) in resultados {
+                for (i, o, us) in resultados {
                     outcomes[i] = o;
+                    micros[i] = us;
                 }
             }
             // FASE 3 (merge determinístico): ordem canônica — índice
@@ -164,6 +177,8 @@ impl Scheduler {
                     TickOutcome::Ok(out) => {
                         self.degraded_overrides.remove(&id);
                         executed += 1;
+                        latencias
+                            .push((self.modules[i].descriptor().name.clone(), micros[i]));
                         for ev in out {
                             if published >= self.budget.max_events {
                                 budget_exceeded = true;
@@ -180,6 +195,8 @@ impl Scheduler {
                         self.degraded_overrides.insert(id);
                         degraded = true;
                         skipped += 1;
+                        latencias
+                            .push((self.modules[i].descriptor().name.clone(), micros[i]));
                         eprintln!("módulo {:?} degradado por erro no tick", id);
                     }
                 }
@@ -194,22 +211,25 @@ impl Scheduler {
             events_published: published,
             budget_exceeded,
             degraded,
+            module_latency: latencias,
         }
     }
 
     /// Tick de UM módulo com contexto do passo corrente (usado tanto
     /// no caminho serial quanto no paralelo — mesmo código, mesmo
-    /// resultado bit-exato).
+    /// resultado bit-exato) + latência medida (µs) para o perfil 17.6.
     fn tick_one(
         m: &Arc<dyn crate::module::CognitiveModule>,
         clock: tf::LogicalClock,
-    ) -> TickOutcome {
+    ) -> (TickOutcome, u64) {
+        let t0 = std::time::Instant::now();
         let ctx = crate::context::TypedContext::new(clock);
         let mut out = Vec::new();
-        match m.tick(&ctx, &mut out) {
+        let outcome = match m.tick(&ctx, &mut out) {
             Ok(()) => TickOutcome::Ok(out),
             Err(_) => TickOutcome::Err,
-        }
+        };
+        (outcome, t0.elapsed().as_micros() as u64)
     }
 }
 

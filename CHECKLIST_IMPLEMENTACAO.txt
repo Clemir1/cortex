@@ -1,4 +1,4 @@
-=====================================================================
+﻿=====================================================================
  TRIAD_AEE — CHECKLIST DE IMPLEMENTAÇÃO
  Coordenação: SESSÃO 6 (orquestradora) e SESSÃO 7 (colaboradora)
 =====================================================================
@@ -348,7 +348,7 @@ ciclo com evidencia honesta; falta a camada que OBSERVA o L4):
          FECHADOS do L4 reforcam conceito na memoria L3 via ponte Arc
          com recibo (14-0 declarou AGUARDANDO; nunca escrever no dono
          sem recibo E4)
-[ ] [7] 16.3 Rollout raso do world model ([l4.world_model]
+[x] [7] 16.3 Rollout raso do world model ([l4.world_model]
          simulation_max_depth): simulacao deterministica de crencas
          p/ contrafactual comparavel; sem fabricar (14-0 AGUARDANDO)
 
@@ -366,7 +366,7 @@ config depois -- nada teatral):
 [ ] [7] 16.6 [development] estagios reais (P3 da 13-0): banda por
          estagio consumindo o sinal l1.substrate.chladni (JA
          publicado aditivo pela sessao 6 em 13.5)
-[ ] [7] 16.7 [governance] com efeito observado (P5): Lei 6 revert
+[x] [7] 16.7 [governance] com efeito observado (P5): Lei 6 revert
          (intervencao sem observed_effect dentro do ttl reverte) +
          [governance] injetada quando o mecanismo existir
 [ ] [7] 16.8 [cybernetics] O1-O4 reais sobre metricas vivas
@@ -652,3 +652,125 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
   5/5. NOTA: integracao com o novo descritor da sessao 7
   (ModuleDescriptor::new) e o novo crate triad-compute (T-compute,
   wgpu feature-flag desligada por padrao) preservada.
+
+- SESSAO 7 (17.7 analise WGPU/WGSL, a pedido do dono): parecer
+  tecnico GO/NO-GO emitido -- var/verificacao/17-7a_analise_wgpu_
+  wgsl_go_nogo.md. NO-GO no degrau atual (CPU 3,67 ms/tick @30K,
+  folga ~13x sobre a meta; O(n^2) fora do caminho critico). GO
+  objetivo com criterios ESCRITOS: (G1) amostra/tick >= ~100K ou
+  tick estourando a META da carga @30K; (G2) kernels O(n^2) por-par
+  em producao com n >= 30K; (G3) meta nova < 1 ms/tick com amostra
+  grande. Se GO: roteiro obrigatorio -- staging platform/triad-gpu
+  [gpu] enabled=false (CPU canonica SEMPRE; gemeas E5 e decisoes
+  ficam em CPU), contratos Numba portados em Rust f64 ANTES
+  (referencia dos golden tests), WGSL REESCRITO fiel (o do legado e
+  VARIANTE divergente: energy_survival 4x7 colunas, cluster_metrics
+  histograma vs Shannon, cosine com chamada de assinatura errada
+  que sempre cai no fallback -- o caminho GPU do legado NUNCA
+  rodou), BufferArena com staging REUSADA (fix buffer.rs:90),
+  copias por DELTA, despacho em LOTE (nao poll-Wait por kernel),
+  RNG semeado POR INSTANCIA (bugs jl/l2_sample). Insumos
+  permanentes gravados: extracao de formulas dos 11 kernels
+  (var/verificacao/17-2b_kernels_legado_formulas.md -- contratos
+  Numba com arquivo:linha, bugs e divergencias documentados). A
+  fronteira de staging ja existe: SampleSoA.pack_f32 (17.2) -- o
+  caminho CPU->GPU passa por ela sem tocar o canonico f64. Meu
+  crates/compute experimental foi REMOVIDO (supersededo pelo plano
+  da orquestradora; 17.2/17.3 ja fechadas por ela com bit-exatidao).
+
+- SESSAO 7 (16.3 FECHADA, rollout raso do world model): world_model.rs
+  ganhou historico rotativo por crenca (TREND_WINDOW=8) com step;
+  trend = inclinacao d_conf/d_passo COM denominador (<2 amostras =
+  NO_DATA); rollout(key, depth) = trajetoria DETERMINISTICA da
+  crenca -- extrapolacao linear da tendencia OBSERVADA, 1 amostra =
+  persistencia pura, sem crenca = NO_DATA (ausencia != zero). No
+  close_cycles: belief_key_for mapeia o EIXO comensuravel
+  (predicao:* -> l3.prediction.confidence; sinal:coesao ->
+  l2.coherence; foco -> nenhuma); divergencia |observado -
+  projetado t+1| com denominador (rollout_evaluations/rollout_div_sum
+  em L4Stats + rollout_report() com media honesta, n=0 => None). A
+  Lei 5 continua fechada pelo SHAM; o rollout e o SEGUNDO
+  contrafactual, INFORMATIVO (mede a projecao do world model, nunca
+  decide). [l4.world_model] simulation_max_depth=3 AGORA INJETADO
+  (README atualizado). App: 64 avaliacoes, divergencia media 0.000
+  (mundo estacionario; extrapolacao com tendencia real coberta no
+  unit test). Verificacao: workspace 32 blocos ok / W=0, house_laws
+  5/5, app RUN=0, trilha 16.2 intacta (64/63/62/1). Relatorio:
+  var/verificacao/16-3_world_model_rollout.md. L4: 24+2 verdes
+  (6 testes novos).
+
+- SESSAO 7 (16.7 FECHADA, Lei 6 EXECUTAVEL): a intervencao do L5 agora
+  ATUA de verdade pelo protocolo da casa. l4_global/src/policy.rs
+  (NOVO): PolicyInbox do DONO L4 -- PolicyTarget::CommitThreshold
+  (enum), PolicyProposal com intervention_id (tracabilidade L5),
+  reason EXIGIDA, ttl 1..=64, recusas TIPADAS (DuplicateTarget/Full/
+  OutOfRange/InvalidTtl com as_str), MAX_ACTIVE_POLICIES=4; drain
+  captura o previous REAL (nao o declarado); expire devolve para
+  REVERSAO EXATA. L4Module.submit_policy publico (espelho do
+  submit_reinforcement L4->L3: a ponte L5->L4 segue read-only para
+  ESTADO; a fila e protocolo). Tick 5.5: expire ANTES de drain,
+  cada apply/revert publica evento l4.policy (Governance) com
+  recibo; effective_commit_threshold usado nos 2 pontos de decisao.
+  L5.propose_commit_threshold_relief: confirm<0.5 => proposta
+  real com passo 0.10/piso 0.25 ([l5.meta_controller] chaves novas
+  com defaults congelados), TTL clamp a faixa do dono. Lei 4
+  preservada: alvio de LIMIAR, nunca suspenso. Descritor: l4.policy
+  nos outputs (17.1). Instrumentacao: L4Stats +9 (applied/reverted/
+  active/submitted + 4 recusas tipadas), L5Stats +2, app imprime as
+  duas linhas. Testes novos: 7 (5 unit policy.rs + INTEGRADA
+  lei_6_executavel com reversao EXATA no TTL + A/A do protocolo).
+  App estavel: contadores em 0 (confirmacao 1.0 nao dispara --
+  ausencia contada; mecanismo provado nos testes). Workspace 32
+  blocos / W=0; house_laws 5/5; app RUN=0. Relatorio:
+  var/verificacao/16-7_lei6_politica_intervencao.md.
+
+- SESSAO 6 (17.6, diagnostico do gargalo de escala, diretriz do dono de
+  analisar o legado e usar graphify/subagentes): o perfil por modulo
+  (instrumentado no scheduler: StepReport.module_latency) revelou que o
+  custo @30K estava NO L1 (5.190 ms/tick), nao nas camadas superiores
+  (L2 14 ms, L3 4 ms, L4 4 ms, L5 0,3 ms) — e nao no estado 97D/SoA.
+  Bissecao empirica por sub-config e por CAMPO no bench
+  (step_l1_config_toml, l1_substrate/benches/step_l1.rs):
+  morpho=TOML+energy=codigo 2,89 s vs morpho=codigo+energy=TOML 4,01 ms;
+  campo isolado so_maxpop_32000 2,99 s; so_division_085 7,85 ms;
+  so_maxdiv_1 6,07 ms. CULPADO: max_population=32000 LIGA o bloco de
+  divisao (com teto 1024 < pop o bloco era pulado inteiro) e UMA
+  divisao por tick custava ~3 s: graph.rs add_cluster recomputava
+  TODOS os afetados em cadeia — cada afetado re-escaneando e
+  re-ordenando os 30 mil candidatos: O(afetados x n) por divisao.
+  FIX (bit-identico por construcao): add_cluster agora calcula a
+  adjacencia do novo (candidatos das 27 celulas filtrados por distancia
+  real, ordem canonica) e cada vizinho real ganha o novo por INSERCAO
+  ORDENADA (binary_search+insert) — sem recomputar quem ja existe:
+  O(vizinhos_reais x log). Prova: teste add_cluster_igual_ao_rebuild
+  (nascimento incremental == rebuild total, bit-identico) +
+  add_cluster_30k_cabe_no_tick (regime real do boot, < 500 ms; antes
+  ~3 s). Bench pre-fix: toml_full 2,79 s / so_maxpop 2,99 s / basline
+  codigo 4,01 ms (var/bench/). A/A do 17.4 e tests do grafo 5/5.
+
+- SESSAO 6 (17.6, CAUSA RAIZ REAL e fix do gargalo de escala): a
+  bissecao anterior era INVALIDA — runner.rs `n = initial_population
+  .min(max_population)`: o baseline "30K" da 17.1 e as variantes
+  "rapidas" rodavam com 1024 clusters REAIS (min com o teto 1024 do
+  codigo). O tick @30K REAL custava ~5,4 s em TODA config. Perfil por
+  FASE (instrumentacao temporaria, removida): fase 1 fisica = 5,37 s,
+  todo o resto < 20 ms; dentro dela: graph.update_positions com 30 mil
+  movidos = 4,94 s. Dois custos: (a) remove_stale varria TODAS as
+  celulas por movido (O(moved x celulas)); (b) affected coletava ~540
+  candidatos por movido quando so ~12 sao vizinhos reais.
+  FIX (bit-identico, provado por propriedade ==rebuild nos testes
+  graph 5/5): (1) indice reverso where_is no SpatialHash (remocao
+  O(celula)); (2) update_positions por ARESTAS: movidos recomputados
+  primeiro e cada afetado so ganha/perde as arestas com os movidos
+  (insercao/remocao ordenada — simetria por dist2); (3) add_cluster
+  local O(vizinhos_reais x log) (divisao: antes ~3 s por filho no
+  caso denso, agora sub-ms). RESULTADO @30K: pares (banda tau madura,
+  ~15 mil devidos) 5,5 s -> 0,5-0,73 s; impares 28 -> 14 ms;
+  transiente de juventude (10 primeiros passos, todos devidos)
+  5,4 -> 0,82 s. Restante honesto para o threshold de 50 ms: o custo
+  agora e a FISICA por cluster devido (update_state ~16 us @97D) —
+  alvo da proxima rodada (rayon por due exige decisao de rng por
+  cluster para preservar A/A; micro-otimizar entropy/tau/normal antes).
+  Telemetria permanente: StepReport.module_latency (perfil por
+  camada em todo passo do app); teste diagnostico_escala.rs mantido
+  como ferramenta de auditoria; workspace verde, house_laws 5/5.

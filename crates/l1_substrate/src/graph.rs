@@ -25,6 +25,12 @@ type CellKey = [i64; 3];
 pub struct SpatialHash {
     cell_size: f64,
     cells: HashMap<CellKey, Vec<usize>>,
+    /// 17.6 — índice reverso cluster→célula: `remove_stale` vira
+    /// O(célula) em vez de varrer TODAS as células por movido (o
+    /// caminho antigo era O(moved × células) ≈ 5 s @30K). A ordem
+    /// interna das células não afeta a adjacência: `candidates`
+    /// sempre ordena por índice (determinismo preservado).
+    where_is: Vec<CellKey>,
 }
 
 impl SpatialHash {
@@ -32,6 +38,7 @@ impl SpatialHash {
         Self {
             cell_size,
             cells: HashMap::new(),
+            where_is: Vec::new(),
         }
     }
 
@@ -44,7 +51,26 @@ impl SpatialHash {
     }
 
     fn insert(&mut self, idx: usize, pos: [f64; 3]) {
-        self.cells.entry(self.key_of(pos)).or_default().push(idx);
+        let key = self.key_of(pos);
+        self.cells.entry(key).or_default().push(idx);
+        if self.where_is.len() <= idx {
+            self.where_is.resize(idx + 1, [i64::MIN; 3]);
+        }
+        self.where_is[idx] = key;
+    }
+
+    /// Remove `idx` da célula ONDE ELE ESTÁ (índice reverso — sem
+    /// varrer o hash inteiro; 17.6).
+    fn remove_stale(&mut self, idx: usize) {
+        if idx >= self.where_is.len() {
+            return;
+        }
+        let cell = self.where_is[idx];
+        if let Some(v) = self.cells.get_mut(&cell) {
+            if let Some(p) = v.iter().position(|&i| i == idx) {
+                v.swap_remove(p);
+            }
+        }
     }
 
     /// Índices candidatos: clusters nas 27 células adjacentes (exclui `idx`).
@@ -117,30 +143,53 @@ impl LocalGraph {
     }
 
     /// Atualização incremental: apenas clusters que se moveram (e seus
-    /// vínculos antigos/novos) são reprocessados. Simetria garantida:
-    /// recomputamos o movido, seus antigos vizinhos E os candidatos da
-    /// nova célula — cada um consulta o hash espacial já atualizado.
+    /// vínculos antigos/novos) são reprocessados. Simetria garantida
+    /// por GEOMETRIA (17.6): o movido é recomputado primeiro — seus
+    /// vizinhos REAIS na nova posição são exatamente os clusters no
+    /// raio dele (dist² é simétrica), então estes (e apenas estes)
+    /// ganham/perdem o movido; candidatos FORA do raio não mudam de
+    /// adjacência — recomputá-los era O(célula) por movido (o caminho
+    /// antigo coletava TODOS os candidatos: ~5 s @30K movidos).
+    /// Resultado bit-idêntico (ver `incremental_igual_rebuild_total`).
     pub fn update_positions(&mut self, clusters: &[ClusterBio], moved: &[usize]) {
-        // 1. Antigos vizinhos de cada movido (vínculos a invalidar).
-        let mut affected: Vec<usize> = Vec::new();
-        for &i in moved {
-            affected.extend(self.neighbors[i].iter().copied());
-        }
-        // 2. Re-hash dos movidos (para a célula nova).
+        // 1. Adjacência ANTIGA dos movidos (arestas a invalidar) —
+        // capturada antes de qualquer recompute.
+        let old_adj: Vec<Vec<usize>> = moved
+            .iter()
+            .map(|&m| self.neighbors[m].clone())
+            .collect();
+        // 2. Re-hash dos movidos (índice reverso — remoção O(célula)).
         for &i in moved {
             self.spatial.remove_stale(i);
             self.spatial.insert(i, clusters[i].position);
         }
-        // 3. Candidatos da nova posição também são afetados.
+        // 3. MOVIDOS primeiro: adjacência nova (vizinhos reais no raio).
         for &i in moved {
-            affected.extend(self.spatial.candidates(i, clusters[i].position));
-        }
-        affected.extend(moved.iter().copied());
-        affected.sort_unstable();
-        affected.dedup();
-        // 4. Recomputa a adjacência de todos os afetados.
-        for &i in &affected {
             self.recompute_neighbors_of(i, clusters);
+        }
+        // 4. Vínculos dos AFETADOS com os MOVED apenas (17.6): quem
+        // não se moveu mantém posição — só as ARESTAS com os movidos
+        // podem mudar. Remover o moved antigo e inserir o moved no
+        // raio é bit-idêntico ao recompute completo (vizinhos de j =
+        // não-movidos no raio [inalterados] + movidos no raio [re-
+        // avaliados]; ordem canônica preservada por inserção/remoção
+        // ordenada). Ver `incremental_igual_rebuild_total`.
+        for (&m, olds) in moved.iter().zip(old_adj.iter()) {
+            for &j in olds {
+                let v = &mut self.neighbors[j];
+                if let Ok(p) = v.binary_search(&m) {
+                    v.remove(p);
+                }
+            }
+        }
+        for &m in moved {
+            let news = self.neighbors[m].clone();
+            for j in news {
+                let v = &mut self.neighbors[j];
+                if let Err(p) = v.binary_search(&m) {
+                    v.insert(p, m);
+                }
+            }
         }
         self.incremental_updates += moved.len() as u64;
         trace!(movidos = moved.len(), "atualização incremental do grafo");
@@ -151,19 +200,45 @@ impl LocalGraph {
         &self.neighbors[idx]
     }
 
-    /// Cluster nasceu: slot novo no fim + recompute local (o novo e os
-    /// candidatos da célula onde caiu).
+    /// Cluster nasceu: slot novo no fim + adjacência LOCAL (17.6).
+    ///
+    /// Custo O(vizinhos_reais × log n) — NUNCA recomputa os afetados
+    /// em cadeia: quem já existe ganha o novo como vizinho por
+    /// INSERÇÃO ORDENADA (adjacência bit-idêntica ao rebuild completo
+    /// — ver teste `add_cluster_igual_ao_rebuild`). O caminho antigo
+    /// recomputava cada afetado re-escaneando candidatos: O(afetados
+    /// × n) por divisão ≈ 3 s @30K.
     pub fn add_cluster(&mut self, idx: usize, clusters: &[ClusterBio]) {
         debug_assert_eq!(self.neighbors.len(), idx, "add_cluster só no fim");
         self.neighbors.push(Vec::new());
         self.spatial.insert(idx, clusters[idx].position);
-        let mut affected = vec![idx];
-        affected.extend(self.spatial.candidates(idx, clusters[idx].position));
-        affected.sort_unstable();
-        affected.dedup();
-        for &i in &affected {
-            self.recompute_neighbors_of(i, clusters);
+        // Adjacência do novo: candidatos das 27 células filtrados por
+        // distância real (mesma regra do recompute), ordem canônica.
+        let mut nb: Vec<usize> = self
+            .spatial
+            .candidates(idx, clusters[idx].position)
+            .into_iter()
+            .filter(|&j| {
+                dist2(clusters[idx].position, clusters[j].position) <= self.radius * self.radius
+            })
+            .collect();
+        nb.sort_unstable();
+        nb.dedup();
+        // Simetria: cada vizinho real ganha `idx` por inserção ORDENADA
+        // (determinística, sem recomputar nada de quem já existe).
+        let nb_owned = std::mem::take(&mut nb);
+        for &j in &nb_owned {
+            if j == idx {
+                continue;
+            }
+            let v = &mut self.neighbors[j];
+            match v.binary_search(&idx) {
+                Ok(_) => {}
+                Err(pos) => v.insert(pos, idx),
+            }
         }
+        self.neighbors[idx] = nb_owned;
+        self.incremental_updates += 1;
         trace!(idx = idx, "cluster adicionado ao grafo local");
         self.refresh_mean_degree();
     }
@@ -190,18 +265,6 @@ impl LocalGraph {
         } else {
             self.neighbors.iter().map(|v| v.len()).sum::<usize>() as f64 / n as f64
         };
-    }
-}
-
-impl SpatialHash {
-    /// Remove entradas duplicadas/stale de `idx` (varre células — chamado
-    /// só para clusters movidos; células são pequenas).
-    fn remove_stale(&mut self, idx: usize) {
-        for v in self.cells.values_mut() {
-            if let Some(p) = v.iter().position(|&i| i == idx) {
-                v.swap_remove(p);
-            }
-        }
     }
 }
 
@@ -278,6 +341,66 @@ mod tests {
         g_inc.update_positions(&cs, &moved);
         g_full.rebuild(&cs);
         assert_eq!(g_inc.neighbors, g_full.neighbors, "incremental == total");
+    }
+
+    /// 17.6 — o NASCIMENTO incremental (add_cluster com inserção
+    /// ordenada nos vizinhos) é bit-idêntico ao rebuild completo.
+    #[test]
+    fn add_cluster_igual_ao_rebuild() {
+        let mut rng = StdRng::seed_from_u64(31);
+        let mut cs: Vec<ClusterBio> = (0..60)
+            .map(|_| {
+                let mut c = ClusterBio::new(ClusterId::new(), 0, &mut rng);
+                c.position = [
+                    rng.gen::<f64>() * 12.0,
+                    rng.gen::<f64>() * 12.0,
+                    rng.gen::<f64>() * 12.0,
+                ];
+                c
+            })
+            .collect();
+        let mut filho = ClusterBio::new(ClusterId::new(), 0, &mut rng);
+        filho.position = [
+            rng.gen::<f64>() * 12.0,
+            rng.gen::<f64>() * 12.0,
+            rng.gen::<f64>() * 12.0,
+        ];
+        cs.push(filho);
+        let n = cs.len() - 1;
+        let mut g_inc = LocalGraph::new(cs.len());
+        g_inc.rebuild(&cs[..n]);
+        g_inc.add_cluster(n, &cs);
+        let mut g_full = LocalGraph::new(cs.len());
+        g_full.rebuild(&cs);
+        assert_eq!(
+            g_inc.neighbors, g_full.neighbors,
+            "nascimento incremental == rebuild total"
+        );
+    }
+
+    /// 17.6 — regressão do gargalo de escala: o caminho antigo
+    /// recomputava TODOS os afetados em cadeia (O(afetados × n) ≈ 3 s
+    /// @30K por divisão); o novo é local. Regime REAL do boot
+    /// (ClusterBio::new, mesma semente do organismo). Margem CI
+    /// generosa: 500 ms.
+    #[test]
+    fn add_cluster_30k_cabe_no_tick() {
+        let mut rng = StdRng::seed_from_u64(42);
+        let n = 30_000;
+        let mut cs: Vec<ClusterBio> = (0..n)
+            .map(|_| ClusterBio::new(ClusterId::new(), 0, &mut rng))
+            .collect();
+        let filho = ClusterBio::new(ClusterId::new(), 0, &mut rng);
+        cs.push(filho);
+        let mut g = LocalGraph::new(cs.len());
+        g.rebuild(&cs[..n]);
+        let t0 = std::time::Instant::now();
+        g.add_cluster(n, &cs);
+        let dt = t0.elapsed();
+        assert!(
+            dt.as_millis() < 500,
+            "add_cluster @30K levou {dt:?} (o caminho antigo era ~3 s)"
+        );
     }
 
     #[test]

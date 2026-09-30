@@ -21,6 +21,7 @@
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
+use serde::Deserialize;
 use std::time::Duration;
 use triad_foundation as tf;
 use triad_foundation::id::ClusterId;
@@ -73,5 +74,90 @@ fn kernel_dim_sums_17_3(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, step_l1_por_carga, kernel_dim_sums_17_3);
+/// 17.6 — ISOLAMENTO DO GARGALO: o app @30K mediu ~5,2 s/tick com a
+/// config do default.toml, mas o bench `new()` (config default de
+/// CÓDIGO) mede 3,67 ms/tick. Bissecção por seção do L1Config: qual
+/// sub-config do TOML explode o custo do tick @30K.
+fn step_l1_config_toml(c: &mut Criterion) {
+    let pop = 30_000usize;
+    let raw = std::fs::read_to_string("../../config/default.toml").expect("config/default.toml");
+    let v: toml::Value = toml::from_str(&raw).expect("toml válido");
+    let l1cfg = l1::config::L1Config::deserialize(v["l1"].clone()).expect("seção [l1]");
+    let mut group = c.benchmark_group(format!("step_l1_config_toml/pop={pop}"));
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(6));
+    // (a) TOML completo — reproduz o custo do app?
+    let module = l1::ClusterModule::new_with_config(42, pop, l1cfg.clone());
+    let mut clock = tf::LogicalClock::new();
+    let mut out = Vec::new();
+    group.bench_function("toml_full", |b| {
+        b.iter(|| {
+            clock.advance();
+            let ctx = TypedContext::new(clock);
+            module.tick(&ctx, &mut out).expect("tick l1 (toml full)");
+            out.clear();
+        })
+    });
+    // (b) TOML com MORPHOGENESIS do código (default histórico).
+    let mut b_cfg = l1cfg.clone();
+    b_cfg.morphogenesis = l1::config::MorphogenesisCfg::default();
+    let module_b = l1::ClusterModule::new_with_config(42, pop, b_cfg);
+    let mut clock_b = tf::LogicalClock::new();
+    group.bench_function("toml_morpho_codigo", |b| {
+        b.iter(|| {
+            clock_b.advance();
+            let ctx = TypedContext::new(clock_b);
+            module_b.tick(&ctx, &mut out).expect("tick l1 (morpho código)");
+            out.clear();
+        })
+    });
+    // (c) TOML com ENERGY do código (default histórico).
+    let mut c_cfg = l1cfg.clone();
+    c_cfg.energy = l1::config::EnergyCfg::default();
+    let module_c = l1::ClusterModule::new_with_config(42, pop, c_cfg);
+    let mut clock_c = tf::LogicalClock::new();
+    group.bench_function("toml_energy_codigo", |b| {
+        b.iter(|| {
+            clock_c.advance();
+            let ctx = TypedContext::new(clock_c);
+            module_c.tick(&ctx, &mut out).expect("tick l1 (energy código)");
+            out.clear();
+        })
+    });
+    // Bissecção por CAMPO do morpho: config de CÓDIGO + UM campo do
+    // TOML por variante — a lenta aponta o campo culpado.
+    let base = l1::config::L1Config::default();
+    let variantes: Vec<(&str, l1::config::L1Config)> = vec![
+        ("so_maxpop_32000", {
+            let mut c = base.clone();
+            c.morphogenesis.max_population = 32_000;
+            c
+        }),
+        ("so_division_085", {
+            let mut c = base.clone();
+            c.morphogenesis.division_threshold = 0.85;
+            c
+        }),
+        ("so_maxdiv_1", {
+            let mut c = base.clone();
+            c.morphogenesis.max_divisions_per_step = 1;
+            c
+        }),
+    ];
+    for (nome, cfg_v) in variantes {
+        let module_v = l1::ClusterModule::new_with_config(42, pop, cfg_v);
+        let mut clock_v = tf::LogicalClock::new();
+        group.bench_function(nome, |b| {
+            b.iter(|| {
+                clock_v.advance();
+                let ctx = TypedContext::new(clock_v);
+                module_v.tick(&ctx, &mut out).expect("tick l1 (variante)");
+                out.clear();
+            })
+        });
+    }
+    group.finish();
+}
+
+criterion_group!(benches, step_l1_por_carga, kernel_dim_sums_17_3, step_l1_config_toml);
 criterion_main!(benches);
