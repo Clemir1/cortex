@@ -134,6 +134,13 @@ impl TissueModule {
         l2.formation.params.specialization_threshold as f32
     }
 
+    /// 18.5: censo ecológico dos tecidos — adapter TISSUE do
+    /// `EcologyMotor` (T/governance). Lock só do L2 (não toca L1).
+    pub fn ecology_species(&self) -> Vec<(String, f32, u64)> {
+        let l2 = self.l2.lock().unwrap_or_else(|p| p.into_inner());
+        l2.formation.ecology_species()
+    }
+
     /// Último report do step L2 (telemetria de ponte).
     pub fn last_report(&self) -> Option<L2StepReport> {
         self.last_report

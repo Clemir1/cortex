@@ -15,6 +15,7 @@ use triad_foundation::id::{ClusterId, TissueId};
 use triad_l1_substrate::cluster::ClusterBio;
 
 use crate::config::L2Config;
+use crate::tissue::StateRegion;
 use crate::tissue::Tissue;
 
 /// ParÃ¢metros mutÃ¡veis em runtime â€” sÃ³ mudam via gate de adaptaÃ§Ã£o
@@ -288,6 +289,36 @@ impl TissueFormation {
 
         changes
     }
+
+    /// 18.5: censo ecológico dos tecidos — (região dominante,
+    /// especialização, membros) por tecido. Adapter TISSUE do
+    /// `EcologyMotor` (T/governance): mesma fórmula de
+    /// especialização das views (share da massa |centroide| na
+    /// região dominante), ordenada por nicho para determinismo.
+    pub fn ecology_species(&self) -> Vec<(String, f32, u64)> {
+        let mut out: Vec<(String, f32, u64)> = self
+            .tissues
+            .iter()
+            .map(|t| {
+                let total: f64 = t.centroid().iter().map(|x| x.abs()).sum();
+                let dom: f64 = t
+                    .centroid()
+                    .iter()
+                    .enumerate()
+                    .filter(|(d, _)| StateRegion::of_dimension(*d) == t.dominant_region)
+                    .map(|(_, x)| x.abs())
+                    .sum();
+                let spec = if total > 0.0 { dom / total } else { 0.0 };
+                (
+                    t.dominant_region.as_str().to_string(),
+                    spec as f32,
+                    t.members.len() as u64,
+                )
+            })
+            .collect();
+        out.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.cmp(&b.2)));
+        out
+    }
 }
 
 #[cfg(test)]
@@ -414,6 +445,44 @@ mod tests {
         let mut f3 = TissueFormation::new(43);
         f3.update(&clusters, &index, &order, 0);
         assert_ne!(f3.tissues[0].id, ids1[0]);
+    }
+
+    /// 18.5: censo ecológico (adapter TISSUE) — nicho por região
+    /// dominante, população = membros, determinístico por nicho.
+    #[test]
+    fn ecology_species_adapter_tissue() {
+        let (clusters, index) = substrato(4, 0.9);
+        let order: Vec<usize> = (0..clusters.len()).collect();
+        let mut f = TissueFormation::new(42);
+        f.update(&clusters, &index, &order, 0);
+        let census = f.ecology_species();
+        assert!(
+            !census.is_empty(),
+            "tecidos formados geram espécies no censo"
+        );
+        let total_pop: u64 = census.iter().map(|(_, _, p)| *p).sum();
+        assert_eq!(
+            total_pop as usize,
+            f.tissues.iter().map(Tissue::len).sum::<usize>(),
+            "população do censo == membros reais (denominador exato)"
+        );
+        for (niche, fitness, _) in &census {
+            assert!((0.0..=1.0).contains(fitness), "fitness [0,1]: {niche}");
+            assert!(
+                [
+                    "sensory",
+                    "short_memory",
+                    "energy_region",
+                    "communication",
+                    "structural",
+                    "adaptive"
+                ]
+                .contains(&niche.as_str()),
+                "nicho é região canônica: {niche}"
+            );
+        }
+        let sorted = census.windows(2).all(|w| w[0].0 <= w[1].0);
+        assert!(sorted, "censo ordenado por nicho (determinismo)");
     }
 
     #[test]

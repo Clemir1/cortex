@@ -365,6 +365,15 @@ impl L3Module {
             .report()
     }
 
+    /// 18.5: censo ecológico dos conceitos — adapter SYMBOLIC do
+    /// `EcologyMotor` (T/governance). (rótulo, ativação, pop 1).
+    pub fn ecology_species(&self) -> Vec<(String, f32, u64)> {
+        self.representation
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .ecology_species()
+    }
+
     /// 17.4: sinais top-down tipados a partir do CAMPO REAL — um
     /// por foco ativo, intensidade pelo decay posicional e razão
     /// explícita. O tecido-alvo é decidido pelo ROUTER do L2.
@@ -581,6 +590,56 @@ impl rt::CognitiveModule for L3Module {
     /// Estado atual do módulo, mesmo se o lock estiver envenenado.
     fn state(&self) -> rt::ModuleState {
         *self.state.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// 18.7 — contribuição da sessão 7 ao hash observacional da
+    /// camada L3 (padrão da sessão 6 no L1/L2): None antes do
+    /// primeiro tick (ausência ≠ zero), depois função pura do
+    /// estado canônico — representação real (registros em ordem
+    /// de rótulo, ativações em bits) + memória episódica (viva)
+    /// + focos de atenção do último tick. Só locks do PRÓPRIO
+    /// L3 (nunca L1/L2): observável fora do ciclo sem deadlock.
+    /// A/A: mesma seed ⇒ mesmo hash bit-exato a cada tick.
+    fn state_hash(&self) -> Option<u64> {
+        use std::hash::Hasher;
+        // Pré-primeiro-tick: o campo de atenção nasce com step 0.
+        if self
+            .attention
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .snapshot()
+            .step
+            == 0
+        {
+            return None;
+        }
+        let mut h = std::hash::DefaultHasher::new();
+        self.representation
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .feed_hash(&mut h);
+        // Memória episódica: episódios em ordem de inserção,
+        // força em bits (inteiro determinístico no hasher).
+        self.memory
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .feed_hash(&mut h);
+        // Focos de atenção do último tick (inteiro).
+        let foci = self
+            .attention
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .snapshot()
+            .foci
+            .len();
+        h.write_usize(foci);
+        // Telemetria de propostas/reforços (inteiros monotônicos).
+        h.write_u64(self.proposals_total());
+        let (applied, reconsolidated, dropped, _) = self.reinforcement_stats();
+        h.write_u64(applied);
+        h.write_u64(reconsolidated);
+        h.write_u64(dropped);
+        Some(h.finish())
     }
 
     /// Um tick: lê o tecido com recibo, fotografa focos REAIS, prediz
@@ -969,5 +1028,38 @@ mod tests {
         assert_eq!(rep.decaidas, 0, "janelas jovens não decaem em 3 ticks");
         assert_eq!(rep.eventos, 0, "memória ontogenética sem experiência ainda");
         let _ = rep.atratores; // denominador reportado, nunca taxa nua
+    }
+
+    /// 18.7 — hash observacional da camada L3 (contribuição da
+    /// sessão 7 ao padrão da sessão 6): None antes do primeiro
+    /// tick (ausência ≠ zero); gêmeos de mesma seed batem o hash
+    /// BIT-EXATO em cada tick; o hash RESPONDE ao tick (muda
+    /// quando o estado muda — ativações decaem todo tick).
+    #[test]
+    fn l3_hash_aa_none_pre_tick_e_bit_exato_depois() {
+        use triad_runtime::CognitiveModule as _;
+        // Pré-primeiro-tick: None, nunca hash falso.
+        let zero = L3Module::new();
+        assert_eq!(zero.state_hash(), None, "ausência ≠ zero: sem tick, sem hash");
+        // Gêmeos A/A: mesmo hash a cada passo.
+        let a = Ciclo::with_chladni(42, 24);
+        let b = Ciclo::with_chladni(42, 24);
+        let mut anteriores: Vec<Option<u64>> = Vec::new();
+        for _ in 0..10 {
+            a.tick();
+            b.tick();
+            let (ha, hb) = (a.l3.state_hash(), b.l3.state_hash());
+            assert_eq!(ha, hb, "gêmeos de mesma seed ⇒ hash bit-idêntico por tick");
+            assert!(ha.is_some(), "pós-tick o hash é Some (estado medido)");
+            anteriores.push(ha);
+        }
+        // O hash RESPONDE: muda ao longo dos passos (função do
+        // estado vivo — ativações decaem, focos evoluem).
+        let distintos: std::collections::HashSet<Option<u64>> =
+            anteriores.into_iter().collect();
+        assert!(
+            distintos.len() >= 2,
+            "hash é função do estado: evolui com os ticks"
+        );
     }
 }

@@ -236,6 +236,22 @@ impl LocalMemory {
             self.episodes.remove(index);
         }
     }
+
+    /// 18.7 — contribuição ao hash observacional da camada L3
+    /// (padrão da sessão 6): episódios em ORDEM DE INSERÇÃO
+    /// (determinística dada a mesma sequência de reforços) com
+    /// força em BITS (f32 determinístico) e o passo de criação.
+    /// Ausência (zero episódios) = nada escrito além da contagem
+    /// — quem decide None × Some é o dono do tick.
+    pub fn feed_hash(&self, h: &mut impl std::hash::Hasher) {
+        use std::hash::Hash;
+        h.write_usize(self.episodes.len());
+        for e in &self.episodes {
+            e.label.hash(h);
+            h.write_u64(e.step);
+            h.write_u32(e.strength.to_bits());
+        }
+    }
 }
 
 #[cfg(test)]

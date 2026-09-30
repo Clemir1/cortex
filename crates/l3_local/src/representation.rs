@@ -432,6 +432,21 @@ impl L3Representation {
         Some(id)
     }
 
+    /// 18.5: censo ecológico dos conceitos — (rótulo, ativação,
+    /// população 1) por conceito vivo. Adapter SYMBOLIC do
+    /// `EcologyMotor` (T/governance), ordenado por nicho
+    /// (determinismo). Fitness bruta = ativação corrente [0,1].
+    pub fn ecology_species(&self) -> Vec<(String, f32, u64)> {
+        let mut out: Vec<(String, f32, u64)> = self
+            .store
+            .records
+            .values()
+            .map(|r| (r.label.clone(), r.representation.activation, 1))
+            .collect();
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    }
+
     /// Estatística completa COM DENOMINADORES (para o app).
     pub fn report(&self) -> RepReport {
         let (inserts, dedupes) = self.store.insert_counts();
@@ -454,6 +469,53 @@ impl L3Representation {
             atratores: meta.n_atratores,
             estabilidade_media: meta.estabilidade_media,
         }
+    }
+
+    /// 18.7 — contribuição ao hash observacional da camada L3
+    /// (padrão da sessão 6: função pura do estado canônico,
+    /// nunca wall-clock). Alimenta o hasher com o CONTEÚDO real
+    /// em ordem canônica: registros ordenados por RÓTULO
+    /// (independe da ordem de inserção do HashMap), ativação em
+    /// BITS (determinismo total de f32), contadores INTEIROS do
+    /// binding/onto/temporal. Ausência de estado = nada escrito
+    /// — quem decide None × Some é o dono do tick (L3Module).
+    pub fn feed_hash(&self, h: &mut impl std::hash::Hasher) {
+        use std::hash::Hash;
+        // Registros em ordem canônica de rótulo.
+        let mut pares: Vec<(&String, f32, bool, u64)> = self
+            .store
+            .records
+            .values()
+            .map(|r| {
+                (
+                    &r.label,
+                    r.representation.activation,
+                    r.representation.grounded,
+                    r.created_step,
+                )
+            })
+            .collect();
+        pares.sort_by(|a, b| a.0.cmp(b.0));
+        h.write_usize(pares.len());
+        for (label, activation, grounded, created) in pares {
+            label.hash(h);
+            h.write_u32(activation.to_bits());
+            h.write_u8(grounded as u8);
+            h.write_u64(created);
+        }
+        // Contadores inteiros (denominadores vivos, sem f32
+        // ambíguo: tudo o que é contável entra como inteiro).
+        let (inserts, dedupes) = self.store.insert_counts();
+        let (edges, _) = self.binding.stats();
+        let (consolidadas, vivas) = self.onto.live_count();
+        h.write_u64(inserts);
+        h.write_u64(dedupes);
+        h.write_u64(edges as u64);
+        h.write_u64(consolidadas as u64);
+        h.write_u64(vivas as u64);
+        h.write_u64(self.onto.stats.eventos);
+        h.write_u64(self.temporal.ligacoes);
+        h.write_u64(self.temporal.observacoes);
     }
 }
 
