@@ -202,16 +202,28 @@ impl L1Metrics {
     }
 
     /// Resumo legível de todas as métricas na janela 100 (verificação
-    /// humana rápida — sem taxas sem denominador).
+    /// humana rápida — sem taxas sem denominador). Janela vazia é
+    /// AUSÊNCIA declarada (NO_DATA), nunca 0.0 fabricado (Lei 2).
     pub fn summary_w100(&self) -> String {
-        let pop = self.population.stats(100).map(|s| s.mean).unwrap_or(0.0);
-        let en = self.mean_energy.stats(100).map(|s| s.mean).unwrap_or(0.0);
-        let dth = self.deaths.stats(100).map(|s| s.mean).unwrap_or(0.0);
-        let div = self.divisions.stats(100).map(|s| s.mean).unwrap_or(0.0);
-        let act = self.active_fraction.stats(100).map(|s| s.mean).unwrap_or(0.0);
-        trace!(pop = pop, en = en, act = act, "snapshot de métricas w100");
+        let pop = self.population.stats(100).map(|s| s.mean);
+        let en = self.mean_energy.stats(100).map(|s| s.mean);
+        let dth = self.deaths.stats(100).map(|s| s.mean);
+        let div = self.divisions.stats(100).map(|s| s.mean);
+        let act = self.active_fraction.stats(100).map(|s| s.mean);
+        let fmt = |o: Option<f64>| match o {
+            Some(v) => format!("{v:.3}"),
+            None => "NO_DATA".to_string(),
+        };
+        if let (Some(p), Some(e), Some(a)) = (pop, en, act) {
+            trace!(pop = p, en = e, act = a, "snapshot de métricas w100");
+        }
         format!(
-            "pop~{pop:.1} energy~{en:.3} deaths/step~{dth:.4} divisions/step~{div:.4} active~{act:.3}"
+            "pop~{} energy~{} deaths/step~{} divisions/step~{} active~{}",
+            fmt(pop),
+            fmt(en),
+            fmt(dth),
+            fmt(div),
+            fmt(act)
         )
     }
 }
