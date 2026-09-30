@@ -555,7 +555,7 @@ medir, A/A bit-identico em cada degrau, CPU sempre canonica)
         17.1-17.6; se GO: staging SoA em platform/triad-gpu com
         [gpu] enabled=false, kernels energia/pairwise/reservoir e
         golden tests CPU<->GPU; CPU permanece canonica (fallback)
-[ ] [6] 17.8 Verificacao final da escala: workspace verde, house_laws
+[x] [6] 17.8 Verificacao final da escala: workspace verde, house_laws
         5/5, app 1.200 E 30K verdes, A/A bit-identico documentado,
         AUDITORIA/checklist atualizados, commit/push
 
