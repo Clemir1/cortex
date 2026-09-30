@@ -1415,7 +1415,7 @@ Coordenacao sessao 6/7: caixa 2 = dono da tarefa (6 ou 7).
          -> CRITERIO: StepReport de cada camada expoe
          state_hash + latency_ms; A/A documentado por camada;
          cascatas reconstrutiveis do journal
-[ ] [6] 18.8 Verificacao final consolidada: workspace verde,
+[x] [6] 18.8 Verificacao final consolidada: workspace verde,
          house_laws 5/5, app 1.200 E 30K verdes, A/A bit-exato
          documentado, AUDITORIA/checklist atualizados, commit/push
          na Danger-Zone a cada marco
@@ -1616,3 +1616,22 @@ execucao de codigo no legado, zero arquivo Python em D:\cortex.
   1.0 em modo deterministico (heranca do legado cognitive_budget)
   ficou fora desta passada por escopo. Cascatas reconstrutiveis: ja
   entregue pela 18.3 (TraceEngine, commit bfd62e7).
+
+- SESSAO 6 (18.8 FECHADA — verificação final consolidada, round
+  final): WORKSPACE COMPLETO VERDE (todos os crates L1-L5 + trans-
+  versais + governance da sessão 7 pousado), house_laws 5/5, app
+  release "Nucleo encerrado sem violar as leis da casa", A/A docu-
+  mentado em TRES niveis (física entre pools 1/4/8 da 17.6; trilha
+  de cascatas bit-exata da 18.3; hash por camada bit-exato L1/L2
+  da 18.7), cascatas reconstrutiveis do journal, AUDITORIA.md com
+  a Serie 18 completa, commits/push a cada marco (687ef72 a 2df0835
+  + este). HANDOFF EXPLICITO para a sessao 7 (caixas dela, designs
+  prontos nos relatorios 18.2): 18.4 federacao (CNP interno +
+  contrato causal applied_value/observed_effect/recibo/outcome t+1,
+  t+5 + trait FederationTransport feature-off + active/sham),
+  18.5 ecologia (motor generico + adapters populations: nichos,
+  custo de nascimento, GenDiv>0.3, renovacao obrigatoria, predator
+  de conceitos — todas as taxas com denominador), 18.6 arbitragem
+  (conflitos deterministicos com trilha). DEBITO 18.7 para quando o
+  estado interno delas estabilizar: hash real de L3/L4/L5, hash
+  fino do L2 e budget por camada com throttle fixo 1.0 em validacao.
