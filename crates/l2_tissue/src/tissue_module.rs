@@ -152,6 +152,25 @@ impl rt::CognitiveModule for TissueModule {
         *self.state.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    /// 18.7 — hash observacional da camada L2: demografia tecidual
+    /// canônica do último report (population_total, tissue_count,
+    /// assigned, unassigned, bridges, adaptations aplicadas/deferred)
+    /// — INTEIROS determinísticos, função pura do estado macro.
+    /// Débito registrado no checklist: hash fino por tecido/membros.
+    fn state_hash(&self) -> Option<u64> {
+        let report = self.last_report.lock().unwrap_or_else(|p| p.into_inner()).clone()?;
+        let mut h = std::hash::DefaultHasher::new();
+        use std::hash::{Hash, Hasher};
+        report.population_total.hash(&mut h);
+        report.tissue_count.hash(&mut h);
+        report.assigned.hash(&mut h);
+        report.unassigned.hash(&mut h);
+        report.bridges.hash(&mut h);
+        report.adaptations_applied.hash(&mut h);
+        report.adaptations_deferred.hash(&mut h);
+        Some(h.finish())
+    }
+
     fn tick(
         &self,
         ctx: &rt::TypedContext,

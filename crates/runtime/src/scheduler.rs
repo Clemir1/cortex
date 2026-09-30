@@ -39,6 +39,12 @@ pub struct StepReport {
     /// 17.6 — latência por módulo (nome, µs) na ordem canônica:
     /// o perfil de escala do organismo (telemetria profunda).
     pub module_latency: Vec<(String, u64)>,
+    /// 18.7 — hash OBSERVACIONAL do estado por módulo (nome,
+    /// Option<u64>), mesma ordem canônica: A/A bit-exato por camada
+    /// (mesma seed ⇒ mesmo hash; a latência varia, o hash NÃO).
+    /// `None` = camada ainda sem estado canônico instrumentado
+    /// (ausência ≠ zero — débito por camada no checklist).
+    pub state_hashes: Vec<(String, Option<u64>)>,
 }
 
 /// Escalonador que executa módulos cognitivos e publica eventos no barramento.
@@ -127,6 +133,10 @@ impl Scheduler {
         // 17.6 — telemetria de latência POR MÓDULO (µs), sempre na
         // ordem canônica de registro: o perfil de escala do dono.
         let mut latencias: Vec<(String, u64)> = Vec::new();
+        // 18.7 — hash observacional por módulo, coletado APÓS o tick na
+        // MESMA ordem canônica do merge (determinístico: função do
+        // estado pós-tick, nunca do wall-clock).
+        let mut hashes: Vec<(String, Option<u64>)> = Vec::new();
         for grupo in self.concurrency.clone() {
             // FASE 1 (serial): decide quem está ativo ANTES de tickar
             // — módulo inativo nunca roda (a semântica do skip é a
@@ -179,6 +189,10 @@ impl Scheduler {
                         executed += 1;
                         latencias
                             .push((self.modules[i].descriptor().name.clone(), micros[i]));
+                        hashes.push((
+                            self.modules[i].descriptor().name.clone(),
+                            self.modules[i].state_hash(),
+                        ));
                         for ev in out {
                             if published >= self.budget.max_events {
                                 budget_exceeded = true;
@@ -197,6 +211,10 @@ impl Scheduler {
                         skipped += 1;
                         latencias
                             .push((self.modules[i].descriptor().name.clone(), micros[i]));
+                        hashes.push((
+                            self.modules[i].descriptor().name.clone(),
+                            self.modules[i].state_hash(),
+                        ));
                         eprintln!("módulo {:?} degradado por erro no tick", id);
                     }
                 }
@@ -212,6 +230,7 @@ impl Scheduler {
             budget_exceeded,
             degraded,
             module_latency: latencias,
+            state_hashes: hashes,
         }
     }
 

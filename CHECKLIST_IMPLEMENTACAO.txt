@@ -1591,3 +1591,28 @@ execucao de codigo no legado, zero arquivo Python em D:\cortex.
   completo quebrou SO pelo WIP da sessao 7 em voo (species/E0499 no
   l4/l5 dela) — fix aditivo meu em module.rs (import Hasher faltante
   do state_hash 18.7 que ela adicionou; sem o fix o l1 nao compila).
+
+- SESSAO 6 (18.7, round do goal — instrumentacao hash+_ms por camada,
+  PARCIAL HONESTO): INFRA COMPLETA: (1) trait CognitiveModule ganha
+  state_hash() -> Option<u64> PROVIDED (default None = AUSENCIA ne
+  zero: camada nao instrumentada expoe ausencia, nunca hash falso);
+  (2) StepReport do scheduler ganha state_hashes: Vec<(nome,
+  Option<u64>)> coletado APOS o tick na ordem canonica do merge
+  (deterministico; latency_ms por modulo ja existia da 17.6 — TODAS
+  as camadas expoe hash+latencia estruturalmente); (3) L1 IMPL REAL:
+  hash(mean_state_hash ^ cluster_order_hash) da matriz versionada —
+  A/A BIT-EXATO: teste l1_hash_aa: gemeos mesma seed batem hash em
+  CADA passo e o hash RESPONDE ao tick (muda quando o estado muda);
+  (4) L2 IMPL REAL: hash demografico do report (population_total,
+  tissue_count, assigned, unassigned, bridges, adaptations — inteiros
+  deterministicos) + teste l2_hash_aa: ANTES do 1o step = None
+  (ausencia ne zero comprovada), apos step gemeos batem bit-exato.
+  TESTES: hash_aa 2/2 verdes; libs runtime 10/10, l2 38/38, l1 57/57;
+  house_laws 5/5; app release verde "sem violar as leis da casa".
+  DEBITO EXPLICITO (caixa segue [ ]): L3/L4/L5 expoem None (ausencia
+  documentada) — impl do hash canonico delas exige leitura do estado
+  interno em WIP ativo da sessao 7; hash fino do L2 (por tecido/
+  membros, nao so demografia); budget por camada com throttle fixo
+  1.0 em modo deterministico (heranca do legado cognitive_budget)
+  ficou fora desta passada por escopo. Cascatas reconstrutiveis: ja
+  entregue pela 18.3 (TraceEngine, commit bfd62e7).
