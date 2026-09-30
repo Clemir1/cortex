@@ -494,6 +494,7 @@ fn current_value(params: &FormationParams, p: AdaptParam) -> f64 {
         AdaptParam::MaxMembers => params.max_members as f64,
         AdaptParam::CoherenceTarget => params.coherence_target,
         AdaptParam::BridgeMinEdges => params.bridge_min_edges as f64,
+        AdaptParam::SpecializationThreshold => params.specialization_threshold,
     }
 }
 

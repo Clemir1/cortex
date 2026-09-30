@@ -52,12 +52,24 @@ impl TissueModule {
         config: crate::config::L2Config,
     ) -> Self {
         Self {
-            descriptor: tc::ModuleDescriptor {
-                module_id: tf::ModuleId::new(),
-                name: "l2.tissue".into(),
-                layer: tc::Layer::L2,
-                domain: "tissue".into(),
-            },
+            // Descritor canônico (CAMADA.txt, 17.1): L2 adapta a
+            // organização mesoscópica (O2) com recibos no L2Ledger
+            // (E3); drena as propostas L3 pelo inbox do DONO.
+            descriptor: tc::ModuleDescriptor::new(
+                tf::ModuleId::new(),
+                "l2.tissue",
+                tc::Layer::L2,
+                "tissue",
+            )
+            .with_orders(&[tc::CyberneticOrder::O2Adaptation])
+            .with_state_owner("l2.tissue")
+            .with_inputs(&["runtime.tick", "l1.substrate", "inbox.l2.adaptation"])
+            .with_outputs(&["l2.tissue", "l2.tissue.change"])
+            .with_backend(tc::ExecutionBackend::CpuSeq)
+            .with_criticality(tc::Criticality::High)
+            .with_dependencies(&["l1.substrate"])
+            .with_evidence(tf::evidence::EvidenceLevel::E3Productive)
+            .with_recovery(tc::RecoveryPolicy::RestartModule),
             l2: Mutex::new(L2Runner::new_with_config(seed, config)),
             l1: l1_shared,
             inbox: Mutex::new(Vec::new()),
@@ -111,6 +123,15 @@ impl TissueModule {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .len()
+    }
+
+    /// 17.14: limiar de especialização CORRENTE do L2 (lido do
+    /// estado real da formação — só muda pelo gate de adaptação).
+    /// O wiring 17.4 realimenta o TopDownAdmission com este valor:
+    /// o canal L3→L2 fecha de ponta a ponta.
+    pub fn specialization_threshold(&self) -> f32 {
+        let l2 = self.l2.lock().unwrap_or_else(|p| p.into_inner());
+        l2.formation.params.specialization_threshold as f32
     }
 
     /// Último report do step L2 (telemetria de ponte).

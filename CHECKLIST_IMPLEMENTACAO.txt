@@ -383,7 +383,7 @@ PERSISTENCIA E ESCADA DE EVIDENCIA:
          declarado no relatorio 15-0 secao 5
 
 FILA DE INVESTIGACAO DO LEGADO (13-0 secao 4 -- nenhum item bloqueia):
-[ ] [ ] 16.12 Os 8 itens da fila (ver relatorio 13-0 secao 4) -- livres;
+[x] [7] 16.12 Os 8 itens da fila (ver relatorio 13-0 secao 4) -- livres;
          executar quando o dono pedir, um de cada vez, com relatorio
 
 - SESSAO 6 (16.4 fechado, ADR-0007): recursao Chladni VIVA na cognicao.
@@ -1506,3 +1506,43 @@ Subagentes do legado disparados (3 frentes, READ-ONLY).
   InProcess padrão + feature-off; porta de aceitação = par active/
   sham pareado A/A. => 18.2 FECHADA (3 relatórios com arquivo:linha
   + decisões de herança explicitas herdar/fundir/descartar).
+
+--- Rodada (sessao 7) - 16.12 CONCLUIDA: a fila de investigacao
+do legado (13-0 secao 4, 8 itens) foi EXECUTADA por 4 subagentes
+READ-ONLY a pedido do dono (fechamento consolidado). TODOS os 8
+itens com relatorio em var/verificacao/ com arquivo:linha do
+legado, decisao de heranca EXPLICITA (herdar/fundir/declinar com
+razao) e o que cada teste validava: itens 1-2
+(16-12_itens_1_2_decisao_confianca_causal.md) - decisao cognitiva
+nao vive no loop_helpers (achado: vive em global_workspace/
+system/causal_cycle; competencia com pesos por tipo DECLINADA com
+razao - saliencia comensuravel e a decisao 14.2 do projeto;
+7 arestas canonicas do ciclo = replica exata das leis 5 da casa;
+confianca causal count/5 + carryover cross-run 1-exp(-0.3n)
+REGISTRADO como subcaixa da 18.x persistencia de confianca);
+itens 3-5 (16-12_itens_3_4_5_...) - self_model real =
+recursive_self_model (blend depth/conf/pred_health com concerns
+tipadas; ESPEC disponivel, consumo = politica do dono), 26
+DevelopmentStages com gates de sinal + checkpoints de energia
+(ESPEC P3 completa), ConsolidationIndex = proxy estrutural com
+consumo REAL no throttle de divisao + promocao de memoria por
+score com recibo (ESPEC para 18.5 SYMBOLIC); itens 6-8
+(16-12_itens_6_7_8_gates_binding_scheduler.md) - cascata de
+gates com histograma (mecanica), binding com causa tipada +
+death_log (extensao barata registrada), scheduler = tabela base
++ fator adaptativo (mecanica ja nativa do runtime Rust, fator
+por estado global = ESPEC de politica). Aproveitamento direto:
+a ESPEC completa de ecologias/federacao/instrumentacao ja esta
+em 18-0b_auditoria_legado_ecologia_federacao_instrumentacao.md
+e alimenta as caixas 18.4/18.5 (minhas) e 17.13/18.7 (sessao 6).
+Verificacao: 4 relatorios com citacao arquivo:linha, zero
+execucao de codigo no legado, zero arquivo Python em D:\cortex.
+
+
+- SESSAO 6 (18.7 — PARCIAL verde, commit da orquestradora):
+  instrumentacao hash+_ms integrada e VERDE em L1 (padrao da 17.6),
+  L2 (38 testes) e L3 (24 testes) — state_hash deterministico
+  observacional + latency_ms por modulo, diffs aditivos sem quebrar
+  API da sessao 7. PENDENTE para fechar a caixa: L4 e L5 (mesmo
+  padrao, aditivo). Caixa 18.7 permanece [ ] ate TODAS as camadas
+  exporem state_hash + latency_ms com A/A por camada.

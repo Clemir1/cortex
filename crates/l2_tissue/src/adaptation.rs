@@ -23,6 +23,9 @@ pub enum AdaptParam {
     MaxMembers,
     CoherenceTarget,
     BridgeMinEdges,
+    /// 17.14: limiar de especialização do feedback top-down
+    /// (L3→L2) — fecha o canal `l2.tissue.specialization_threshold`.
+    SpecializationThreshold,
 }
 
 impl AdaptParam {
@@ -34,6 +37,7 @@ impl AdaptParam {
             Self::MaxMembers => "l2.tissues.max_members",
             Self::CoherenceTarget => "l2.tissues.coherence_target",
             Self::BridgeMinEdges => "l2.affinity.bridge_min_edges",
+            Self::SpecializationThreshold => "l2.tissue.specialization_threshold",
         }
     }
 
@@ -46,6 +50,9 @@ impl AdaptParam {
             "l2.tissues.max_members" | "max_members" => Self::MaxMembers,
             "l2.tissues.coherence_target" | "coherence_target" => Self::CoherenceTarget,
             "l2.affinity.bridge_min_edges" | "bridge_min_edges" => Self::BridgeMinEdges,
+            "l2.tissue.specialization_threshold" | "specialization_threshold" => {
+                Self::SpecializationThreshold
+            }
             _ => return None,
         })
     }
@@ -58,6 +65,8 @@ impl AdaptParam {
             Self::MaxMembers => (8.0, 256.0),
             Self::CoherenceTarget => (0.1, 0.9),
             Self::BridgeMinEdges => (1.0, 8.0),
+            // Paridade com SPEC_THRESHOLD_MIN/MAX do topdown.
+            Self::SpecializationThreshold => (0.05, 0.95),
         }
     }
 
@@ -251,6 +260,9 @@ impl AdaptationGate {
                 AdaptParam::BridgeMinEdges => {
                     params.bridge_min_edges = new_value.round() as usize;
                 }
+                AdaptParam::SpecializationThreshold => {
+                    params.specialization_threshold = new_value;
+                }
             }
             params.sanitize();
         }
@@ -351,6 +363,39 @@ mod tests {
         );
         assert_eq!(AdaptParam::from_key("nao.existe"), None);
         assert_eq!(AdaptParam::MinMembers.as_key(), "l2.tissues.min_members");
+    }
+
+    #[test]
+    fn specialization_threshold_fecha_o_canal_l3_l2() {
+        // 17.14: o pedido real do wiring 17.4 era Deferred
+        // "unknown_parameter" — agora resolve e APLICA de verdade.
+        assert_eq!(
+            AdaptParam::from_key("l2.tissue.specialization_threshold"),
+            Some(AdaptParam::SpecializationThreshold)
+        );
+        assert_eq!(
+            AdaptParam::SpecializationThreshold.as_key(),
+            "l2.tissue.specialization_threshold"
+        );
+        assert_eq!(AdaptParam::SpecializationThreshold.range(), (0.05, 0.95));
+        let mut g = AdaptationGate::new();
+        // 0.60→0.45: salto 0.15 > banda 0.1 → APLICA clampado ao
+        // teto por pedido (0.10): o limiar ANDA para 0.50.
+        let d = g.request(AdaptParam::SpecializationThreshold, 0.60, 0.45, 100);
+        assert!(
+            matches!(d, GateDecision::Applied { new_value, clamped: true, .. }
+                if (new_value - 0.50).abs() < 1e-9),
+            "aplica clampado ao teto na direção pedida"
+        );
+        let mut params = crate::formation::FormationParams::default();
+        AdaptationGate::apply_to_params(&d, &mut params);
+        assert!(
+            (params.specialization_threshold - 0.50).abs() < 1e-9,
+            "efeito REAL nos parâmetros do L2"
+        );
+        // Fora da faixa: rejeitado com razão tipada.
+        let fora = g.request(AdaptParam::SpecializationThreshold, 0.60, 5.0, 100);
+        assert!(matches!(fora, GateDecision::Deferred { reason: "out_of_range" }));
     }
 
     #[test]

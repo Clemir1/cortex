@@ -31,6 +31,10 @@ pub struct FormationParams {
     pub coherence_target: f64,
     /// Arestas inter-tecido mÃ­nimas para decretar bridge.
     pub bridge_min_edges: usize,
+    /// 17.14: limiar de especialização do feedback top-down
+    /// (L3→L2) — mutável SÓ pelo gate (AdaptParam
+    /// `l2.tissue.specialization_threshold`).
+    pub specialization_threshold: f64,
 }
 
 impl Default for FormationParams {
@@ -48,6 +52,7 @@ impl FormationParams {
             max_members: cfg.tissues.max_members,
             coherence_target: cfg.tissues.coherence_target,
             bridge_min_edges: cfg.affinity.bridge_min_edges,
+            specialization_threshold: cfg.tissues.specialization_threshold,
         }
     }
 
@@ -59,6 +64,7 @@ impl FormationParams {
         self.max_members = self.max_members.clamp(8, 256);
         self.coherence_target = self.coherence_target.clamp(0.1, 0.9);
         self.bridge_min_edges = self.bridge_min_edges.clamp(1, 8);
+        self.specialization_threshold = self.specialization_threshold.clamp(0.05, 0.95);
     }
 }
 

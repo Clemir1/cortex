@@ -27,6 +27,11 @@ pub struct TissuesCfg {
     pub coherence_target: f64,
     /// Folga antes de sinalizar falta de capacidade.
     pub capacity_margin: f64,
+    /// 17.14: limiar de especialização do feedback top-down
+    /// (L3→L2) — tecidos com especialização ABAIXO recebem o
+    /// realce. Mutável em runtime SÓ pelo gate de adaptação
+    /// (chave `l2.tissue.specialization_threshold`).
+    pub specialization_threshold: f64,
 }
 
 impl Default for TissuesCfg {
@@ -38,6 +43,7 @@ impl Default for TissuesCfg {
             max_members: 64,
             coherence_target: 0.5,
             capacity_margin: 0.2,
+            specialization_threshold: 0.6,
         }
     }
 }

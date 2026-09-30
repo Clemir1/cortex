@@ -128,6 +128,8 @@ pub struct L3Module {
     /// Ticks sem bônus (sem fonte, sinal não-VALUE ou sem tecidos) —
     /// denominador sempre visível, nunca zero fantasma.
     chladni_absent_ticks: Mutex<u64>,
+    /// 17.5: representação real agregada (store/binding/onto/temporal).
+    representation: Mutex<crate::representation::L3Representation>,
     /// Memória episódica local REAL (seção 16.2): consumidora dos
     /// reforços confirmados do ciclo L4 — o L3 é o DONO do estado.
     memory: Mutex<crate::memory::LocalMemory>,
@@ -220,12 +222,30 @@ impl L3Module {
 
     fn with_l2(l2: Option<Arc<l2::TissueModule>>) -> Self {
         Self {
-            descriptor: tc::ModuleDescriptor {
-                module_id: tf::id::ModuleId::new(),
-                name: "l3.local".into(),
-                layer: tc::Layer::L3,
-                domain: "local-cognition".into(),
-            },
+            // Descritor canônico (CAMADA.txt, 17.1): L3 prediz e
+            // observa localmente (O1+O4); consome o tecido L2 e o
+            // sinal Chladni por pontes read-only; atua no L2 apenas
+            // por SUBMISSÃO ao inbox de adaptação do dono; memória
+            // episódica real aplicada com recibo (E4, trilha 16.2).
+            descriptor: tc::ModuleDescriptor::new(
+                tf::id::ModuleId::new(),
+                "l3.local",
+                tc::Layer::L3,
+                "local-cognition",
+            )
+            .with_orders(&[
+                tc::CyberneticOrder::O1Control,
+                tc::CyberneticOrder::O4Observation,
+            ])
+            .with_state_owner("l3.local")
+            .with_inputs(&["runtime.tick", "l2.tissue", "l1.chladni"])
+            .with_outputs(&["l3.local", "l3.memory"])
+            .with_actuators(&["inbox.l2.adaptation"])
+            .with_backend(tc::ExecutionBackend::CpuSeq)
+            .with_criticality(tc::Criticality::High)
+            .with_dependencies(&["l1.substrate", "l2.tissue"])
+            .with_evidence(tf::evidence::EvidenceLevel::E4Consumed)
+            .with_recovery(tc::RecoveryPolicy::RestartModule),
             l2,
             policy: L3Policy::default(),
             attention_cfg: AttentionCfg::default(),
@@ -239,6 +259,9 @@ impl L3Module {
             chladni_source: None,
             chladni_bonus_ticks: Mutex::new(0),
             chladni_absent_ticks: Mutex::new(0),
+            // 17.5: representação real (store/binding/ontogenética/
+            // temporal) — agregador único, contadores com denominador.
+            representation: Mutex::new(crate::representation::L3Representation::new()),
             memory: Mutex::new(crate::memory::LocalMemory::new()),
             reinforce_inbox: Mutex::new(Vec::new()),
             reinforce_receipt: Mutex::new(None),
@@ -276,8 +299,16 @@ impl L3Module {
             return;
         }
         let mut memory = self.memory.lock().unwrap_or_else(|p| p.into_inner());
+        let mut rep = self
+            .representation
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
         for r in inbox {
             let reconsolidated = memory.reinforce(&r.label, r.step, r.reconsolidate);
+            // 17.5: o reforço confirmado (trilha 16.2) é EXPERIÊNCIA
+            // ontogenética — entra na janela de consolidação com
+            // veredito tipado (Consolidated/Reconsolidated/WindowOpen).
+            rep.onto.experience(&r.label, tick);
             *self.reinforce_applied.lock().unwrap_or_else(|p| p.into_inner()) += 1;
             if reconsolidated {
                 *self.reinforce_reconsolidated.lock().unwrap_or_else(|p| p.into_inner()) += 1;
@@ -323,6 +354,31 @@ impl L3Module {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .snapshot()
+    }
+
+    /// 17.5: fotografia da representação real COM DENOMINADORES
+    /// (conceitos/bindings/consolidações/temporal/atratores).
+    pub fn representation_report(&self) -> crate::representation::RepReport {
+        self.representation
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .report()
+    }
+
+    /// 17.4: sinais top-down tipados a partir do CAMPO REAL — um
+    /// por foco ativo, intensidade pelo decay posicional e razão
+    /// explícita. O tecido-alvo é decidido pelo ROUTER do L2.
+    pub fn topdown_signals(&self) -> Vec<crate::topdown::TopDownSignal> {
+        self.attention_foci()
+            .foci
+            .iter()
+            .enumerate()
+            .map(|(pos, concept)| crate::topdown::TopDownSignal {
+                concept: *concept,
+                intensity: crate::topdown::focus_decay(pos),
+                reason: format!("foco {pos} do campo de atenção pede realce"),
+            })
+            .collect()
     }
 
     /// Última predição emitida (None = ausência declarada).
@@ -555,6 +611,23 @@ impl rt::CognitiveModule for L3Module {
         // não-VALUE ou sem tecidos) ou peso 0 = SEM efeito — contada
         // com denominador visível, nunca zero fantasma.
         let chladni_bonus = self.chladni_bonus();
+        // 17.5 — PONTE TEMPORAL HOTM→semântica + tick da
+        // representação: assinatura recorrente liga conceito
+        // groundado; janelas ontogenéticas fecham; ativações
+        // decaem (assintótico — ausência nunca vira zero de vez).
+        {
+            let mut rep = self
+                .representation
+                .lock()
+                .unwrap_or_else(|p| p.into_inner());
+            if let Some(src) = self.chladni_source.as_ref() {
+                let obs = src.last_chladni();
+                if let Some(sig) = crate::memory::ResonanceSignature::from_observation(&obs) {
+                    rep.observe_chladni(&sig, tick);
+                }
+            }
+            rep.tick(tick);
+        }
         let bonus_aplicado = chladni_bonus
             .filter(|_| valid && self.attention_cfg.chladni_bonus_weight > 0.0);
         if bonus_aplicado.is_some() {
@@ -872,5 +945,29 @@ mod tests {
         );
         let (bonus, _) = zero.l3.chladni_stats();
         assert_eq!(bonus, 0, "peso 0 nunca aplica bônus (contadores honestos)");
+    }
+
+    /// 17.5: ponte temporal HOTM→semântica com ciclo REAL (L1→L2→L3
+    /// com fonte Chladni): observações contadas, conceitos só por
+    /// ligação recorrente, decaimentos com denominador.
+    #[test]
+    fn representacao_temporal_integrada_com_denominadores() {
+        let ciclo = Ciclo::with_chladni(42, 24);
+        for _ in 0..3 {
+            ciclo.tick();
+        }
+        let rep = ciclo.l3.representation_report();
+        assert!(
+            rep.observacoes_temporais >= 2,
+            "ponte viva com sinal VALUE: {} observações",
+            rep.observacoes_temporais,
+        );
+        assert_eq!(
+            rep.conceitos, rep.ligacoes_temporais as usize,
+            "todo conceito do store veio de ligação temporal (cenário puro)"
+        );
+        assert_eq!(rep.decaidas, 0, "janelas jovens não decaem em 3 ticks");
+        assert_eq!(rep.eventos, 0, "memória ontogenética sem experiência ainda");
+        let _ = rep.atratores; // denominador reportado, nunca taxa nua
     }
 }

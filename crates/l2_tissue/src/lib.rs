@@ -9,6 +9,7 @@ pub mod feedback;
 pub mod formation;
 pub mod l2_ledger;
 pub mod runner;
+pub mod topdown;
 pub mod topology;
 pub mod tissue;
 pub mod tissue_module;
@@ -21,6 +22,10 @@ pub use feedback::{FeedbackRouter, FeedbackSignal};
 pub use formation::{FormationParams, TissueChange, TissueFormation};
 pub use l2_ledger::L2Ledger;
 pub use runner::{L2Metrics, L2Runner, L2StepReport, L2Windows};
+pub use topdown::{
+    homeostasis, AdmittedSignal, HomeostasisReport, RejectReason, TopDownAdmission,
+    DEDUPE_WINDOW, SPEC_ENHANCE_GAIN, SPEC_THRESHOLD_MAX, SPEC_THRESHOLD_MIN,
+};
 pub use topology::TopologyManager;
 pub use tissue::{StateRegion, Tissue};
 pub use tissue_module::TissueModule;
