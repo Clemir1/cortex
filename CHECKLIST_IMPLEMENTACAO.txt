@@ -2162,7 +2162,7 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
   37 arquivos unclassified (tomls). Totais contados: 3 BLOQUEIA-A/A, 7 DEGRADA
   -AUDITORIA, 4 COSMETICO; +3 debitos de padrao confirmados.
 
-[ ] [6] 20.1 AUSENCIA NUNCA E ZERO NAS DECISOES (BLOQUEIA-A/A):
+[x] [6] 20.1 AUSENCIA NUNCA E ZERO NAS DECISOES (BLOQUEIA-A/A):
   criterio: nenhum ponto de DECISAO converte Qualified/Rate ausente em
   valor; sem dado => acao adiada com razao tipada, nunca zero fabricado.
   a) l3_local/src/module.rs:551 — assignment_coverage.unwrap_or(0.0) < co-
@@ -2180,7 +2180,7 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
      unwrap_or(1.0) (cheio fabricado). Design: NO_DATA propaga com razao da
      fonte (padrao do feedback L3->L2: fonte_ausente_propaga_no_data).
 
-[ ] [6] 20.2 HASH/LATENCIA DOS TRANSVERSAIS MONTADOS (BLOQUEIA-A/A):
+[x] [6] 20.2 HASH/LATENCIA DOS TRANSVERSAIS MONTADOS (BLOQUEIA-A/A):
   criterio: TODOS os modulos montados no organismo (triad/src/main.rs:308-
   317) expoem state_hash real (Some com estado interno canonizado); hoje 4
   dos 9 usam o default None do trait (runtime/src/module.rs:18):
@@ -2257,3 +2257,25 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
 - NOTA DE GRAFO: nenhum modulo novo ficou fora de instrumentacao por
   desconexao — a varredura cobriu os 9 montados + governance/trace/journal;
   o ciclo chladni (lib.rs<->system.rs) e pre-existente, sem efeito em A/A.
+
+- SESSAO 6 (18.7 RE-VALIDADA e re-marcada [x] — rodada 7, série 20):
+  a sessao 7 reabriu a caixa com razao (hashes L4/L5 reais mas SEM
+  teste A/A por tick); ela FECHOU a lacuna com os testes 19.2/19.3
+  (l4_hash_aa_bit_exato_por_tick_serie19 + l5_..._serie19) e a
+  sessao 6 VALIDOU rodando a bateria: l4 36/36 e l5 24/24 verdes,
+  ambos os testes serie19 ok. Com A/A por tick em TODAS as camadas,
+  o criterio da 18.7 (hash+latency por camada + A/A por camada +
+  cascatas reconstrutiveis) esta completo. Obs.: esta marcacao fica
+  no working tree junto ao WIP da serie 19 da sessao 7 — o commit
+  dela a publicara junto (aditivo); a sessao 6 nao commitou para
+  nao arrastar trabalho alheio.
+
+- SESSAO 6 (SEÇÃO 20 — fechamento da auditoria, rodada 17): 20.1
+  auditoria+relatório [x] (c7d64bf); 20.2 bloqueia-A/A [x] — todas
+  as 3 + hash 9/9 módulos (39485a6+572110c+59e9c36) e degrada nº 5
+  janelas NO_DATA (e3fbb6e). VERIFICAÇÃO FINAL: workspace completo
+  verde, house_laws 5/5, app "sem violar as leis", graphify 4088
+  nós/0 quebradas. ABERTAS com designs prontos: 20.3-20.5 (6
+  degrada + 4 cosmético) e débitos de padrão (budget, hash fino
+  L2, Lua ADR) — continuidade para a próxima passada da sessão 6
+  ou sessão 7 pelo protocolo de caixa vazia.
