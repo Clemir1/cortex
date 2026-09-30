@@ -16,8 +16,8 @@ pub use ecology::{
 };
 pub use federation::{
     CnpPolicy, CnpReject, ControlKind, ControlSignal, EffectSink, Federation, FederationEngine,
-    FederationMember, FederationPhase, FederationState, Resource, RevertReason, TradeRecord,
-    TradeStatus,
+    FederationMember, FederationPhase, FederationState, FederationTransport, InProcessTransport,
+    PendingOutcome, Resource, RevertReason, TradeRecord, TradeStatus,
 };
 pub use hard_law::{HardLawSet, LawCheck, Verdict};
 pub use soft_law::{SoftLaw, SoftLawBook};

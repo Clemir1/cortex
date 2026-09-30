@@ -7,3 +7,9 @@ edition = "2021"
 triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
 tracing = "0.1"
+
+[features]
+# 18.4: porta de transporte REMOTO da federação — DESLIGADA por
+# padrão (só a tipagem existe; sem código remoto).
+default = []
+federation-remote = []

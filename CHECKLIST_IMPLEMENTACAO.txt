@@ -2041,3 +2041,16 @@ dela desde 09:43 (commit 9785c7c).
   trilha_cascata.rs). HARNESS: twin L4 registra veredito no
   var/system.log (TESTE-TWIN-L4, experimento 16.11). RETIFICACAO
   AUDITORIA: ganho da 17.6 e 79x (68,5 ms medios), nao 73x.
+
+- SESSAO 6 (18.4 FECHADA — débitos rematados, governance 26/26):
+  (a) OUTCOME t+1/t+5 portado do padrão do ecology — resolve_out-
+  comes com horizon_1/horizon_5/benefit_validated no TradeRecord
+  (testes: outcomes_horizontes_fecham_sozinho, outcomes_drift_
+  nao_valida_beneficio — benefício só fecha com efeito PERSISTIDO,
+  drift não valida); (b) trait FederationTransport com InProcess
+  padrão + RemoteTransportStub atrás de cfg feature "federation-
+  remote" DESLIGADA no Cargo.toml (porta tipada, zero código remo-
+  to); (c) ACTIVE/SHAM com A/A: sham_controle_aa — gêmeos sham
+  preservam estado (recibo na trilha + denominador), active difere
+  onde deve. Lua policy de federação segue como débito registrado
+  (o desenho preferiu Rust-canônico; Proposal tipada coberta).
