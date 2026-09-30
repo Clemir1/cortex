@@ -1,0 +1,17 @@
+[package]
+name = "triad-lua"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-foundation = { path = "../foundation" }
+triad-contracts = { path = "../contracts" }
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+
+[dependencies.mlua]
+version = "0.9"
+features = ["lua54", "vendored", "serialize"]
+
+[dev-dependencies]
+toml = "0.8"
