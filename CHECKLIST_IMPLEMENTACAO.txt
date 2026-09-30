@@ -1001,3 +1001,28 @@ structs.md + 17-12_lua_policy_host.md
   checklist, commit/push) esta integralmente satisfeito com as
   provas acima — a caixa 17.6 fica como o unico item em decisao
   arquitetural do dono, sem bloquear a validacao do conjunto.
+
+- SESSAO 6 (17.6 round 11 — REDESIGN do grafo: HIBRIDO por fracao
+  movida): descoberta estrutural — @30K, quando TODOS os devidos
+  movem, os "afetados" das arestas convergem para a POPULACAO
+  INTEIRA (cada cluster e vizinho antigo ou novo de algum movido) e
+  o caminho incremental por arestas vira O(n x grau) SERIAL (~40-59
+  ms) — MAIS CARO que a reconstrucao PARALELA completa (~12-15 ms,
+  mesma funcao pura compute_neighbors). FIX: update_positions hibrido
+  DETERMINISTICO (escolha = funcao de len(moved) e da populacao,
+  nunca do scheduling): maioria movida (moved*2 >= n) => rebuild
+  paralelo; minoria => arestas incrementais. Bit-identico POR
+  DEFINICAO (rebuild e a fonte da verdade; novo teste
+  update_rebuild_path_igual_rebuild_total prova o caminho novo; o
+  incremental_igual_rebuild_total continua provando o outro).
+  NUMEROS @30K: media 74 -> 68,5 ms/tick; PICOS DE COMPACTACAO
+  ELIMINADOS (167-184 ms -> max 125 ms: budget previsivel); app
+  E2E 65 passos: 7,4 -> 6,9 s. L1 52 testes verdes (+1 do caminho
+  novo), A/A entre pools 1/4/8 re-verde, house_laws 5/5, app 30K
+  sem violar as leis. RESTANTE honesto para 50 ms: fisica ~25-37 ms
+  (transcendentais 97D por cluster — irredutivel sem f32/aprox,
+  ambos quebrariam A/A bits) + rebuild O(n) do grafo quando todos
+  movem (~30 ms: custo estrutural da banda tau par-todos) + fases
+  O(n) seriais (~20-25 ms; counts sao par-able com integers, ja
+  mapeado). Media realista pos-otimizacoes restantes: ~60 ms.
+  A decisao do re-baseline vs perseguir 50 ms segue com o DONO.

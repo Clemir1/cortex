@@ -157,18 +157,29 @@ impl LocalGraph {
         self.refresh_mean_degree();
     }
 
-    /// Atualização incremental (17.6): (1) vizinhos antigos capturados;
-    /// (2) re-hash dos movidos (índice reverso); (3) adjacência NOVA
-    /// dos movidos por recompute puro em rayon; (4) arestas dos
-    /// afetados com os movidos — quem não se moveu mantém posição, só
-    /// as arestas com movidos mudam (simetria por dist²): remoção dos
-    /// antigos + inserção dos novos, PARALELIZADO POR BUCKETS j%N —
-    /// dois moved que tocam o mesmo j caem no MESMO bucket (sem
-    /// corrida) e dentro do bucket a ordem canônica dos moved é
-    /// preservada ⇒ bit-idêntico ao caminho serial (ver
-    /// `incremental_igual_rebuild_total`).
+    /// Atualização incremental (17.6) — HÍBRIDO por FRAÇÃO MOVIDA
+    /// (determinístico: a escolha é função de len(moved) e da
+    /// população, nunca do scheduling): quando a maioria moveu, os
+    /// "afetados" convergem para TODA a população (cada cluster é
+    /// vizinho antigo ou novo de algum movido) e o caminho por
+    /// arestas vira O(n × grau) SERIAL — mais caro que a RECONSTRUÇÃO
+    /// PARALELA completa (mesma função pura `compute_neighbors`,
+    /// bit-idêntica por definição; os testes provam a igualdade dos
+    /// dois caminhos). Crossover medido @30K: incremental ~40-59 ms
+    /// com 30 mil movidos vs rebuild par ~12-15 ms.
     pub fn update_positions(&mut self, clusters: &[ClusterBio], moved: &[usize]) {
         if moved.is_empty() {
+            return;
+        }
+        if moved.len() * 2 >= clusters.len() {
+            // Caminho rebuild: maioria moveu — reconstrução paralela.
+            self.rebuild(clusters);
+            self.incremental_updates += moved.len() as u64;
+            trace!(
+                movidos = moved.len(),
+                populacao = clusters.len(),
+                "atualização por reconstrução paralela (maioria movida)"
+            );
             return;
         }
         // 1. Vizinhos ANTIGOS dos movidos + re-hash (índice reverso).
@@ -358,6 +369,43 @@ mod tests {
         g_inc.update_positions(&cs, &moved);
         g_full.rebuild(&cs);
         assert_eq!(g_inc.neighbors, g_full.neighbors, "incremental == total");
+    }
+
+    /// 17.6 — o CAMINHO REBUILD do update_positions (maioria movida:
+    /// `moved.len() * 2 >= n`) também é bit-idêntico ao rebuild
+    /// completo feito à mão (o híbrido nunca muda a adjacência).
+    #[test]
+    fn update_rebuild_path_igual_rebuild_total() {
+        let mut rng = SmallRng::seed_from_u64(77);
+        let mut cs = clusters_at(&[]);
+        for _ in 0..60 {
+            let mut c = ClusterBio::new(ClusterId::new(), 0, &mut rng);
+            c.position = [
+                rng.gen::<f64>() * 20.0,
+                rng.gen::<f64>() * 20.0,
+                rng.gen::<f64>() * 20.0,
+            ];
+            cs.push(c);
+        }
+        let mut g_hib = LocalGraph::new(cs.len());
+        g_hib.rebuild(&cs);
+        let mut g_full = LocalGraph::new(cs.len());
+        g_full.rebuild(&cs);
+        // 40 de 60 movidos: 40*2 >= 60 ⇒ caminho rebuild do híbrido.
+        let moved: Vec<usize> = (0..40).collect();
+        for &i in &moved {
+            cs[i].position = [
+                rng.gen::<f64>() * 20.0,
+                rng.gen::<f64>() * 20.0,
+                rng.gen::<f64>() * 20.0,
+            ];
+        }
+        g_hib.update_positions(&cs, &moved);
+        g_full.rebuild(&cs);
+        assert_eq!(
+            g_hib.neighbors, g_full.neighbors,
+            "caminho rebuild do híbrido == rebuild total"
+        );
     }
 
     /// 17.6 — o NASCIMENTO incremental (add_cluster com inserção
