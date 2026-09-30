@@ -73,6 +73,9 @@ pub struct L1Runner {
     pub graph: LocalGraph,
     pub matrix: ClusterStateMatrix,
     pub reservoir: HotmReservoir,
+    /// 17.3: dinâmica local canônica (multi-motor HOTM/harmônico +
+    /// inibição lateral + prediction error com gates tipados).
+    pub local_dynamics: crate::dynamics::LocalDynamicsEngine,
     pub energy: EnergyBudget,
     pub emergency: CollectiveEmergency,
     pub ledger: L1Ledger,
@@ -80,6 +83,11 @@ pub struct L1Runner {
     pub deaths_total: u64,
     pub divisions_total: u64,
     pub merges_total: u64,
+    /// 18.3: trilha de spans do ÚLTIMO passo — OBSERVACIONAL apenas
+    /// (reconstrução de cascatas, CAMADA.txt:1058); nunca é input
+    /// causal. IDs derivados de (seed, passo, tag, seq): função do
+    /// estado, nunca do wall-clock ⇒ A/A bit-exato entre runs.
+    pub trace: Vec<triad_runtime::TraceSpan>,
     last_mean_energy: f64,
 }
 
@@ -147,6 +155,7 @@ impl L1Runner {
             graph,
             matrix,
             reservoir: HotmReservoir::new(&mut SmallRng::seed_from_u64(seed ^ 0x5eed)),
+            local_dynamics: crate::dynamics::LocalDynamicsEngine::new(cfg::DIMENSIONALITY),
             energy,
             emergency: CollectiveEmergency::default(),
             ledger,
@@ -154,6 +163,7 @@ impl L1Runner {
             deaths_total: 0,
             divisions_total: 0,
             merges_total: 0,
+            trace: Vec::new(),
             last_mean_energy: mean_energy,
         }
     }
@@ -480,6 +490,20 @@ impl L1Runner {
         }
         self.matrix.finalize();
 
+        // ---- 8b. Dinâmica local (17.3): multi-motor por cluster +
+        // inibição lateral + LPE com gates — e RE-SYNC da matriz
+        // (o contrato L1 exige SoA = clusters após qualquer mutação).
+        {
+            self.local_dynamics.apply(&mut self.clusters, s);
+            for i in 0..self.clusters.len() {
+                let c = &self.clusters[i];
+                if c.is_alive() && c.lifecycle.state != LifecycleState::Dormant {
+                    self.matrix.sync_cluster(i, c);
+                }
+            }
+            self.matrix.finalize();
+        }
+
         // ---- 9. Reservoir (a cada intervalo) ----
         let readout = if s % cfg::RESERVOIR_INTERVAL as u64 == 0 {
             let order: Vec<usize> = self.matrix.order.clone();
@@ -566,6 +590,55 @@ impl L1Runner {
         );
         self.last_mean_energy = mean_energy;
         debug!(passo = s, populacao = pop_for_metrics, energia_media = mean_energy, "l1.runner passo concluído");
+
+        // SEÇÃO 18 (18.3): trilha do passo — spans com linhagem e
+        // EFEITO OBSERVÁVEL (herança do legado: o elo só fecha com
+        // produção mensurável; elo não executado = None, nunca zero).
+        // Cascatas declaradas no CASCADE_MAP do triad-runtime: emer-
+        // gência dispara o survival; mortes disparam a compactação;
+        // divisões disparam o push da matriz. Proveniência: o
+        // followup carrega parent = span da origem. OBSERVACIONAL.
+        {
+            use triad_runtime::{SpanId, TraceId, TraceSpan};
+            let trace_id = TraceId::raiz(self.seed, s);
+            let mut seq = 0u64;
+            let mut trilha: Vec<TraceSpan> = Vec::with_capacity(8);
+            let mut span =
+                |tag: &'static str, efeito: Option<u64>, parent: Option<SpanId>| -> SpanId {
+                    let id = SpanId::derivar(self.seed, s, tag, seq);
+                    seq += 1;
+                    trilha.push(TraceSpan {
+                        trace_id,
+                        span_id: id,
+                        parent,
+                        step: s,
+                        tag,
+                        efeito,
+                    });
+                    id
+                };
+            let raiz = span("passo", Some(pop_for_metrics as u64), None);
+            span("fisica", Some(active_executed as u64), Some(raiz));
+            span("energia", Some(pop_for_metrics as u64), Some(raiz));
+            if emergency_bonus > 0.0 {
+                let e = span("emergencia_energetica", Some(1), Some(raiz));
+                span("survival_histerese", Some(dormancy_count as u64), Some(e));
+            } else {
+                // Ausência ≠ zero: emergência não ocorreu (NO_DATA).
+                span("emergencia_energetica", None, Some(raiz));
+            }
+            let m = span("mortes", Some(deaths as u64), Some(raiz));
+            if deaths + merges > 0 {
+                span("compactacao", Some((deaths + merges) as u64), Some(m));
+            }
+            let d = span("divisoes", Some(divisions as u64), Some(raiz));
+            if divisions > 0 {
+                span("matriz_push", Some(divisions as u64), Some(d));
+            }
+            span("grafo", Some(moved.len() as u64), Some(raiz));
+            drop(span);
+            self.trace = trilha;
+        }
 
         L1StepReport {
             step: s,

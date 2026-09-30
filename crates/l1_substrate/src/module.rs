@@ -46,12 +46,27 @@ impl ClusterModule {
         config: crate::config::L1Config,
     ) -> Self {
         Self {
-            descriptor: tc::ModuleDescriptor {
-                module_id: tf::ModuleId::new(),
-                name: "l1.substrate".into(),
-                layer: tc::Layer::L1,
-                domain: "substrate".into(),
-            },
+            // Descritor canônico (CAMADA.txt, 17.1): L1 controla a
+            // própria dinâmica e adapta por plasticidade (O1+O2);
+            // substrato é proteção MÁXIMA em crise (Lei 4); serve o
+            // sinal Chladni por leitura read-only (ADR-0007).
+            descriptor: tc::ModuleDescriptor::new(
+                tf::ModuleId::new(),
+                "l1.substrate",
+                tc::Layer::L1,
+                "substrate",
+            )
+            .with_orders(&[
+                tc::CyberneticOrder::O1Control,
+                tc::CyberneticOrder::O2Adaptation,
+            ])
+            .with_state_owner("l1.substrate")
+            .with_inputs(&["runtime.tick"])
+            .with_outputs(&["l1.substrate", "l1.chladni"])
+            .with_backend(tc::ExecutionBackend::CpuSeq)
+            .with_criticality(tc::Criticality::Critical)
+            .with_evidence(tf::evidence::EvidenceLevel::E3Productive)
+            .with_recovery(tc::RecoveryPolicy::RestartModule),
             runner: Arc::new(Mutex::new(L1Runner::new_with_config(
                 seed,
                 initial_population,

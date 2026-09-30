@@ -28,6 +28,7 @@ pub mod chladni_signal;
 pub mod cluster;
 pub mod config;
 pub mod contract;
+pub mod dynamics;
 pub mod energy;
 pub mod graph;
 pub mod math;
@@ -42,6 +43,10 @@ pub mod survival;
 pub use chladni_signal::ChladniSignal;
 pub use cluster::{ClusterBio, ClusterProfile, Lifecycle, LifecycleState};
 pub use contract::L1Ledger;
+pub use dynamics::{
+    ErrGate, HarmonicDynamics, HotmDynamics, InhibitionReport, LocalDynamicsEngine,
+    LocalDynamicsReport, LocalInhibition, LocalPredictionError, LpeReport, RecurrentDynamics,
+};
 pub use energy::EnergyBudget;
 pub use graph::LocalGraph;
 pub use metrics::L1Metrics;

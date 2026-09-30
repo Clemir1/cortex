@@ -7,6 +7,7 @@ pub mod event_bus;
 pub mod module;
 pub mod module_state;
 pub mod scheduler;
+pub mod trace;
 pub mod tracing;
 
 pub use context::TypedContext;
@@ -16,4 +17,5 @@ pub use event_bus::{EventBus, EventSubscription};
 pub use module::CognitiveModule;
 pub use module_state::ModuleState;
 pub use scheduler::{Scheduler, StepBudget, StepReport};
+pub use trace::{elo_fecha, followups, reconstruir, TraceId, TraceSpan, SpanId, CASCADE_MAP};
 pub use tracing::tracing_init;
