@@ -728,6 +728,13 @@ impl rt::CognitiveModule for L3Module {
         *self.attention.lock().unwrap_or_else(|p| p.into_inner()) = field;
 
         // (3) Predição: evidência VIVA do snapshot (não mais constante).
+        // SEÇÃO 20.5a (Opção A — documento honesto): os unwrap_or(0.0)
+        // abaixo COLAPSAM ausência em zero na evidence do preditor
+        // (input causal). Known-issue registrado no checklist: purgar
+        // Nones da evidence exige redesenhar a forma do predictor e
+        // re-baseline dos A/A — só com diretriz do dono. O hash de
+        // camada NÃO inclui estes valores; o A/A por tick cobre a
+        // trajetória completa deste ponto em diante.
         let evidence: Vec<(String, f32)> = match &snapshot {
             Some(s) if valid => vec![
                 (

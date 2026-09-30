@@ -45,6 +45,46 @@ pub struct StepReport {
     /// `None` = camada ainda sem estado canônico instrumentado
     /// (ausência ≠ zero — débito por camada no checklist).
     pub state_hashes: Vec<(String, Option<u64>)>,
+    /// 19.5 (sob diretriz da dona) — budget POR MÓDULO com throttle:
+    /// módulos PULADOS por política de carga neste passo (nome,
+    /// fator corrente). Determinístico: função de (tick, fator) —
+    /// A/A bit-exato (mesma política ⇒ mesmos saltos). Sem política
+    /// configurada ⇒ lista VAZIA (ausência ≠ zero: comportamento
+    /// bit-idêntico ao histórico).
+    pub throttled: Vec<(String, f64)>,
+    /// 20.6a (SEÇÃO 20) — BUDGET POR CAMADA (herança do legado
+    /// cognitive_budget.py): gasto (µs) DEBITADO NA CAMADA DONA,
+    /// cotas por GRUPO L1-L2 25% / L3-L4 35% / L5 25% / overhead
+    /// (T/P/B) 15%. OBSERVACIONAL: registra o perfil de gasto,
+    /// NUNCA altera execução (throttle do budget é SEMPRE 1.0 em
+    /// modo determinístico — zero acoplamento wall-clock→cognição).
+    /// `share`/`group_share` = Some(x/y) com DENOMINADOR (Lei 1);
+    /// total 0 ⇒ None (ausência ≠ zero — Lei 2). Sempre 8 linhas
+    /// na ordem canônica L1..L5,T,P,B (determinístico).
+    pub layer_budget: Vec<LayerBudgetLine>,
+}
+
+/// Linha do budget por camada (SEÇÃO 20.6a): gasto da camada +
+/// veredito do grupo (cota compartilhada). `over_cap` é REGISTRO
+/// honesto, sem efeito (o budget não desliga nada — Lei 4).
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayerBudgetLine {
+    /// Camada dona do gasto ("L1".."L5","T","P","B" — as_str).
+    pub layer: &'static str,
+    /// µs gastos por módulos DESTA camada neste passo.
+    pub spent_us: u64,
+    /// spent/total do passo (0 < share ≤ 1.0); None se total 0.
+    pub share: Option<f64>,
+    /// Grupo de cota: "L1-L2" | "L3-L4" | "L5" | "overhead".
+    pub group: &'static str,
+    /// Cota do grupo (0.25/0.35/0.25/0.15 — legado).
+    pub group_cap: f64,
+    /// µs gastos pelo GRUPO inteiro neste passo.
+    pub group_spent_us: u64,
+    /// group_spent/total; None se total 0 (ausência ≠ zero).
+    pub group_share: Option<f64>,
+    /// Grupo excedeu a cota neste passo? REGISTRO sem efeito.
+    pub over_cap: bool,
 }
 
 /// Escalonador que executa módulos cognitivos e publica eventos no barramento.
@@ -58,6 +98,13 @@ pub struct Scheduler {
     /// módulos tickam em PARALELO (independentes entre si); entre
     /// grupos a ordem é a declarada. Default: `[[0],[1],..]`.
     concurrency: Vec<Vec<usize>>,
+    /// 19.5 (sob diretriz da dona) — throttle POR MÓDULO (por NOME
+    /// canônico do descritor): 1.0 = sempre executa; 0.5 = cada 2
+    /// passos; 0.25 = cada 4. PERÍODO determinístico
+    /// round(1/fator) — herança do cognitive_budget do legado
+    /// (system.py:9540-9579: a carga modulada nunca desativa
+    /// sistemas, apenas reduz cadência — Lei 4).
+    throttles: std::collections::BTreeMap<String, f64>,
 }
 
 /// Resultado do tick de um módulo do grupo (fase paralela → merge).
@@ -85,6 +132,7 @@ impl Scheduler {
             clock: tf::LogicalClock::new(),
             degraded_overrides: HashSet::new(),
             concurrency: (0..n).map(|i| vec![i]).collect(),
+            throttles: std::collections::BTreeMap::new(),
         }
     }
 
@@ -124,6 +172,39 @@ impl Scheduler {
         &self.clock
     }
 
+    /// 19.5 (sob diretriz da dona) — define o throttle de um módulo
+    /// por NOME canônico. Clamp [0.01, 1.0]: nunca zero (módulo
+    /// NUNCA desliga — Lei 4; Shed completo não existe, existe
+    /// cadência mínima). Fatores fora da faixa são clampados com a
+    /// política aplicada (telemetria honesta via `module_throttle`).
+    pub fn set_module_throttle(&mut self, module: &str, factor: f64) {
+        let f = factor.clamp(0.01, 1.0);
+        self.throttles.insert(module.to_string(), f);
+    }
+
+    /// 19.5 — remove a política de carga do módulo (volta ao
+    /// comportamento bit-idêntico ao histórico: executa sempre).
+    pub fn clear_module_throttle(&mut self, module: &str) {
+        self.throttles.remove(module);
+    }
+
+    /// 19.5 — fator corrente do módulo (None = sem política:
+    /// ausência ≠ zero, executa sempre).
+    pub fn module_throttle(&self, module: &str) -> Option<f64> {
+        self.throttles.get(module).copied()
+    }
+
+    /// 19.5 — decisão determinística de execução: período
+    /// round(1/fator) em passos; executa quando tick % período == 0.
+    /// A/A: mesma política + mesma sequência ⇒ mesmos saltos.
+    fn throttle_allows(factor: f64, tick: u64) -> bool {
+        if factor >= 1.0 {
+            return true;
+        }
+        let period = ((1.0 / factor).round() as u64).max(1);
+        tick % period == 0
+    }
+
     /// Executa um passo: tica módulos ativos, publica eventos e avança
     /// o relógio. Grupos unitários executam inline (sem rayon);
     /// grupos com 2+ módulos tickam em paralelo com barreira ao fim.
@@ -137,6 +218,8 @@ impl Scheduler {
         // MESMA ordem canônica do merge (determinístico: função do
         // estado pós-tick, nunca do wall-clock).
         let mut hashes: Vec<(String, Option<u64>)> = Vec::new();
+        // 19.5 — telemetria da política de carga aplicada no passo.
+        let mut throttled_now: Vec<(String, f64)> = Vec::new();
         for grupo in self.concurrency.clone() {
             // FASE 1 (serial): decide quem está ativo ANTES de tickar
             // — módulo inativo nunca roda (a semântica do skip é a
@@ -149,7 +232,22 @@ impl Scheduler {
                 .copied()
                 .filter(|&i| {
                     let id = self.modules[i].descriptor().module_id;
-                    !self.degraded_overrides.contains(&id) && self.modules[i].state().can_tick()
+                    if !self.degraded_overrides.contains(&id) && self.modules[i].state().can_tick()
+                    {
+                        // 19.5 — política de carga POR MÓDULO: o
+                        // fator da cadência decide se o módulo roda
+                        // NESTE tick (determinístico, A/A).
+                        match self
+                            .throttles
+                            .get(&self.modules[i].descriptor().name)
+                            .copied()
+                        {
+                            Some(f) => Self::throttle_allows(f, clock_snap.tick),
+                            None => true,
+                        }
+                    } else {
+                        false
+                    }
                 })
                 .collect();
             // FASE 2 (paralela por grupo): cada ativo com contexto
@@ -183,7 +281,23 @@ impl Scheduler {
                 let id = self.modules[i].descriptor().module_id;
                 let outcome = std::mem::replace(&mut outcomes[i], TickOutcome::Skipped);
                 match outcome {
-                    TickOutcome::Skipped => skipped += 1,
+                    TickOutcome::Skipped => {
+                        skipped += 1;
+                        // 19.5 — se a política de carga pulou ESTE
+                        // módulo neste tick, telemetria com fator.
+                        if let Some(f) = self
+                            .throttles
+                            .get(&self.modules[i].descriptor().name)
+                            .copied()
+                        {
+                            if !Self::throttle_allows(f, clock_snap.tick) {
+                                throttled_now.push((
+                                    self.modules[i].descriptor().name.clone(),
+                                    f,
+                                ));
+                            }
+                        }
+                    }
                     TickOutcome::Ok(out) => {
                         self.degraded_overrides.remove(&id);
                         executed += 1;
@@ -231,6 +345,7 @@ impl Scheduler {
             degraded,
             module_latency: latencias,
             state_hashes: hashes,
+            throttled: throttled_now,
         }
     }
 
@@ -391,5 +506,67 @@ mod tests {
             crate::event_bus::EventBus::new(16),
             vec![vec![0], vec![1]], // falta o 2
         );
+    }
+
+    /// 19.5 — SEM política ⇒ comportamento bit-idêntico ao
+    /// histórico: nada throttled (ausência ≠ zero).
+    #[test]
+    fn sem_throttle_nada_e_pulado() {
+        let mut s = Scheduler::new(mocks(2), StepBudget::new(16), crate::event_bus::EventBus::new(16));
+        for _ in 0..4 {
+            let r = s.step();
+            assert!(r.throttled.is_empty(), "sem política ⇒ lista vazia");
+        }
+    }
+
+    /// 19.5 — throttle 0.5 no "mock0": período 2, executa nos ticks
+    /// pares; o outro módulo roda sempre; telemetria com fator.
+    #[test]
+    fn throttle_por_modulo_periodo_deterministico() {
+        let mut s = Scheduler::new(mocks(2), StepBudget::new(16), crate::event_bus::EventBus::new(16));
+        s.set_module_throttle("mock0", 0.5);
+        // Clamp: fator zero vira 0.01 (nunca desliga — Lei 4).
+        s.set_module_throttle("mock1", 0.0);
+        assert_eq!(s.module_throttle("mock1"), Some(0.01));
+        let mut mock0_exec = 0usize;
+        for _ in 0..4 {
+            let r = s.step();
+            let lat: Vec<&str> = r.module_latency.iter().map(|(n, _)| n.as_str()).collect();
+            if lat.contains(&"mock0") {
+                mock0_exec += 1;
+            }
+        }
+        assert_eq!(mock0_exec, 2, "0.5 ⇒ executa metade dos passos (período 2)");
+        assert!(s.module_throttle("mock0").is_some());
+        // clear restaura o comportamento histórico.
+        s.clear_module_throttle("mock0");
+        let r = s.step();
+        assert!(r.throttled.is_empty() || r.throttled.iter().all(|(n, _)| n != "mock0"));
+    }
+
+    /// 19.5 — A/A: duas instâncias com a MESMA política saltam os
+    /// mesmos módulos nos mesmos passos (bit-exato).
+    #[test]
+    fn throttle_e_deterministico_aa_bit_exato() {
+        let run = || {
+            let mut s = Scheduler::new(
+                mocks(3),
+                StepBudget::new(16),
+                crate::event_bus::EventBus::new(16),
+            );
+            s.set_module_throttle("mock0", 0.5);
+            s.set_module_throttle("mock2", 0.25);
+            (0..8)
+                .map(|_| {
+                    let r = s.step();
+                    (
+                        r.executed,
+                        r.skipped,
+                        r.throttled.clone(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(run(), run(), "mesma política ⇒ mesmos saltos (A/A)");
     }
 }

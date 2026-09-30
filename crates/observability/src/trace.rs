@@ -171,13 +171,17 @@ impl TraceEngine {
     }
 
     /// Snapshot do Aggregator: por NOME, (n_spans, µs total) —
-    /// denominadores prontos.
+    /// denominadores prontos. SEÇÃO 20.3c: o denominador conta só
+    /// spans FECHADOS (com duração); span aberto não entra na soma
+    /// nem no denominador (ausência de duração ≠ 0µs).
     pub fn snapshot(&self) -> HashMap<String, (u64, u64)> {
         let mut m: HashMap<String, (u64, u64)> = HashMap::new();
         for s in &self.spans {
-            let e = m.entry(s.name.clone()).or_insert((0, 0));
-            e.0 += 1;
-            e.1 += s.dur_us.unwrap_or(0);
+            if let Some(d) = s.dur_us {
+                let e = m.entry(s.name.clone()).or_insert((0, 0));
+                e.0 += 1;
+                e.1 += d;
+            }
         }
         m
     }

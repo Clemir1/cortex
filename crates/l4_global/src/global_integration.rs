@@ -313,7 +313,8 @@ pub struct ContextMetrics {
     pub focos: usize,
     pub saliencia_media: Option<f32>,
     pub candidatos_workspace: usize,
-    pub vencedores_broadcast: u64,
+    /// SEÇÃO 20.3e: ausência de vencedor é None (nunca 0 fabricado).
+    pub vencedores_broadcast: Option<u64>,
 }
 
 impl Default for GlobalIntegration {
@@ -362,7 +363,7 @@ impl GlobalIntegration {
             focos: foci.len(),
             saliencia_media: sal_media,
             candidatos_workspace: self.thalamus.admitidos as usize,
-            vencedores_broadcast: winner.map(|_| 1).unwrap_or(0),
+            vencedores_broadcast: winner.map(|_| 1),
         };
         let fechado = self.episodic.push_state(tick, estado);
         if let Some(w) = winner {

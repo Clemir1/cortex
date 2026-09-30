@@ -175,6 +175,22 @@ impl rt::CognitiveModule for TissueModule {
         report.bridges.hash(&mut h);
         report.adaptations_applied.hash(&mut h);
         report.adaptations_deferred.hash(&mut h);
+        // 19.4 (sessão 7, sob diretriz da dona — débito 18.7
+        // "hash fino por tecido/membros") — extensão ADITIVA: o
+        // demográfico acima é preservado; o fino acresce o estado
+        // POR TECIDO na ordem canônica de formação (views do
+        // runner). Ids são derivados da seed (formation.rs:138,
+        // runner L1:113) ⇒ gêmeos A/A bit-exatos por construção.
+        for v in self.tissue_views() {
+            v.tissue_id.hash(&mut h);
+            v.cohesion.value().to_bits().hash(&mut h);
+            v.specialization.value().to_bits().hash(&mut h);
+            v.integration.value().to_bits().hash(&mut h);
+            v.member_clusters.len().hash(&mut h);
+            for m in &v.member_clusters {
+                m.hash(&mut h);
+            }
+        }
         Some(h.finish())
     }
 
@@ -292,5 +308,53 @@ mod tests {
             1 + report.events.len(),
             "um evento por tick + um por mudança"
         );
+    }
+}
+
+#[cfg(test)]
+mod serie19_tests {
+    use super::*;
+    use triad_runtime::CognitiveModule as _;
+
+    /// 19.4 (sessao 7, sob diretriz da dona — debito 18.7): hash
+    /// FINO por tecido/membros — A/A bit-exato entre gemeos,
+    /// None PRE-TICK (ausencia != zero) e hash que evolui com o
+    /// tecido. O demografico da sessao 6 permanece intacto.
+    #[test]
+    fn l2_hash_fino_por_tecido_membros_aa() {
+        let run = || {
+            let l1m = std::sync::Arc::new(l1::ClusterModule::new(42, 16));
+            let l2m = TissueModule::new_with_config(
+                l1m.shared_runner(),
+                42,
+                crate::config::L2Config::default(),
+            );
+            let mut clock = tf::LogicalClock::new();
+            let mut hashes: Vec<Option<u64>> = Vec::new();
+            for _ in 0..8 {
+                clock.advance();
+                let ctx = rt::TypedContext::new(clock);
+                let mut out = Vec::new();
+                l1m.tick(&ctx, &mut out).expect("l1");
+                l2m.tick(&ctx, &mut out).expect("l2");
+                hashes.push(l2m.state_hash());
+            }
+            hashes
+        };
+        let h = run();
+        assert_eq!(run(), h.clone(), "gemeos bit-exatos por tick (A/A)");
+        assert!(h.iter().all(|x| x.is_some()), "hash presente pos-tick");
+        assert!(
+            h.windows(2).any(|w| w[0] != w[1]),
+            "hash fino evolui com o tecido"
+        );
+        // Ausencia != zero: sem primeiro tick o hash e None.
+        let l1m = std::sync::Arc::new(l1::ClusterModule::new(42, 16));
+        let l2m = TissueModule::new_with_config(
+            l1m.shared_runner(),
+            42,
+            crate::config::L2Config::default(),
+        );
+        assert!(l2m.state_hash().is_none(), "sem primeiro tick => None");
     }
 }

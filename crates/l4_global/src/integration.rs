@@ -1366,4 +1366,25 @@ mod tests {
             "ausência ≠ zero (CONTENT_GONE tipa a razão)"
         );
     }
+
+    /// 19.2 (sessao 7 — verificacao do debito 18.7 sob diretriz
+    /// da dona; codigo L4 da sessao 6 intocado): hash A/A L4
+    /// bit-exato POR TICK em organismos gemeos completos.
+    #[test]
+    fn l4_hash_aa_bit_exato_por_tick_serie19() {
+        use triad_runtime::CognitiveModule as _;
+        let run = || {
+            let mut ativa = Ciclo::new(42, 24);
+            let mut hashes: Vec<(u64, Option<u64>)> = Vec::new();
+            for _ in 0..8 {
+                ativa.tick();
+                hashes.push((ativa.l4.stats().decisions_committed, ativa.l4.state_hash()));
+            }
+            hashes
+        };
+        let h = run();
+        assert_eq!(run(), h.clone(), "gemeos bit-exatos por tick (A/A)");
+        assert!(h.iter().any(|(c, _)| *c > 0), "ciclo vivo cometeu decisoes");
+        assert!(h.windows(2).any(|w| w[0].1 != w[1].1), "hash evolui com o estado");
+    }
 }
