@@ -17,3 +17,5 @@ triad-l1-substrate = { path = "../l1_substrate" }
 triad-l2-tissue = { path = "../l2_tissue" }
 triad-l5-meta = { path = "../l5_metacognition" }
 triad-development = { path = "../development" }
+# 18.8 — harness do twin registra no var/system.log (journal).
+triad-observability = { path = "../observability" }

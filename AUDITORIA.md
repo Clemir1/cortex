@@ -303,7 +303,7 @@ que REVERTERAM desenhos mais "paralelos".
 | Passo par (banda madura, ~30K devidos) | 5,4 s | 97-184 ms | ~40× |
 | Passo ímpar | 28 ms | 13-20 ms | ~1,7× |
 | App E2E 65 passos | 204,7 s | 7,4 s | 28× |
-| Média L1 por tick | ~3,15 s | ~74 ms | 73× |
+| Média L1 por tick | ~3,15 s | ~68,5 ms | 79× |
 
 ### Decisões medidas (inclusive reversões)
 

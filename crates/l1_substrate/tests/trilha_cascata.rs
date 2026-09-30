@@ -74,6 +74,27 @@ fn aa_trilha_bit_exata_entre_runs() {
         assert_eq!(a.trace, b.trace, "A/A: trilhas devem ser bit-idênticas");
         assert_eq!(snapshot_bits(&a), snapshot_bits(&b), "A/A: estado idêntico");
     }
+    // 18.3 (débito fechado): spans publicados no journal da RAIZ
+    // (append; falha de I/O nunca reprova o teste — observacional).
+    if let Ok(j) = triad_observability::SystemJournal::open_workspace() {
+        let tags: Vec<String> =
+            a.trace.iter().map(|s| s.tag.to_string()).collect();
+        let _ = j.event(
+            "TESTE-TRILHA-CASCATA",
+            &[
+                ("resultado", "bit-exato".to_string()),
+                ("spans", a.trace.len().to_string()),
+                (
+                    "trilha",
+                    format!(
+                        "{} passos; tags: {}",
+                        8,
+                        tags.join(">")
+                    ),
+                ),
+            ],
+        );
+    }
 }
 
 /// Ausência ≠ zero: elo não executado é NO_DATA (efeito None), nunca

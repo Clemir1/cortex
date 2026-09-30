@@ -392,6 +392,47 @@ impl rt::CognitiveModule for L5Module {
         *self.state.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    /// 18.7 (débito fechado) — hash observacional REAL da camada L5:
+    /// função pura dos contadores de governo/metacognição (L5Stats),
+    /// floats em bits canônicos (identidade/stress/reserva), banda
+    /// límbica corrente, janela de auditoria e dormência. NUNCA
+    /// wall-clock; NÃO inclui ModuleId (A/A bit-exato entre gêmeos
+    /// com a mesma trajetória). Sem fontes L4/L1 cada tick conta
+    /// ausência (`no_source_ticks`/`events`) ⇒ o hash RESPONDE ao
+    /// estado mesmo em regime sem fonte.
+    fn state_hash(&self) -> Option<u64> {
+        use std::hash::{Hash, Hasher};
+        let s = self.stats.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        let mut h = std::hash::DefaultHasher::new();
+        s.self_model_updates.hash(&mut h);
+        s.limbic_updates.hash(&mut h);
+        s.limbic_band_changes.hash(&mut h);
+        s.meta_proposals.hash(&mut h);
+        s.meta_rejected_full.hash(&mut h);
+        s.meta_kept.hash(&mut h);
+        s.meta_reverted.hash(&mut h);
+        s.meta_active.hash(&mut h);
+        s.wake_low_activity.hash(&mut h);
+        s.wake_high_stress.hash(&mut h);
+        s.wake_dormant_too_long.hash(&mut h);
+        s.wake_scheduled.hash(&mut h);
+        s.no_source_ticks.hash(&mut h);
+        s.policy_submitted.hash(&mut h);
+        s.policy_rejected.hash(&mut h);
+        s.events.hash(&mut h);
+        s.identity_continuity.to_bits().hash(&mut h);
+        s.stress.to_bits().hash(&mut h);
+        s.energy_reserve.to_bits().hash(&mut h);
+        s.band.map(|b| b as u8).hash(&mut h);
+        s.governor_audits.hash(&mut h);
+        s.governor_denied.hash(&mut h);
+        let audit = *self.audit_state.lock().unwrap_or_else(|p| p.into_inner());
+        audit.0.hash(&mut h);
+        audit.1.hash(&mut h);
+        (*self.dormant.lock().unwrap_or_else(|p| p.into_inner())).hash(&mut h);
+        Some(h.finish())
+    }
+
     /// Um tick L5: acorda por causa, observa L4/L1 (read-only), atualiza
     /// límbico com histerese, refresca a identidade por intervalo, propõe
     /// e valida intervenções (Lei 6) e publica o evento meta.

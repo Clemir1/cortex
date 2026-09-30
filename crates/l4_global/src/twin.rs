@@ -154,4 +154,27 @@ mod tests {
         assert_eq!(v[0].evidence, EvidenceLevel::E5EffectValidated);
         assert!(!v[0].confirmed, "efeito líquido −0.4 além da tolerância");
     }
+
+    /// 18.8 — harness do twin registra a validação no var/system.log
+    /// da RAIZ (journal legado; append; IO nunca reprova o teste).
+    #[test]
+    fn twin_registra_veredito_no_journal() {
+        let ds = [decision(3, "sinal:coesao", 0.9, 0.8)];
+        let tv = [(3u64, "sinal:coesao".to_string(), 0.9f32)];
+        let v = twin_verdicts(&ds, &tv, 0.1);
+        assert!(v[0].confirmed);
+        if let Ok(j) = triad_observability::SystemJournal::open_workspace() {
+            let _ = j.event(
+                "TESTE-TWIN-L4",
+                &[
+                    ("decisoes", ds.len().to_string()),
+                    (
+                        "resultado",
+                        format!("evidence={:?} confirmed={}", v[0].evidence, v[0].confirmed),
+                    ),
+                    ("experimento", "16.11 E5 com gêmea".to_string()),
+                ],
+            );
+        }
+    }
 }

@@ -764,6 +764,48 @@ impl rt::CognitiveModule for L4Module {
         *self.state.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    /// 18.7 (débito fechado) — hash observacional REAL da camada L4:
+    /// função pura dos contadores canônicos de decisões/ciclos do
+    /// próprio L4 (L4Stats, mesma família do L1/L2/L3) + lens dos
+    /// buffers de ciclo (adiadas, abertos, distinct). NUNCA wall-
+    /// clock; NÃO inclui ModuleId (gêmeos com mesma trajetória
+    /// batem bit-exato independente dos ids). A/A: mesma seed ⇒
+    /// mesmo hash em cada passo.
+    fn state_hash(&self) -> Option<u64> {
+        use std::hash::{Hash, Hasher};
+        let s = self.stats.lock().unwrap_or_else(|p| p.into_inner());
+        let mut h = std::hash::DefaultHasher::new();
+        s.broadcasts.hash(&mut h);
+        s.decisions_committed.hash(&mut h);
+        s.decisions_deferred.hash(&mut h);
+        s.decisions_expired.hash(&mut h);
+        s.actions.hash(&mut h);
+        s.envelopes_opened.hash(&mut h);
+        s.envelopes_closed.hash(&mut h);
+        s.envelopes_expired.hash(&mut h);
+        s.world_updates.hash(&mut h);
+        s.explorations.hash(&mut h);
+        s.distinct_broadcasts.hash(&mut h);
+        s.confirmed.hash(&mut h);
+        s.memory_submissions.hash(&mut h);
+        s.rollout_evaluations.hash(&mut h);
+        s.rollout_div_sum.to_bits().hash(&mut h);
+        s.policy_submitted.hash(&mut h);
+        s.policy_applied.hash(&mut h);
+        s.policy_reverted.hash(&mut h);
+        s.policy_rejected_duplicate.hash(&mut h);
+        s.policy_rejected_out_of_range.hash(&mut h);
+        s.policy_rejected_invalid_ttl.hash(&mut h);
+        s.policy_rejected_full.hash(&mut h);
+        s.policy_active.hash(&mut h);
+        s.content_gone.hash(&mut h);
+        s.degraded_beyond_tolerance.hash(&mut h);
+        self.deferred.lock().unwrap_or_else(|p| p.into_inner()).len().hash(&mut h);
+        self.open.lock().unwrap_or_else(|p| p.into_inner()).len().hash(&mut h);
+        self.distinct.lock().unwrap_or_else(|p| p.into_inner()).len().hash(&mut h);
+        Some(h.finish())
+    }
+
     /// Um tick L4: fecha ciclos anteriores, processa adiadas, compete
     /// candidatos REAIS do L3, decide, executa e abre novos ciclos.
     fn tick(&self, ctx: &rt::TypedContext, out: &mut Vec<tc::EventEnvelope>) -> tf::TriadResult<()> {
