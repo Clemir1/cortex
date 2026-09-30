@@ -371,7 +371,7 @@ config depois -- nada teatral):
          [governance] injetada quando o mecanismo existir
 [x] [7] 16.8 [cybernetics] O1-O4 reais sobre metricas vivas
          (estabilidade com denominador) + [cybernetics] injetada
-[ ] [7] 16.9 [telemetry]/[lua]/[crisis] structs injetaveis quando as
+[x] [7] 16.9 [telemetry]/[lua]/[crisis] structs injetaveis quando as
          camadas acima ganharem mecanismo (a chave nunca e apagada)
 
 PERSISTENCIA E ESCADA DE EVIDENCIA:
@@ -513,7 +513,7 @@ FASE 3 -- INFRAESTRUTURA DE ESCALA E TEMPO (distribuido/evolutivo):
          (need->proposal->agreement->transfer->effect) + EcologyEngine
          generico + ArbitrationEngine + ControllerConflictGraph (O3)
          -- dona nominal: sessao 6 (orquestradora); pode delegar
-[ ] [7] 17.12 LUA POLICY WIRING REAL: policies resource/attention/
+[x] [7] 17.12 LUA POLICY WIRING REAL: policies resource/attention/
          learning/forgetting/crisis/recovery/corticalization/
          regeneration + governance/evolution via PolicyHost --
          Lua SEMPRE retorna Proposal; Rust valida e aplica; hashes
@@ -941,3 +941,63 @@ sessao 6), app RUN=0. Relatorio: var/verificacao/16-8_cybernetics_o1_o4.md
   triad-compute. AUDITORIA.md: secao Serie 17 completa com a cadeia
   de diagnostico, correcoes, provas A/A, numeros finais, decisoes
   medidas (com reverteracoes) e o NO-GO da GPU.
+
+--- Rodada (sessao 7) — 16.9 + 17.12 concluidas (workspace FULL verde)
+16.9: [telemetry] INJETADA no TelemetryModule montado no app (T/O4/E3,
+inventario 9/9): escada E0-E5 AUDITADA por modulo (descritores vivos vs
+[telemetry.modules], default E5) com recibos denominados (EvidenceLedger,
+cap 256) e GAPS TIPADOS — escada so sobe com verificacao (Lei 1); o auditor
+INCLUI o proprio descritor (gap proprio tipado); [telemetry.heavy] off LIDO
+E RESPEITADO (zero payload no hot path). [crisis] ESTRUTURADA E VALIDADA NO
+BOOT: CrisisCfg parse 1:1 ([machine/thresholds/preserve/effects.*]) +
+validate() congelando a Lei 4 (preserve l1_homeostasis/learning/l4_decision/
+l4_outcome false = PreserveViolated => boot falha), histerese, thresholds
+[0,1], 6 estados canonicos, 5 blocos de efeitos (NORMAL = default nominal).
+App: 1/9 no alvo (11,1%) — honesto, gaps tipados da ultima auditoria (8).
+17.12: LUA POLICY WIRING REAL — crate triad-lua (mlua 0.9 vendored Lua 5.4):
+PolicyHost carrega init.lua + lua/policies (registro OBRIGATORIO: attention/
+crisis/energy/learning/recovery) + lua/governance|development|experiments
+como MODULOS utilitarios (retorno vira global versionada, sem require);
+sandbox rigido TESTADO (os/io/package/require/debug = nil); Lua SEMPRE
+retorna Proposal ou nil (banda morta); RUST VALIDA tipado (whitelist com
+faixas estruturais: eta [0.005,0.02], salience [0.25,0.45], intake [0,1.5];
+reason obrigatoria Lei 3; ttl [1,64]); hashes FNV-1a versionados por arquivo;
+aplicacao REAL: policy learning -> LearningModule::apply_policy_eta (guardiao
+Rust, faixa da casa, contadores aplicadas/rejeitadas); wiring no app fora do
+hot path (cada 10 ticks, prediction_error COM DENOMINADOR). App RUN=0:
+5 policies + 4 modulos registrados, 6 chamadas 6 aplicadas (100%), eta
+0.0050 coerente com erro medio baixo. Arquivo lua quebrado NAO derruba boot
+(registrado tipado). Baterias: triad-telemetry 14/14, triad-lua 12/12,
+triad-learning 7/7, workspace FULL 40 ok-blocks/0 FAILED (l2 da sessao 6
+fechou), house 5/5. Relatorios: var/verificacao/16-9_telemetry_crisis_
+structs.md + 17-12_lua_policy_host.md
+
+- SESSAO 6 (17.8 FECHADA — verificacao final da escala, round 10):
+  EVIDENCIAS completas do gate, todas medidas nesta rodada no
+  hardware do dono (release): (1) workspace VERDE completo — todos
+  os crates L1-L5 + transversais compilam e passam (incluindo os
+  novos triad-lua e triad-telemetry da sessao 7, agora completos);
+  (2) house_laws 5/5; (3) app @1.200 (carga operacional): 65 passos
+  em 0,5 s, "Nucleo encerrado sem violar as leis da casa" —
+  [L2] 32 tecidos, [L4] commits=65 confirmados=64 com causal 1.0,
+  chladni_taxa=1.0; (4) app @30.000 (teto): 65 passos em 7,1 s E2E,
+  sem violar as leis (materia L1 ~74 ms/tick; pares 97-184 ms com
+  compactacao, impares 13-20 ms; serie 17.6: 5,4 s -> 74 ms = 73x);
+  (5) A/A BIT-IDENTICO documentado em tres niveis: fisica paralela
+  entre pools de 1/4/8 threads (tests/aa_fisica_paralela.rs — rng
+  por (seed,id,step,tag), determinismo por construcao), grafo
+  incremental == rebuild total (5/5), twin L4 16.11 (duas runs
+  completas bit-exatas); (6) AUDITORIA.md: secao Serie 17 completa
+  (cadeia de diagnostico, correcoes bit-identicas, provas A/A,
+  numeros finais, decisoes medidas COM reverteracoes, NO-GO GPU);
+  (7) commits da serie publicados na Danger-Zone a cada marco
+  (4cce765, a0756e1, 51ab728, 2c2e40e + este). PENDENCIA UNICA do
+  objetivo da SECAO 17: a caixa 17.6 [ ] aguarda DECISAO DO DONO
+  sobre o re-baseline do threshold (o 50 ms/tick da 17.1 foi
+  escrito contra o baseline invalido de 1024 clusters reais; hoje
+  o criterio funcional esta verde: app 30K roda sem violar leis;
+  media real 74 ms). O criterio da 17.8 (workspace verde,
+  house_laws, app 1.200 E 30K verdes, A/A documentado, auditoria/
+  checklist, commit/push) esta integralmente satisfeito com as
+  provas acima — a caixa 17.6 fica como o unico item em decisao
+  arquitetural do dono, sem bloquear a validacao do conjunto.
