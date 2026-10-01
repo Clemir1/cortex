@@ -2213,7 +2213,7 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
      Qualified; idem l4_global/src/global_integration.rs:365 (vencedores_
      broadcast 0 quando None).
 
-[ ] [6] 20.4 HARNESSES DE VALIDACAO SEM system.log (DEGRADA-AUDITORIA):
+[x] [6] 20.4 HARNESSES DE VALIDACAO SEM system.log (DEGRADA-AUDITORIA):
   criterio: todo teste de validacao registra veredito no var/system.log
   (helper tolerante, IO nunca reprova — padrao TESTE-*). Hoje registram:
   house_laws (tests/src/house_laws.rs:13), aa_fisica (:56), diagnostico_
@@ -2421,3 +2421,27 @@ var/verificacao/19-7_verificacao_final_serie_19.md
   SPACE COMPLETO VERDE, house_laws 5/5, app "sem violar as leis",
   A/A intacto em todos os niveis. Commits: 6fd3f76, 5da6454,
   69bc2d7, 547d517, 350ed4f.
+
+- SESSAO 6 (SEÇÃO 20 — ZERAGEM TOTAL de débitos, diretriz do dono,
+  rodada 15, commits 067aaac, 3c0839a, fede511):
+  20.3b [x] learning — esquecimento NO-OP sobre traço ausente
+  (ausência≠zero, Lei 2), nascimento tipado no reforço positivo.
+  20.3d [x] contracts — state_dimension 0 sem medida = NO_DATA
+  documentado (discriminadores phase/provider_status/no_data_reason).
+  20.4 [x] CRITÉRIO COMPLETO — TODO teste de validação registra
+  veredito no var/system.log (helper tolerante, IO nunca reprova):
+  house_laws, aa_fisica, escala, trilha, twin-L4, hash_aa (4
+  vereditos), a_a_determinismo_l5 (12/12), inventario (6/6),
+  throttle-A/A + budget-A/A (scheduler), ciclo save/load/replay/
+  restore (persistence). 20.5b [x] — outcome_ids federativos no
+  StepReport via FederationOutcomeSource aditivo (None sem injeção =
+  ausência≠zero; A/A intacto). 20.5d [x] — caches default 0
+  declarados legítimos. WIRE CNP⇄PolicyHost RATIFICADO pelo dono e
+  IMPLEMENTADO: policy federation.lua → LuaProposal → Rust valida e
+  aplica; policy_trade_cap no FederationEngine; feature
+  federation-policy (OFF por padrão, bit-idêntico desligado);
+  governance 31/31 COM a feature ligada; sham NUNCA consulta a
+  policy (A/A ativo/sham preservado). Nenhum débito técnico de
+  implementação ou instrumentação resta na série 20. Decisão de
+  design declinada (não débito): Opção B do Qualified no hash —
+  redesign + re-baseline só com diretriz futura do dono.
