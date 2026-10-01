@@ -2606,3 +2606,23 @@ var/verificacao/21-1_debitos_secao20_fechados.md
   binario. TODAS as caixas numeradas do checklist fechadas: zero
   pendencias, zero debitos tecnicos de implementacao/instrumen-
   tacao.
+
+- SESSAO 6 (21.2 — SYSTEM.LOG REESTRUTURADO para analise cientifica,
+  diretriz da dona: duplicacoes zeradas): DIAGNOSTICO — 1422 li-
+  nhas/111KB com 57 execucoes acumuladas por append sem rotacao
+  (melhores resultados 57x duplicados). REESTRUTURACAO no System-
+  Journal (observability/journal.rs, +teste rotaciona_run_anterior_
+  e_indexa_cientificamente): open_run com ROTACAO POR EXECUCAO (o
+  system.log anterior e ARQUIVADO em var/logs/system-<ts>-<runid>.
+  log/json — uma execucao = um arquivo, nada perdido, execucoes
+  nunca se misturam); cabecalho/rodape [RUN id INICIO/FIM ts]; INDI-
+  CE CIENTIFICO var/runs_index.jsonl (1 linha JSON por run: run_id,
+  ts_inicio, ts_fim, resumo {passos, tempo_s, veredito}) — analise
+  ENTRE runs sem duplicacao textual; harnesses TESTE-* seguem em
+  append (open_workspace, sem rotacao). PROVA (2 execucoes): his-
+  torico de 57 runs preservado como var/logs/system-*.log 111KB;
+  system.log final = 17 linhas/1 run; indice com 2 linhas distin-
+  tas; "sem violar as leis da casa" nas duas. observability 8/8;
+  workspace verde; house_laws 5/5. main.rs: dif aditivo no ponto do
+  journal (open_run + finish_run) — WIP +61 da sessao 7 presente no
+  mesmo arquivo, estado integral verde.

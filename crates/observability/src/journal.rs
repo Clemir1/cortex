@@ -19,6 +19,35 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct SystemJournal {
     log: Mutex<File>,
     json: Mutex<File>,
+    /// Metadados do RUN corrente (21.2: rotação por execução — presente
+    /// apenas em journals abertos por `open_run`; harnesses de teste
+    /// seguem em append simples, sem run).
+    run: Option<RunMeta>,
+}
+
+/// Identidade do run para rotação e índice científico.
+struct RunMeta {
+    id: u64,
+    started_unix: u64,
+    /// Base do journal (o índice `var/runs_index.jsonl` é escrito
+    /// AQUI — o run é dono do seu histórico, nunca de outra base).
+    base: std::path::PathBuf,
+}
+
+fn unix_ts_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// run_id estável no run: timestamp × contador atômico global —
+/// distinto entre runs consecutivos do mesmo segundo.
+fn run_id_now() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, Ordering::Relaxed);
+    unix_ts_now().wrapping_mul(1000).wrapping_add(seq % 1000)
 }
 
 /// Separador de bloco (largura do system_02.log do legado).
@@ -41,6 +70,7 @@ impl SystemJournal {
         Ok(Self {
             log: Mutex::new(log),
             json: Mutex::new(json),
+            run: None,
         })
     }
 
@@ -62,6 +92,90 @@ impl SystemJournal {
             .and_then(Path::parent)
             .unwrap_or_else(|| Path::new(manifest));
         Self::open(root)
+    }
+
+    /// 21.2 (diretriz da dona — análise científica sem duplicações):
+    /// abre o JOURNAL DO RUN com ROTAÇÃO. Antes de criar o novo
+    /// `var/system.log`, o anterior é ARQUIVADO em
+    /// `var/logs/system-<ts>-<runid>.log` (e o `.json` idem): uma
+    /// execução = um arquivo; o histórico nunca se mistura e nada é
+    /// perdido. O novo arquivo recebe o cabeçalho canônico
+    /// `[RUN <id> INICIO ts=<unix>]`. Harnesses de teste continuam em
+    /// append (open_workspace) — eles validam DURANTE o run corrente.
+    pub fn open_run() -> std::io::Result<Self> {
+        let manifest = env!("CARGO_MANIFEST_DIR");
+        let root = Path::new(manifest)
+            .parent()
+            .and_then(Path::parent)
+            .unwrap_or_else(|| Path::new(manifest));
+        Self::open_run_at(root)
+    }
+
+    /// `open_run` com base explícita (testável).
+    pub fn open_run_at(base: impl AsRef<Path>) -> std::io::Result<Self> {
+        let var = base.as_ref().join("var");
+        std::fs::create_dir_all(&var)?;
+        let id = run_id_now();
+        let ts = unix_ts_now();
+        // ROTAÇÃO: preserva a execução anterior (57 runs acumulados
+        // era o sintoma da ausência disto).
+        for name in ["system.log", "system.json"] {
+            let cur = var.join(name);
+            let cheio = std::fs::metadata(&cur).map(|m| m.len() > 0).unwrap_or(false);
+            if cheio {
+                let logs = var.join("logs");
+                std::fs::create_dir_all(&logs)?;
+                let ext = name.rsplit('.').next().unwrap_or("log");
+                let arc = logs.join(format!("system-{ts}-{id}.{ext}"));
+                std::fs::rename(&cur, arc)?;
+            }
+        }
+        let base_pb = base.as_ref().to_path_buf();
+        let mut j = Self::open(base)?;
+        j.run = Some(RunMeta {
+            id,
+            started_unix: ts,
+            base: base_pb,
+        });
+        {
+            let mut f = j.log.lock().unwrap_or_else(|p| p.into_inner());
+            writeln!(f, "[RUN {id} INICIO ts={ts}]")?;
+        }
+        j.json_event("run_inicio", &[("run_id", id.to_string()), ("ts", ts.to_string())])?;
+        Ok(j)
+    }
+
+    /// Fecha o RUN cientificamente: rodapé `[RUN <id> FIM ts]` no
+    /// log corrente + UMA linha no índice `var/runs_index.jsonl`
+    /// (`{"run_id", "ts_inicio", "ts_fim", "resumo": <resumo_json>}`)
+    /// — a análise científica compara runs ENTRE SI pelo índice, sem
+    /// duplicação textual. `resumo_json` vem do chamador (métricas-
+    /// chave já serializadas). No-op em journal sem run (harness).
+    pub fn finish_run(&self, resumo_json: &str) -> std::io::Result<()> {
+        let Some(r) = &self.run else {
+            return Ok(());
+        };
+        let ended = unix_ts_now();
+        {
+            let mut f = self.log.lock().unwrap_or_else(|p| p.into_inner());
+            writeln!(f, "[RUN {} FIM ts={}]", r.id, ended)?;
+        }
+        self.json_event(
+            "run_fim",
+            &[
+                ("run_id", r.id.to_string()),
+                ("ts", ended.to_string()),
+                ("resumo", resumo_json.to_string()),
+            ],
+        )?;
+        // Índice científico: 1 linha JSON por run (append) NA BASE do run.
+        let idx = r.base.join("var").join("runs_index.jsonl");
+        let mut f = OpenOptions::new().create(true).append(true).open(idx)?;
+        writeln!(
+            f,
+            "{{\"run_id\":{},\"ts_inicio\":{},\"ts_fim\":{},\"resumo\":{}}}",
+            r.id, r.started_unix, ended, resumo_json
+        )
     }
 
     /// Bloco de abertura (formato do system_02.log do legado):
@@ -202,6 +316,48 @@ mod tests {
         // …mas vive no JSON estruturado (telemetria profunda).
         let json = std::fs::read_to_string(tmp.join("var/system.json")).expect("ler json");
         assert!(json.contains("\"ts\":"));
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// 21.2: ROTAÇÃO POR RUN — o system.log anterior é ARQUIVADO em
+    /// var/logs/ (nada perdido, execuções nunca se misturam), o novo
+    /// recebe o cabeçalho [RUN id INICIO] e o finish escreve UMA linha
+    /// no índice científico runs_index.jsonl.
+    #[test]
+    fn rotaciona_run_anterior_e_indexa_cientificamente() {
+        let tmp = std::env::temp_dir().join(format!("triad-journal-run-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("var")).expect("criar var");
+        std::fs::write(tmp.join("var/system.log"), "RUN ANTIGO\n").expect("log velho");
+        std::fs::write(tmp.join("var/system.json"), "{\"antigo\":true}\n").expect("json velho");
+
+        let j = SystemJournal::open_run_at(&tmp).expect("abrir run");
+        // anterior PRESERVADO em var/logs/
+        let arq = std::fs::read_dir(tmp.join("var/logs")).expect("logs dir");
+        let nomes: Vec<String> = arq
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(nomes.iter().any(|n| n.starts_with("system-") && n.ends_with(".log")), "{nomes:?}");
+        let velho = std::fs::read_to_string(
+            tmp.join("var/logs").join(nomes.iter().find(|n| n.ends_with(".log")).unwrap()),
+        )
+        .expect("arquivo arquivado");
+        assert!(velho.contains("RUN ANTIGO"), "histórico preservado");
+        // novo system.log = SÓ o run corrente
+        let novo = std::fs::read_to_string(tmp.join("var/system.log")).expect("novo log");
+        assert!(novo.contains("[RUN ") && novo.contains(" INICIO ts="), "{novo}");
+        assert!(!novo.contains("RUN ANTIGO"), "sem mistura de execuções");
+
+        j.finish_run("{\"passos\":65,\"veredito\":\"sem violar as leis da casa\"}")
+            .expect("finish");
+        let novo = std::fs::read_to_string(tmp.join("var/system.log")).expect("log pós-fim");
+        assert!(novo.contains(" FIM ts="), "rodapé de fim do run");
+        // índice científico: 1 linha com resumo
+        let idx = std::fs::read_to_string(tmp.join("var/runs_index.jsonl")).expect("índice");
+        assert!(idx.contains("\"run_id\":"), "{idx}");
+        assert!(idx.contains("\"passos\":65"), "{idx}");
+        assert!(idx.trim_end().lines().count() == 1, "exatamente 1 linha por run");
         let _ = std::fs::remove_dir_all(&tmp);
     }
 }

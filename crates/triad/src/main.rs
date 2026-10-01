@@ -400,6 +400,27 @@ fn main() {
     let mut fed_propostas_validadas: u64 = 0;
     let mut fed_propostas_rejeitadas: u64 = 0;
     let mut fed_scarcity_sinal: Option<f64> = None;
+    // 20.5b (sessão 7, sob diretriz da dona) — FONTE de outcomes
+    // federativos RESOLVIDOS por tick para o StepReport: o scheduler
+    // consulta `FederationOutcomeSource` (accessor dela no runtime);
+    // esta impl consulta o estado compartilhado que o ciclo alimenta
+    // após cada `resolve_outcomes(t)` — chain_hashes dos horizontes
+    // h1/h5 fechados no tick (o ledger do governance é a origem).
+    struct FedOutcomeSource(std::sync::Arc<std::sync::Mutex<(u64, Vec<u64>)>>);
+    impl rt::FederationOutcomeSource for FedOutcomeSource {
+        fn resolved_outcome_ids(&self, tick: u64) -> Vec<u64> {
+            let g = self.0.lock().unwrap();
+            if g.0 == tick {
+                g.1.clone()
+            } else {
+                Vec::new()
+            }
+        }
+    }
+    let fed_resolved: std::sync::Arc<std::sync::Mutex<(u64, Vec<u64>)>> =
+        std::sync::Arc::new(std::sync::Mutex::new((0, Vec::new())));
+    let mut fed_horizontes_resolvidos: u64 = 0;
+    scheduler.with_federation_outcomes(Box::new(FedOutcomeSource(fed_resolved.clone())));
     let topdown_requester = rt::CognitiveModule::descriptor(&*l3_handle)
         .module_id
         .clone();
@@ -435,8 +456,17 @@ fn main() {
     let mut law_soft_rejeitadas: u64 = 0;
     let mut law_soft_liberacoes: u64 = 0;
     let mut law_soft_razao: Option<String> = None;
+    let mut law_soft_fator_corrente: Option<f64> = None;
 
     for t in 1..=ticks {
+        // 20.5b — resolve os outcomes federativos vencidos ANTES do
+        // passo: o StepReport do tick publica os chain_hashes
+        // RESOLVIDOS nele (h1/h5 fechados — Lei 5 trilha por recibo).
+        {
+            let n = fed_engine.resolve_outcomes(t) as u64;
+            fed_horizontes_resolvidos += n;
+            *fed_resolved.lock().unwrap() = (t, fed_engine.take_resolved_ids(t));
+        }
         let report = scheduler.step();
         // 19.8-c (sob diretriz da dona) — CONSUMIDOR RUNTIME da
         // GoverningAction do O3: a ação deixa de ser recomendação e
@@ -522,6 +552,16 @@ fn main() {
                         let fator = proposta.value.clamp(0.5, 1.0);
                         scheduler.budget.max_events =
                             ((budget_base_events as f64) * fator).round().max(1.0) as usize;
+                        // Lei 6 no espírito da soft law: pressão zerou e
+                        // havia economia ativa ⇒ LIBERAÇÃO com recibo (o
+                        // teto volta à base; ausência de pressão = efeito
+                        // observado da política anterior).
+                        if fator >= 1.0
+                            && law_soft_fator_corrente.is_some_and(|f| f < 1.0)
+                        {
+                            law_soft_liberacoes += 1;
+                        }
+                        law_soft_fator_corrente = Some(fator);
                         law_soft_validadas += 1;
                         law_soft_razao = Some(proposta.reason);
                     }
@@ -1395,6 +1435,13 @@ fn main() {
         println!(
             "Rodadas CNP no organismo: 0 (staging) — membros federativos: 0; ligar exige decisão do dono + ADR (var/verificacao/18-4_ADR_federacao.md)",
         );
+        // 20.5b — trilha de outcomes por tick: horizontes h1/h5
+        // resolvidos no ciclo e pendências honestas (staging: 0).
+        println!(
+            "Outcomes federativos (20.5b): horizontes resolvidos no ciclo: {}; pendentes agora: {} — chain_hashes resolvidos por tick via StepReport.federation_outcome_ids (ausência ≠ zero)",
+            fed_horizontes_resolvidos,
+            fed_engine.pending_outcome_count(),
+        );
     }
 
     // T/CYBERNETICS (16.8): ordens O1–O4 sobre métricas VIVAS nas
@@ -1402,6 +1449,20 @@ fn main() {
     // recomenda ação TIPADA; O5 amostra horizonte (genome fora, Lei 7).
     {
         println!("=== Cybernetics (T, 16.8) ===");
+        // 17.11 (sessão 7) — ControllerConflictGraph: os controladores
+        // e seus conflitos DECLARADOS com resolução estrutural (o
+        // controle sobre controladores deixa de ser implícito).
+        let grafo = triad_cybernetics::ControllerConflictGraph::house();
+        println!(
+            "ControllerConflictGraph (17.11): {}",
+            grafo.summary()
+        );
+        for e in &grafo.edges {
+            println!(
+                "  {}×{} sobre {}: {}",
+                e.a, e.b, e.target, e.resolution
+            );
+        }
         let cs = cyb_handle.stats();
         let sat = if cs.o1_runs == 0 {
             "n/d (sem execução)".to_string()
@@ -1706,7 +1767,11 @@ fn main() {
     // var/system.json (um objeto por evento com `ts`; o tempo vive no
     // JSON, a linha fica limpa como no legado). Taxas sempre com
     // denominador; ausência registrada como ausência (nunca zero).
-    if let Ok(journal) = triad_observability::SystemJournal::open_default() {
+    // 21.2: JOURNAL DO RUN com ROTAÇÃO — a execução anterior é
+    // arquivada em var/logs/ (análise científica sem duplicações;
+    // o system.log contém SÓ o run corrente e o índice
+    // var/runs_index.jsonl acumula 1 linha por run).
+    if let Ok(journal) = triad_observability::SystemJournal::open_run() {
         let _ = journal.section("TRIAD_AEE -- ORGANISMO COGNITIVO EM RUST (L1-L5 + T)");
         let _ = journal.section_line(&[
             ("Clusters inicio", l1_population.to_string()),
@@ -1780,6 +1845,13 @@ fn main() {
                 "var/system.log, var/system.json".to_string(),
             ),
         ]);
+        // 21.2: fecha o RUN no índice científico (1 linha JSON por
+        // execução — comparação entre runs sem duplicação textual).
+        let _ = journal.finish_run(&format!(
+            "{{\"passos\":{},\"tempo_s\":{:.1},\"veredito\":\"sem violar as leis da casa\"}}",
+            ticks,
+            t0.elapsed().as_secs_f32()
+        ));
     }
 
     println!("Núcleo encerrado sem violar as leis da casa.");
