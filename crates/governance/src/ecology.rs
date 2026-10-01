@@ -1225,8 +1225,8 @@ mod ecology_18_5_tests {
         let q = eng.episode_health("fantasma", ModuleId::new(), StepId::new());
         assert!(q.value.is_none(), "janela vazia = sem valor (Lei 2)");
         assert!(
-            format!("{:?}", q.status).contains("NoData"),
-            "NO_DATA tipado, nunca 0.0 fabricado"
+            matches!(q.status, tf::Status::NoData),
+            "NO_DATA tipado, nunca 0.0 fabricado (Lei 2)"
         );
     }
 
