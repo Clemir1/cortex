@@ -115,6 +115,20 @@ mod tests {
         assert_eq!(devfresh.stats().stage, Some(loaded.development.stage));
         assert_eq!(devfresh.stats().stage_advances, loaded.development.advances);
         let _ = std::fs::remove_dir_all(&dir);
+        // 20.4d — veredito no var/system.log (helper tolerante: IO
+        // nunca reprova o teste).
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("var/system.log")
+            .and_then(|mut f| {
+                use std::io::Write as _;
+                writeln!(
+                    f,
+                    "TESTE-ciclo_completo_save_load_replay_restore: VERDE (round-trip bit-exato, replay {} registros, taxa e desenvolvimento restaurados)",
+                    loaded.meta.records
+                )
+            });
     }
 
     #[test]

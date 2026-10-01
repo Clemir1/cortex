@@ -62,6 +62,13 @@ pub struct StepReport {
     /// total 0 ⇒ None (ausência ≠ zero — Lei 2). Sempre 8 linhas
     /// na ordem canônica L1..L5,T,P,B (determinístico).
     pub layer_budget: Vec<LayerBudgetLine>,
+    /// 20.5b (SEÇÃO 20) — chain_hashes das trocas federativas RESOL-
+    /// VIDAS neste tick (horizontes t+1/t+5 fechados no ledger do
+    /// CNP). None = SEM fonte injetada (ausência ≠ zero — Lei 2);
+    /// Some(v) = ids resolvidos (v vazia = nenhuma troca fechou).
+    /// OBSERVACIONAL: nunca altera execução nem state_hashes (A/A
+    /// intacto por construção — campo fora dos hashes).
+    pub federation_outcome_ids: Option<Vec<u64>>,
 }
 
 /// Linha do budget por camada (SEÇÃO 20.6a): gasto da camada +
@@ -163,6 +170,21 @@ fn layer_budget_lines(
 }
 
 /// Escalonador que executa módulos cognitivos e publica eventos no barramento.
+/// 20.5b (SEÇÃO 20) — fonte de outcomes federativos resolvidos no
+/// tick (accessor ADITIVO: o runtime não depende de governance; o
+/// app injeta a impl real que consulta o ledger do CNP — chain_hash
+/// das trocas com horizontes t+1/t+5 fechados). Impl `()` = fonte
+/// vazia (nenhuma troca resolvida).
+pub trait FederationOutcomeSource: Send + Sync {
+    /// chain_hashes das trocas federativas RESOLVIDAS no tick dado.
+    fn resolved_outcome_ids(&self, tick: u64) -> Vec<u64>;
+}
+impl FederationOutcomeSource for () {
+    fn resolved_outcome_ids(&self, _tick: u64) -> Vec<u64> {
+        Vec::new()
+    }
+}
+
 pub struct Scheduler {
     pub modules: Vec<Arc<dyn crate::module::CognitiveModule>>,
     pub budget: StepBudget,
@@ -180,6 +202,9 @@ pub struct Scheduler {
     /// (system.py:9540-9579: a carga modulada nunca desativa
     /// sistemas, apenas reduz cadência — Lei 4).
     throttles: std::collections::BTreeMap<String, f64>,
+    /// 20.5b — fonte de outcomes federativos (injetável; None =
+    /// sem fonte ⇒ StepReport publica None, ausência ≠ zero, Lei 2).
+    federation_source: Option<Box<dyn FederationOutcomeSource>>,
 }
 
 /// Resultado do tick de um módulo do grupo (fase paralela → merge).
@@ -208,7 +233,17 @@ impl Scheduler {
             degraded_overrides: HashSet::new(),
             concurrency: (0..n).map(|i| vec![i]).collect(),
             throttles: std::collections::BTreeMap::new(),
+            federation_source: None,
         }
+    }
+
+    /// 20.5b — injeta a fonte de outcomes federativos (accessor
+    /// aditivo; sem injeção o StepReport publica None — Lei 2).
+    pub fn with_federation_outcomes(
+        &mut self,
+        source: Box<dyn FederationOutcomeSource>,
+    ) {
+        self.federation_source = Some(source);
     }
 
     /// Cria escalonador com GRUPOS DE CONCORRÊNCIA explícitos: cada
@@ -429,6 +464,10 @@ impl Scheduler {
             state_hashes: hashes,
             throttled: throttled_now,
             layer_budget,
+            federation_outcome_ids: self
+                .federation_source
+                .as_ref()
+                .map(|s| s.resolved_outcome_ids(self.clock.tick)),
         }
     }
 
@@ -651,6 +690,19 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(run(), run(), "mesma política ⇒ mesmos saltos (A/A)");
+        // 20.4d — veredito no var/system.log (helper tolerante: IO
+        // nunca reprova o teste).
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("var/system.log")
+            .and_then(|mut f| {
+                use std::io::Write as _;
+                writeln!(
+                    f,
+                    "TESTE-throttle_e_deterministico_aa_bit_exato: VERDE (8 passos, gemeos bit-exatos 8/8)"
+                )
+            });
     }
 
     /// 20.6a — agregação por camada: 8 linhas canônicas, gasto
@@ -729,5 +781,17 @@ mod tests {
         let l1 = &r.layer_budget[0];
         assert!(l1.spent_us > 0, "gasto real medido na camada dona");
         assert_eq!(l1.group, "L1-L2");
+        // 20.4d — veredito no var/system.log (helper tolerante).
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("var/system.log")
+            .and_then(|mut f| {
+                use std::io::Write as _;
+                writeln!(
+                    f,
+                    "TESTE-budget_observacional_nao_altera_trajetoria_aa: VERDE (gemeos A/A bit-exatos; gasto L1-L2 debitado na dona)"
+                )
+            });
     }
 }

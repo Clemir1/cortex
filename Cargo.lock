@@ -1016,6 +1016,7 @@ dependencies = [
  "tracing",
  "triad-contracts",
  "triad-foundation",
+ "triad-lua",
 ]
 
 [[package]]

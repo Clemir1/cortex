@@ -868,4 +868,38 @@ mod tests {
         assert!((0.0..=1.0).contains(&t.f1), "taxa com denominador");
         assert!(!t.gargalo.is_empty(), "gargalo sempre identificado");
     }
+
+    /// 20.3b (sessão 7, sob diretriz da dona): reforço nulo/negativo
+    /// sobre traço AUSENTE é NO-OP — ausência NUNCA vira força 0.0
+    /// (Lei 2: nada nasce do que nunca existiu); reforço positivo
+    /// sobre ausente é NASCIMENTO tipado; A/A do snapshot.
+    #[test]
+    fn ausencia_nunca_vira_forca_zero_no_reforco_203b() {
+        use crate::forgetting::ForgettingEngine;
+        let mut f = ForgettingEngine::new(8);
+        // reforço NEGATIVO sobre ausente: nenhum traço fantasma nasce.
+        f.reinforce("modulo_fantasma", -0.3);
+        assert_eq!(f.len(), 0, "ausência não fabrica traço 0.0 (Lei 2)");
+        let q = f.strength(
+            "modulo_fantasma",
+            triad_foundation::ModuleId::new(),
+            triad_foundation::StepId::new(),
+        );
+        assert!(q.value.is_none(), "ausência permanece NO_DATA");
+        // reforço POSITIVO sobre ausente: nascimento com a força dada.
+        f.reinforce("modulo_novo", 0.4);
+        assert_eq!(f.export(), vec![("modulo_novo".to_string(), 0.4)]);
+        // reforço sobre EXISTENTE soma sobre a força REAL medida.
+        f.reinforce("modulo_novo", 0.3);
+        assert_eq!(f.export(), vec![("modulo_novo".to_string(), 0.7)]);
+        // A/A: mesma história => mesmo snapshot (determinístico).
+        let gemea = || {
+            let mut g = ForgettingEngine::new(8);
+            g.reinforce("a", -0.5);
+            g.reinforce("b", 0.4);
+            g.reinforce("b", 0.3);
+            g.export()
+        };
+        assert_eq!(gemea(), gemea(), "gêmeos bit-exatos (A/A)");
+    }
 }

@@ -24,11 +24,31 @@ impl ForgettingEngine {
     }
 
     /// reforça um traço somando amount e limitando a força entre 0.0 e 1.0.
+    /// 20.3b (sessão 7, sob diretriz da dona): reforço nulo/negativo sobre
+    /// traço AUSENTE é NO-OP — ausência NUNCA vira força 0.0 (Lei 2: não
+    /// fabricamos traço fantasma do que nunca existiu); reforço positivo
+    /// sobre ausente é NASCIMENTO tipado do traço.
     pub fn reinforce(&mut self, key: &str, amount: f32) {
-        let current = self.traces.get(key).copied().unwrap_or(0.0);
-        let novo_valor = (current + amount).clamp(0.0, 1.0);
-        self.traces.insert(key.to_string(), novo_valor);
-        debug!(chave = key, forca = novo_valor, "traço reforçado");
+        match self.traces.get(key).copied() {
+            Some(current) => {
+                // reforço sobre traço EXISTENTE (força real, medida).
+                let novo_valor = (current + amount).clamp(0.0, 1.0);
+                self.traces.insert(key.to_string(), novo_valor);
+                debug!(chave = key, forca = novo_valor, "traço reforçado");
+            }
+            None if amount <= 0.0 => {
+                // ausência ≠ zero: nada nasce do que nunca existiu.
+                trace!(
+                    chave = key,
+                    "reforço sobre traço ausente ignorado (ausência ≠ zero, Lei 2)"
+                );
+            }
+            None => {
+                // nascimento explícito: primeiro reforço positivo cria o traço.
+                self.traces.insert(key.to_string(), amount.clamp(0.0, 1.0));
+                debug!(chave = key, forca = amount, "traço nascido por reforço positivo");
+            }
+        }
     }
 
     /// aplica fator de decadência a todos os traços (0.0 < fator <= 1.0).
