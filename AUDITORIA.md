@@ -366,3 +366,6 @@ Fechado: bloqueia-A/A 100% (Lei 2 em L3/L5, hash 9/9 módulos, janelas NO_DATA),
 
 ### Série 20 — zeragem total (remate final, diretriz do dono: zero débitos técnicos)
 Após o fechamento principal, zerados os restantes: 20.3b learning (NO-OP sobre traço ausente, Lei 2), 20.3d contracts (NO_DATA documentado), 20.4 com critério completo (todo teste de validação registra veredito com denominador no var/system.log), 20.5b outcome_ids no StepReport (accessor aditivo, ausência≠zero), 20.5d caches declarados. Wire CNP⇄PolicyHost ratificado pelo dono e implementado: a policy Lua propõe, Rust valida e aplica; feature federation-policy desligada por padrão (bit-idêntico), 31/31 verdes ligada; sham nunca consulta a policy — A/A preservado. Commits: 067aaac, 3c0839a, fede511. Sem pendências de implementação ou instrumentação.
+
+### Série 20 — remate definitivo do wire (fa15d88)
+Wire CNP⇄PolicyHost completo: policy Lua determinística proposta no ponto need→proposal, Rust valida (whitelist + Lei 3 tipada) e apenas aperta o cap de perna; proveniência no recibo; sham nunca consulta a policy (A/A 18.4 preservado); gêmeos com chain_hash bit-exato por passo com a policy LIGADA; feature-off bit-idêntico. Governance 36/36 com feature, 31/31 sem; house_laws 5/5. 20.3b re-verificada (Qualified no strength(), crédito sessão 7). Zero débitos técnicos na série 20.

@@ -2445,3 +2445,16 @@ var/verificacao/19-7_verificacao_final_serie_19.md
   implementação ou instrumentação resta na série 20. Decisão de
   design declinada (não débito): Opção B do Qualified no hash —
   redesign + re-baseline só com diretriz futura do dono.
+
+- SESSAO 6 (SEÇÃO 20 — remate definitivo do wire, fa15d88): wire
+  CNP⇄PolicyHost na profundidade maxima: FederationEngine::
+  with_policy_host; policy lua/policies/federation.lua deterministica
+  consultada no ponto de PROPOSTA; Rust valida (whitelist trade_rate
+  0.0..0.5 + reason/ttl/confidence) e APERTA o cap (nunca afrouxa);
+  PolicyRejected tipada (Lei 3); ausencia/banda morta = canonico
+  (politica opcional, Lei 2); SHAM antes da consulta (A/A 18.4
+  preservado); gemeos chain_hash BIT-EXATO por passo COM a policy
+  ligada; governance 36/36 com feature (5 testes novos), 31 sem;
+  lua 12, learning 9, house_laws 5/5. 20.3b re-verificada: strength()
+  ja expõe Qualified NO_DATA (credito sessao 7); reinforce = nasci-
+  mento de traço, nao metrica fabricada. Zero debitos tecnicos.
