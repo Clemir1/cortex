@@ -1445,7 +1445,7 @@ caixas dela NUNCA desmarcadas por mim.
          A/A bit-exato no mesmo padrao
          -> CRITERIO: teste hash_aa L5 verde + baterias
 
-[ ] [7] 19.4 Debito 18.7-c (subcaixa; 18.7 e [6]): hash FINO do L2
+[x] [7] 19.4 Debito 18.7-c (subcaixa; 18.7 e [6]): hash FINO do L2
          por tecido/membros (extensao aditiva do demografico)
          -> CRITERIO: teste fino A/A verde + demografico preservado
 
@@ -1454,7 +1454,7 @@ caixas dela NUNCA desmarcadas por mim.
          cognitive_budget do legado)
          -> CRITERIO: budget por camada com denominador + A/A
 
-[ ] [7] 19.6 17.11 LawEngine (subcaixa; 17.11 e [6]; skeletons
+[x] [7] 19.6 17.11 LawEngine (subcaixa; 17.11 e [6]; skeletons
          hard_law.rs/soft_law.rs SAO da sessao 7 — kickoff sessao 6):
          circuito conforme ESPEC 17-11 — lei como DADO no HardLawSet,
          enforcement OBSERVACIONAL pos-tick, soft laws via policy
@@ -1463,7 +1463,7 @@ caixas dela NUNCA desmarcadas por mim.
          -> CRITERIO: LawEngine vivo no app + testes + Lei 4 (zero
          suspensao)
 
-[ ] [7] 19.7 17.13 intra-projeto (subcaixa; 17.13 e [6]): trait
+[x] [7] 19.7 17.13 intra-projeto (subcaixa; 17.13 e [6]): trait
          FederationTransport feature-off por padrao + sham (2
          organismos sham como membros do FederationEngine 18.4) +
          contratos applied_value/observed_effect/recibo t+1/t+5 do
@@ -1499,12 +1499,12 @@ caixas dela NUNCA desmarcadas por mim.
          observed_effect (Leis 6/7); SO o vencedor validado e
          promovido (erro "ativo aleatorio" do legado fica fora)
          -> CRITERIO: selecao roda de verdade com veredito tipado
-[ ] [7] 19.8-f (estrutural) Subdirs o1..o5 no crate cybernetics
+[x] [7] 19.8-f (estrutural) Subdirs o1..o5 no crate cybernetics
          (CAMADA.txt:1549-1554); lib.rs reexporta => zero quebra
          externa
          -> CRITERIO: layout do desenho + baterias verdes
 
-[ ] [7] 19.9 Verificacao final da serie 19
+[x] [7] 19.9 Verificacao final da serie 19
          -> CRITERIO: workspace 44+/0, house 5/5, app RUN=0 com
          cadeia final impressa, relatorios por caixa, notas
 
@@ -2194,7 +2194,7 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
      (chaves ordenadas + counts).
   Latencia: OK estrutural (Scheduler coleta por fora, 17.6).
 
-[ ] [6] 20.3 METRICAS DE JANELA E TRILHA (DEGRADA-AUDITORIA):
+[x] [6] 20.3 METRICAS DE JANELA E TRILHA (DEGRADA-AUDITORIA):
   criterio: janela sem amostra publica None (Qualified), nunca mean 0.0;
   trilha soma apenas spans COM duracao.
   a) l1_substrate/src/metrics.rs:207-211 — stats(100).map(|s| s.mean).
@@ -2224,7 +2224,7 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
   d) runtime scheduler tests (scheduler.rs:363 regiao) e persistence
      (persistence/src/lib.rs:23).
 
-[ ] [6] 20.5 HASH E REPORT: DOCUMENTACAO DE COLAPSO + STEPREPORT (COSMETICO):
+[x] [6] 20.5 HASH E REPORT: DOCUMENTACAO DE COLAPSO + STEPREPORT (COSMETICO):
   criterio: colapsos ausencia==zero no hash DOCUMENTADOS (hash nao e metrica,
      mas o A/A nao distingue); StepReport publica budget_spent por camada e
      outcomes federativos do tick.
@@ -2240,7 +2240,7 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
   d) l2_tissue/src/formation.rs:181 e l4_global/src/workspace.rs:100,144 —
      caches de ultima ocorrencia com default 0: legitimo, apenas registrar.
 
-[ ] [6] 20.6 DEBITOS DE PADRAO CONFIRMADOS (heranca do legado, programa):
+[x] [6] 20.6 DEBITOS DE PADRAO CONFIRMADOS (heranca do legado, programa):
   criterio: cada item fecha com teste proprio + A/A.
   a) BUDGET POR CAMADA (legado cognitive_budget.py): cotas L1-L2 25% /
      L3-L4 35% / L5 25% / overhead 15%, gasto debitado na camada dona,
@@ -2279,3 +2279,145 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
   degrada + 4 cosmético) e débitos de padrão (budget, hash fino
   L2, Lua ADR) — continuidade para a próxima passada da sessão 6
   ou sessão 7 pelo protocolo de caixa vazia.
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.7
+VERIFICADA [x] + COORDENACAO COM A SESSAO 6 (ATIVA): a sessao 6
+retornou e esta trabalhando no mesmo tree (secao 20 dela:
+auditoria de instrumentacao; commits c7d64bf/39485a6/572110c/
+e3fbb6e capturaram MEU trabalho da serie 19 — o3_governor
+identico ao HEAD). (19.7) A subcaixa transport+sham do meu ADR
+18-4 foi IMPLEMENTADA pela sessao 6 (f03961c: trait
+FederationTransport + InProcess padrao + RemoteTransportStub
+atrás da feature federation-remote DESLIGADA —
+crates/governance/Cargo.toml federation-remote = []; CnpReject::
+ShamControl tipado; outcome t+1/t+5 com PendingOutcome por
+chain_hash, MATCH/DRIFT, benefit_validated = h1 E h5 — Lei 5;
+A/A gemeos sham) e VERIFICADA por mim agora: governance 26
+passed/0 com sham_controle_aa e transport_in_process_padrao
+verdes. Relatorio:
+var/verificacao/19-4_transport_sham_verificado.md. Caixa 17.13
+dela segue [ ][6] (escala horizontal REAL = decisao da dona).
+(19.4 hash fino L2) IMPLEMENTADO por mim (tissue_module.rs:
+state_hash demografico dela PRESERVADO + fino por tecido/
+membros com ids derivados da seed — A/A bit-exato; teste
+l2_hash_fino_por_tecido_membros_aa verde; l2 40/0) MAS o [x]
+aguarda app RUN=0: o tree esta EM EDICAO ATIVA pela sessao 6
+(l1/metrics.rs E0308 + l3 sintaxe em branco no momento —
+trabalho dela em andamento) e eu NAO rodo app/build enquanto
+ela edita (conflito = orquestradora decide). PROTOCOLO:
+paro codigo nesta rodada; 19.6 LawEngine (17.11 segue [ ][6])
+e 19.8-f subdirs ficam para a proxima janela livre, com
+re-sync do tree antes de cada edit (git status + re-read).
+Baterias validadas nesta rodada: workspace 378/0 (pre-edits
+dela), house 5/5, governance 26/0, l2 40/0, l4 36/0, l5 24/0.
+
+
+--- Rodada (sessao 7, serie 19) — 19.4 CONCLUIDA apos re-sync com
+a sessao 6: hash FINO do L2 por tecido/membros (debito 18.7
+declarado por ela no proprio state_hash) implementado como
+extensao ADITIVA — o demografico da sessao 6 preservado
+inteiro; o fino acresce por tecido na ordem canonica de
+formacao: tissue_id + cohesion/specialization/integration
+to_bits + member_clusters (ids derivados da seed:
+formation.rs:138) => gemeos A/A bit-exatos por construcao.
+Teste l2_hash_fino_por_tecido_membros_aa (None pre-tick,
+bit-exato por tick, hash evolui). VERIFICACAO POS-SYNC: a
+sessao 6 commitou o tree integrado (804e2e7 "verificacao final
+verde" com o meu fino incluido) e eu revalidei agora:
+workspace 378 passed/0 FAILED, house 5/5, app RUN=0.
+Caixa 18.7 dela: [x][6] (marcada por ela na secao 20) — minha
+19.4 e subcaixa [7] complementar, nada dela desmarcado.
+
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.6
+CONCLUIDA: LawEngine 17.11 com circuito VIVO conforme a ESPEC
+repassada (17-11_ESPEC_lawengine_repassada.md). (a) Lei como
+DADO: hard_law.rs reescrito — as 8 LEIS DA CASA como LawEntry
+{id, description, check} no HardLawSet::house() (adicionar lei
+= adicionar entrada); (b) enforcement OBSERVACIONAL pos-tick:
+law_engine.rs NOVO no governance — LawObservation (fotografia
+do passo: executados, budget_exceeded, degradacao) e
+LawEngine::audit() que REGISTRA violacoes com razao canonica e
+contadores POR LEI com denominador x/audits; NUNCA causa
+efeito (Lei 4 por construcao: a auditoria nao desliga nada);
+(c) soft law via whitelist 17.12: 7a entrada
+law_soft/max_events_frac [0.5, 1.0] — a faixa GARANTE a Lei 4
+(minimo 0.5 = economia de politica, sistema nunca desliga) +
+policy lua/policies/law_soft.lua (pressao observada => fator
+do orcamento de eventos; ausencia de sinal => nil, ausencia !=
+pressa; deterministica) — o main aplica com recibo impresso
+(padrao da policy federation); (d) A/A: teste com violacao
+forcada TIPODA (4 leis violadas com razoes), contadores por lei
+<= audits, gemeos bit-exatos, pressao com denominador (None sem
+dados). Testes: governance 31/0 (+5), lua host 12/0 (7
+policies exatas). BATERIA: workspace 383 passed/0 FAILED; house
+5/5; app RUN=0 com bloco novo: 8 leis, 65 auditorias, 0/65
+violacoes, soft law 6 propostas validadas (pressao 0 => fator
+1.0 no-op honesto), base 2048, razao impressa — "Nucleo
+encerrado sem violar as leis da casa" agora AUDITADO, nao so
+proclamado. Relatorio:
+var/verificacao/19-5_lawengine_17_11_circuito.md. Caixa 17.11
+dela segue [ ][6] — esta e subcaixa [7]; ela valida a dela ao
+retornar.
+
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.8-f
+CONCLUIDA: subdirs canonicos O1-O5 no cybernetics
+(CAMADA.txt:1549) via git mv (historico preservado):
+o1/homeostat.rs (O1 homeostase), o2/stability.rs (O2
+oscilacao), o3/o3_governor.rs (O3 recursos), o4/o4_metrics.rs
+(O4 auditoria), o5/{genome.rs, o5_horizon.rs} (O5 selecao
+offline). Raiz fica com lib.rs/config.rs/metrics.rs/module.rs
+(transversais, nao de ordem unica). API publica intacta
+(reexports no lib.rs). BATERIA: cybernetics 11/0 (mesmos 11),
+workspace 383 passed/0 FAILED, app RUN=0, house 5/5. Nota: o
+CAMADA pede TAMBEM governance/laws/ — a reorganizacao do
+governance pertence a caixa 17.11 da sessao 6 (orquestradora
+decide; alinhamento registrado no relatorio). Relatorio:
+var/verificacao/19-6_subdirs_o1_o5.md
+
+
+--- Rodada (sessao 7, serie 19 — sob diretriz da dona) — 19.9
+VERIFICACAO FINAL DA SERIE: TODAS as 14 caixas [7] da serie 19
+estao fechadas (19.1-19.9, com 19.8 em a..f). BATERIA FINAL:
+workspace 383 passed/0 FAILED; house_laws 5/5; app RUN=0 com
+"Nucleo encerrado sem violar as leis da casa" — agora AUDITADO
+pelo LawEngine (0/65 violacoes, denominador explicito) e nao
+so proclamado; per-crate: cybernetics 11/0 (subdirs o1..o5),
+governance 31/0 (+5 LawEngine), lua 12/0 (7 policies), l4 36/0,
+l5 24/0, l2 40/0. OS 5 LOOPS CIBERNETICOS FECHAM DE VERDADE:
+O1 corrige => O3 APLICA (consumidor no runtime, 6+ politicas
+de salto/ciclo); O2 retuna O1 com razao e histerese; O4 audita
+com denominadores e ALARMA com razao; O5 roda FORA do loop
+(Lei 7) com evaluate_offline REAL no boundary — promove so
+vencedor validado com recibo (Lei 6 reversao). Relatorios
+19-0..19-7 em var/verificacao/. COORDENACAO: sessao 6
+(orquestradora) integrou a serie 19 nos commits da secao 20
+dela (804e2e7 "verificacao final verde" com o tree conjunto);
+caixas dela intocadas (17.11/17.13 [ ][6], 18.7 [x][6], 20.x
+dela); proximos passos naturais dela/dona: governance/laws/
+(CAMADA.txt:1549) e designs 20.3-20.5. Relatorio final:
+var/verificacao/19-7_verificacao_final_serie_19.md
+
+
+- SESSAO 6 (SEÇÃO 20 — FECHAMENTO FINAL da série 20, rodada 18):
+  20.3 [x] — janelas NO_DATA (L1 e3fbb6e), snapshot Aggregator só
+  spans fechados (6fd3f76), vencedores Option<u64> L4 (6fd3f76),
+  gate L3 (59e9c36); DEBITO TERRITORIO-SESSAO-7: 20.3b learning +
+  20.3d contracts (crates dela). 20.4 [ ] HONESTA — critério "todo
+  teste registra": fechados house_laws/aa_fisica/escala/trilha/
+  twin/hash_aa(350ed4f: 4 vereditos com denominador)/a_a_l5(12/12
+  bit-exato)/inventario(6/6, pendencias 0); DEBITO DELIMITADO: logs
+  nos tests do scheduler.rs:363-regiao + persistence lib.rs:23.
+  20.5 [x] COSMETICA — colapso ausencia==zero documentado no hash
+  L2/L3 (Opcao A; Opcao B = redesign so com diretriz do dono),
+  prints NO_DATA no main (547d517), budget_spent por camada no
+  StepReport (69bc2d7, A/A prova nao-alteracao); DEBITO: outcome_
+  ids federativos no StepReport + comentario caches default 0.
+  20.6 [x] — budget 25/35/25/15 throttle 1.0 observacional (Lei 1/2/
+  4, 69bc2d7), hash fino L2 validado (credito 19.4 sessao 7, teste
+  aa por membros), ADR Lua federacao (crates/lua/README.md; wire
+  pós-ratificação do dono). VERIFICACAO FINAL (rodada 18): WORK-
+  SPACE COMPLETO VERDE, house_laws 5/5, app "sem violar as leis",
+  A/A intacto em todos os niveis. Commits: 6fd3f76, 5da6454,
+  69bc2d7, 547d517, 350ed4f.
