@@ -192,6 +192,14 @@ pub enum CnpReject {
         /// Nome canônico do transporte consultado.
         transport: String,
     },
+    /// 20.6c (ADR ratificado): a policy Lua de federação retornou
+    /// proposta INVÁLIDA — recibo tipado SEM troca (a policy propos
+    /// fora da faixa validada pelo Rust). Ausência de policy NÃO
+    /// cai aqui: política é opcional, segue canônico.
+    PolicyRejected {
+        /// Razão canônica da rejeição (Lei 3: nunca vazia).
+        reason: String,
+    },
 }
 
 impl CnpReject {
@@ -204,6 +212,7 @@ impl CnpReject {
             CnpReject::SelfTrade => "self_trade",
             CnpReject::ShamControl => "sham_control",
             CnpReject::TransportUnreachable { .. } => "transport_unreachable",
+            CnpReject::PolicyRejected { .. } => "policy_rejected",
         }
     }
 }
@@ -444,6 +453,14 @@ pub struct FederationEngine {
     transport: Box<dyn FederationTransport>,
     /// 18.4 outcomes pendentes t+1/t+5 das trocas aplicadas.
     pending_outcomes: Vec<PendingOutcome>,
+    /// 20.6c (feature federation-policy, ADR ratificado): host de
+    /// policy Lua PROPOSITORA. None = canônico Rust puro (bit-
+    /// idêntico); Some = a policy "federation" é consultada no
+    /// ponto de PROPOSTA (need→proposal): ela propõe o cap de
+    /// perna, o Rust valida (whitelist + faixas) e aplica. Lua
+    /// NUNCA escreve estado (fronteira rust_lua_boundary.md).
+    #[cfg(feature = "federation-policy")]
+    policy_host: Option<triad_lua::PolicyHost>,
 }
 
 impl FederationEngine {
@@ -464,12 +481,22 @@ impl FederationEngine {
             sham: false,
             transport: Box::new(InProcessTransport),
             pending_outcomes: Vec::new(),
+            #[cfg(feature = "federation-policy")]
+            policy_host: None,
         }
     }
 
     /// 18.4: troca o transporte de entrega (padrão InProcess).
     pub fn with_transport(mut self, transport: Box<dyn FederationTransport>) -> Self {
         self.transport = transport;
+        self
+    }
+
+    /// 20.6c (ratificado): injeta o host de policy Lua da
+    /// federação (só sob a feature). Sem host ⇒ canônico puro.
+    #[cfg(feature = "federation-policy")]
+    pub fn with_policy_host(mut self, host: triad_lua::PolicyHost) -> Self {
+        self.policy_host = Some(host);
         self
     }
 
@@ -555,9 +582,39 @@ impl FederationEngine {
         // pernas — conservação preservada por construção).
         let offer = (offer.0, offer.1.min(self.trade_rate_cap).max(0.0));
         let payment = (payment.0, payment.1.min(self.trade_rate_cap).max(0.0));
-        // 18.4 ACTIVE/SHAM: desligado ⇒ recibo com razão tipada e
-        // NENHUM estado muda (a avaliação inteira é pulada — o
-        // controle desligado não altera a trajetória).
+        // 20.6c (ratificado, feature federation-policy): a policy
+        // Lua "federation" é consultada NO PONTO DE PROPOSTA (need→
+        // proposal) — ela propõe o CAP DE PERNA; o Rust já validou
+        // (whitelist 0.0..0.5 + reason/ttl/confidence no
+        // PolicyHost::call) e aqui apenas APERTA (min com o cap do
+        // motor — a policy nunca afrouxa acima do controle). Sem
+        // host/banda morta/policy ausente = canônico (política é
+        // OPCIONAL — ausência ≠ erro); proposta inválida = recibo
+        // tipado PolicyRejected SEM troca. As pernas efetivas
+        // entram no recibo (proveniência auditável). Feature OFF:
+        // este bloco NÃO EXISTE no binário — bit-idêntico.
+        #[cfg(feature = "federation-policy")]
+        let (offer, payment, status) = if self.sham {
+            // Sham ANTES da policy: o controle desligado nunca
+            // consulta (nem é afetado) — A/A ativo/sham preservado.
+            (offer, payment, TradeStatus::Rejected(CnpReject::ShamControl))
+        } else {
+            match self.policy_trade_cap(from, offer.0) {
+                Err(reason) => (offer, payment, TradeStatus::Rejected(CnpReject::PolicyRejected { reason })),
+                Ok(Some(policy_cap)) => {
+                    let cap = self.trade_rate_cap.min(policy_cap);
+                    let offer = (offer.0, offer.1.min(cap).max(0.0));
+                    let payment = (payment.0, payment.1.min(cap).max(0.0));
+                    let status = self.evaluate(from, to, offer, payment);
+                    (offer, payment, status)
+                }
+                Ok(None) => {
+                    let status = self.evaluate(from, to, offer, payment);
+                    (offer, payment, status)
+                }
+            }
+        };
+        #[cfg(not(feature = "federation-policy"))]
         let status = if self.sham {
             TradeStatus::Rejected(CnpReject::ShamControl)
         } else {
@@ -613,6 +670,88 @@ impl FederationEngine {
         status
     }
 
+    /// 20.6c (feature federation-policy): consulta a policy Lua
+    /// "federation" no ponto de proposta. `Ok(None)` = canônico
+    /// (sem host, banda morta — policy propos `nil` — ou policy
+    /// ausente: política é OPCIONAL, ausência ≠ erro de troca).
+    /// `Ok(Some(cap))` = cap de perna VALIDADO pelo Rust (faixa
+    /// estrutural 0.0..0.5 + reason/ttl/confidence — whitelist).
+    /// `Err(reason)` = proposta INVÁLIDA ⇒ recibo PolicyRejected
+    /// sem troca (Lei 3: razão canônica nunca vazia).
+    #[cfg(feature = "federation-policy")]
+    fn policy_trade_cap(
+        &mut self,
+        from: &str,
+        resource: Resource,
+    ) -> Result<Option<f64>, String> {
+        let Some(host) = self.policy_host.as_mut() else {
+            return Ok(None); // sem host: canônico bit-idêntico
+        };
+        // Sinal da policy (federation.lua): escassez do OFERTANTE
+        // no recurso oferecido (contexto canônico, Option — o host
+        // só passa o que existe, ausência nunca vira zero).
+        let scarcity = self.members.get(from).map(|m| m.scarcity(resource));
+        let ctx = triad_lua::PolicyContext {
+            mean_energy: None,
+            prediction_error: None,
+            active_fraction: scarcity,
+        };
+        match host.call("federation", ctx) {
+            // Banda morta: policy propos nada — canônico.
+            Ok(None) => Ok(None),
+            Ok(Some(vp)) => {
+                if vp.module == "federation" && vp.parameter == "trade_rate" {
+                    tracing::info!(
+                        policy_hash = vp.policy_hash,
+                        reason = %vp.reason,
+                        cap = vp.value,
+                        "policy Lua de federação aplicada (20.6c)"
+                    );
+                    Ok(Some(vp.value))
+                } else {
+                    // Alvo inesperado: o CNP consulta por trade_rate;
+                    // outra proposta é IGNORADA com registro (Rust
+                    // arbitra — a policy não redireciona o alvo).
+                    tracing::warn!(
+                        module = %vp.module,
+                        parameter = %vp.parameter,
+                        "policy retornou alvo inesperado — seguindo canônico"
+                    );
+                    Ok(None)
+                }
+            }
+            // Ausência da policy "federation": política opcional —
+            // segue canônico (nunca erro da troca; ausência ≠ zero).
+            Err(triad_lua::PolicyReject::UnknownTarget { .. }) => {
+                tracing::warn!("policy 'federation' ausente — seguindo canônico");
+                Ok(None)
+            }
+            Err(other) => Err(policy_reject_reason(&other)),
+        }
+    }
+}
+
+/// 20.6c: razão canônica da rejeição de policy (Lei 3: nunca vazia).
+#[cfg(feature = "federation-policy")]
+fn policy_reject_reason(reject: &triad_lua::PolicyReject) -> String {
+    use triad_lua::PolicyReject;
+    match reject {
+        PolicyReject::ValueOutOfRange { parameter, value, min, max } => {
+            format!("value_out_of_range: {parameter}={value} fora de [{min},{max}]")
+        }
+        PolicyReject::EmptyReason => "reason vazio (Lei 3)".to_string(),
+        PolicyReject::ConfidenceOutOfRange { value } => {
+            format!("confidence fora de [0,1]: {value}")
+        }
+        PolicyReject::TtlOutOfRange { value } => format!("ttl fora de 1..=64: {value}"),
+        PolicyReject::ValueNotFinite { value } => format!("valor não finito: {value}"),
+        PolicyReject::UnknownTarget { module, parameter } => {
+            format!("alvo desconhecido: {module}.{parameter}")
+        }
+    }
+}
+
+impl FederationEngine {
     /// 18.4: resolve os outcomes t+1/t+5 vencidos (chamar a cada
     /// tick). MATCH = o budget do receptor no recurso oferecido
     /// permanece >= baseline (efeito persistiu); DRIFT = caiu

@@ -7,9 +7,18 @@ edition = "2021"
 triad-foundation = { path = "../foundation" }
 triad-contracts = { path = "../contracts" }
 tracing = "0.1"
+# 20.6c (ADR ratificado pelo dono): wire CNP⇄PolicyHost — policy
+# Lua PROPOSITORA da federação. OPTIONAL: feature-off por padrão;
+# ligada ⇒ o CNP consulta a policy no ponto de PROPOSTA (need→
+# proposal), Rust valida (whitelist 0.0..0.5 + reason/ttl) e
+# aplica. Lua NUNCA escreve estado (fronteira rust_lua_boundary).
+triad-lua = { path = "../lua", optional = true }
 
 [features]
 # 18.4: porta de transporte REMOTO da federação — DESLIGADA por
 # padrão (só a tipagem existe; sem código remoto).
 default = []
 federation-remote = []
+# 20.6c ratificado: policy Lua propositora — feature-off ⇒ o
+# binário é BIT-IDÊNTICO ao canônico Rust puro.
+federation-policy = ["dep:triad-lua"]
