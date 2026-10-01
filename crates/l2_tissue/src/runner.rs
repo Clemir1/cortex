@@ -266,6 +266,12 @@ impl L2Runner {
         );
 
         // (8) Telemetria (só em Value: ausência não é observação).
+        // SEÇÃO 20.5a (Opção A — documento honesto): os
+        // unwrap_or(0.0) abaixo produzem hash igual para ausência
+        // e zero (o hash não é métrica; o A/A bit-exato não
+        // distingue os dois casos). Known-issue no checklist;
+        // Opção B (hashear a tag do Qualified) é redesign — só
+        // com diretriz do dono.
         let unassigned = order.len().saturating_sub(assigned);
         self.metrics.push_step(
             n_t as f64,

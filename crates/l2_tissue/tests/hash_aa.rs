@@ -5,6 +5,20 @@
 //! runs, o hash NÃO (nunca há wall-clock dentro do hash).
 
 use std::sync::{Arc, Mutex};
+
+/// 20.4: veredito no var/system.log — helper TOLERANTE (IO nunca
+/// reprova; ausência de log não é falha do teste).
+fn log_veredito(msg: &str) {
+    use std::io::Write as _;
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("var/system.log")
+    {
+        let _ = writeln!(f, "[TESTE-HASH-AA] {msg}");
+    }
+}
+
 use triad_foundation as tf;
 use triad_l1_substrate::ClusterModule;
 use triad_l2_tissue::TissueModule;
@@ -45,6 +59,10 @@ fn l1_hash_aa_bit_exato_e_responde_ao_estado() {
     avanca_e_tica(&a, &mut ca, &mut oa);
     avanca_e_tica(&b, &mut cb, &mut ob);
     assert_eq!(a.state_hash(), b.state_hash(), "A/A L1 persiste no passo 2");
+    log_veredito(&format!(
+        "L1 gemeos bit-exatos 2/2 passos; hash genesis={:?} pos_tick={:?}",
+        h0_a, h1_a
+    ));
 }
 
 /// L2: antes do primeiro step a camada não tem observação ⇒ `None`
@@ -66,6 +84,10 @@ fn l2_hash_ausencia_ne_zero_e_aa_pos_step() {
     // Pós-step: hash presente E igual entre gêmeos (bit-exato).
     assert!(ha.is_some(), "pós-step L2 ⇒ hash presente");
     assert_eq!(ha, hb, "A/A L2: mesma seed ⇒ mesmo hash demográfico");
+    log_veredito(&format!(
+        "L2 pre-step=None comprovado; pos-step gemeos bit-exatos 1/1; hash={:?}",
+        ha
+    ));
 }
 
 /// 18.7 (débito fechado) — L4: hash REAL dos contadores de
@@ -91,6 +113,7 @@ fn l4_hash_aa_bit_exato_da_tragetoria() {
             "A/A L4: mesma trajetória ⇒ mesmo hash bit-exato"
         );
     }
+    log_veredito("L4 gemeos bit-exatos 4/4 observacoes (genesis + 3 ticks)");
 }
 
 /// 18.7 (débito fechado) — L5: hash REAL dos contadores de governo;
@@ -115,4 +138,8 @@ fn l5_hash_aa_bit_exato_e_responde_ao_estado() {
         h0, h1,
         "sem fonte o tick conta ausência (no_source_ticks/events) ⇒ hash mudou"
     );
+    log_veredito(&format!(
+        "L5 gemeos bit-exatos 1/1; genesis={:?} pos_tick={:?} (ausencia conta no hash)",
+        h0, h1
+    ));
 }
