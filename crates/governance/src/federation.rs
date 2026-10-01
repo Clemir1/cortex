@@ -1298,3 +1298,135 @@ mod federation_18_4_debitos_tests {
         );
     }
 }
+
+/// 20.6c (ratificado): testes do WIRE CNP⇄PolicyHost — rodam SÓ
+/// sob a feature `federation-policy` (feature-off = binário
+/// canônico bit-idêntico, sem estes caminhos). A policy real da
+/// casa (lua/policies/federation.lua) é determinística: sem
+/// estado, sem tempo, sem aleatoriedade.
+#[cfg(all(test, feature = "federation-policy"))]
+mod federation_policy_tests {
+    use super::*;
+
+    fn budget(pairs: &[(Resource, f64)]) -> std::collections::BTreeMap<Resource, f64> {
+        pairs.iter().copied().collect()
+    }
+
+    /// Boot REAL do host (sandbox + init.lua + policies da casa) a
+    /// partir da raiz do repo — o mesmo que o organismo usa.
+    fn host() -> triad_lua::PolicyHost {
+        let cfg = triad_lua::LuaCfg::default();
+        triad_lua::PolicyHost::boot(&cfg, std::path::Path::new("../../"))
+            .expect("boot do PolicyHost com as policies da casa")
+    }
+
+    /// A policy real é consultada e o cap VALIDADO entra no recibo:
+    /// a perna efetiva é min(cap do motor 0.5, cap da policy) — a
+    /// Lua nunca propõe acima do controle do Rust (whitelist).
+    #[test]
+    fn policy_lua_aplica_cap_validado_na_perna() {
+        let mut f = FederationEngine::with_policy(CnpPolicy::default())
+            .with_policy_host(host());
+        // Escassez conhecida: budget E=0.6 ⇒ escassez 0.4 ⇒ policy
+        // (federation.lua): t=(0.4-0.2)/0.6=1/3 ⇒ rate=0.02+0.48/3.
+        f.add_member("a", budget(&[(Resource::Energy, 0.6)]));
+        f.add_member("b", budget(&[(Resource::Energy, 0.6)]));
+        let cap = f
+            .policy_trade_cap("a", Resource::Energy)
+            .expect("reason tipada")
+            .expect("policy da casa presente");
+        assert!((0.02..=0.5).contains(&cap), "cap validado fora da faixa: {cap}");
+        assert!((cap - 0.18).abs() < 1e-9, "policy determinística: cap={cap}");
+        let _status = f.propose_trade(1, "a", "b", (Resource::Energy, 0.5), (Resource::Energy, 0.5));
+        let rec = f.ledger().last().expect("recibo");
+        let efetiva = 0.5_f64.min(cap);
+        assert!(
+            (rec.offer.1 - efetiva).abs() < 1e-9 && (rec.payment.1 - efetiva).abs() < 1e-9,
+            "pernas efetivas {}/{} != min(cap_motor, cap_policy)={efetiva} (cap={cap})",
+            rec.offer.1,
+            rec.payment.1
+        );
+    }
+
+    /// A/A GÊMEOS com a policy LIGADA: mesma seed ⇒ mesma proposta
+    /// ⇒ mesma trajetória — chain_hash por passo idêntico (a
+    /// policy é determinística; herança da 17.6: sem _ms/run_id).
+    #[test]
+    fn gemeos_aa_com_policy_bit_exato() {
+        let seq = |f: &mut FederationEngine| -> Vec<(TradeStatus, u64)> {
+            let mut s = Vec::new();
+            for tick in 1..=6 {
+                f.propose_trade(tick, "a", "b", (Resource::Energy, 0.4), (Resource::Compute, 0.3));
+                f.propose_trade(tick, "b", "a", (Resource::Compute, 0.2), (Resource::Energy, 0.4));
+                let rec = f.ledger().last().expect("recibo");
+                s.push((rec.status.clone(), rec.chain_hash));
+            }
+            s
+        };
+        let mut f1 = FederationEngine::with_policy(CnpPolicy::default()).with_policy_host(host());
+        let mut f2 = FederationEngine::with_policy(CnpPolicy::default()).with_policy_host(host());
+        for f in [&mut f1, &mut f2] {
+            f.add_member("a", budget(&[(Resource::Energy, 0.6), (Resource::Compute, 0.5)]));
+            f.add_member("b", budget(&[(Resource::Energy, 0.6), (Resource::Compute, 0.5)]));
+        }
+        let (s1, s2) = (seq(&mut f1), seq(&mut f2));
+        assert_eq!(s1, s2, "gêmeos: trajetória divergiu com a policy ligada");
+    }
+
+    /// SHAM + policy: o gate do controle fica ANTES da consulta —
+    /// desligado, NENHUMA troca aplicada e recibo tipado (o sham
+    /// não pode ser afetado pela policy — 18.4/20.6c A/A).
+    #[test]
+    fn sham_com_policy_nunca_age() {
+        let mut f = FederationEngine::with_policy(CnpPolicy::default()).with_policy_host(host());
+        f.add_member("a", budget(&[(Resource::Energy, 0.6)]));
+        f.add_member("b", budget(&[(Resource::Energy, 0.6)]));
+        f.set_sham(true);
+        let status = f.propose_trade(1, "a", "b", (Resource::Energy, 0.3), (Resource::Energy, 0.1));
+        assert_eq!(status, TradeStatus::Rejected(CnpReject::ShamControl));
+        assert!(
+            !f.ledger().iter().any(|r| r.status == TradeStatus::Applied),
+            "sham: nenhuma troca aplicada"
+        );
+    }
+
+    /// SEM host (feature ON, host None): caminho canônico puro — a
+    /// policy ausente nunca fabrica cap, erro ou clamp (caso
+    /// canônico da casa: membros 0.5, pernas 0.1 ⇒ Applied).
+    #[test]
+    fn sem_host_e_canonico_puro() {
+        let mut f = FederationEngine::with_policy(CnpPolicy::default());
+        f.add_member("a", budget(&[(Resource::Energy, 0.5)]));
+        f.add_member("b", budget(&[(Resource::Energy, 0.5)]));
+        assert_eq!(f.policy_trade_cap("a", Resource::Energy), Ok(None));
+        let status = f.propose_trade(1, "a", "b", (Resource::Energy, 0.1), (Resource::Energy, 0.1));
+        assert_eq!(status, TradeStatus::Applied);
+        let rec = f.ledger().last().expect("recibo");
+        assert!(
+            (rec.offer.1 - 0.1).abs() < 1e-9 && (rec.payment.1 - 0.1).abs() < 1e-9,
+            "pernas canônicas sem clamp de policy"
+        );
+    }
+
+    /// Razão canônica da rejeição (Lei 3: nunca vazia) — o recibo
+    /// PolicyRejected carrega a causa estrutural da policy.
+    #[test]
+    fn reason_da_rejeicao_nunca_e_vazia() {
+        let casos = [
+            triad_lua::PolicyReject::ValueOutOfRange {
+                parameter: "trade_rate".into(),
+                value: 9.0,
+                min: 0.0,
+                max: 0.5,
+            },
+            triad_lua::PolicyReject::EmptyReason,
+            triad_lua::PolicyReject::ConfidenceOutOfRange { value: 2.0 },
+            triad_lua::PolicyReject::TtlOutOfRange { value: 99 },
+            triad_lua::PolicyReject::ValueNotFinite { value: f64::NAN },
+        ];
+        for c in &casos {
+            let r = policy_reject_reason(c);
+            assert!(!r.trim().is_empty(), "Lei 3: razão vazia");
+        }
+    }
+}
