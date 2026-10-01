@@ -87,6 +87,81 @@ pub struct LayerBudgetLine {
     pub over_cap: bool,
 }
 
+/// Grupo de cota de uma camada (20.6a — legado cognitive_budget:
+/// L1-L2 25% / L3-L4 35% / L5 25% / overhead 15%).
+fn budget_group(layer: tc::Layer) -> (&'static str, f64) {
+    match layer {
+        tc::Layer::L1 | tc::Layer::L2 => ("L1-L2", 0.25),
+        tc::Layer::L3 | tc::Layer::L4 => ("L3-L4", 0.35),
+        tc::Layer::L5 => ("L5", 0.25),
+        _ => ("overhead", 0.15),
+    }
+}
+
+/// Agregação OBSERVACIONAL do gasto por camada (20.6a): sempre 8
+/// linhas na ordem canônica L1..L5,T,P,B; share = spent/total com
+/// DENOMINADOR (Lei 1); total 0 ⇒ None (ausência ≠ zero, Lei 2);
+/// over_cap é REGISTRO honesto, zero efeito na execução.
+fn layer_budget_lines(
+    latencias: &[(String, u64)],
+    layer_of: &std::collections::BTreeMap<String, tc::Layer>,
+) -> Vec<LayerBudgetLine> {
+    use tc::Layer as L;
+    const CANON: [L; 8] = [
+        L::L1,
+        L::L2,
+        L::L3,
+        L::L4,
+        L::L5,
+        L::Transversal,
+        L::Platform,
+        L::Binding,
+    ];
+    let mut spent = [0u64; 8];
+    for (nome, us) in latencias {
+        if let Some(l) = layer_of.get(nome) {
+            if let Some(i) = CANON.iter().position(|c| c == l) {
+                spent[i] = spent[i].saturating_add(*us);
+            }
+        }
+    }
+    let total: u64 = spent.iter().sum();
+    let total_f = total as f64;
+    let lines: Vec<LayerBudgetLine> = CANON
+        .iter()
+        .enumerate()
+        .map(|(i, l)| {
+            let (group, cap) = budget_group(*l);
+            LayerBudgetLine {
+                layer: l.as_str(),
+                spent_us: spent[i],
+                share: (total > 0).then_some(spent[i] as f64 / total_f),
+                group,
+                group_cap: cap,
+                group_spent_us: 0,
+                group_share: None,
+                over_cap: false,
+            }
+        })
+        .collect();
+    // 2ª passada: veredito por grupo (cota compartilhada).
+    let mut groups: std::collections::BTreeMap<&'static str, u64> = Default::default();
+    for ln in &lines {
+        *groups.entry(ln.group).or_insert(0) += ln.spent_us;
+    }
+    let mut out = lines;
+    for ln in out.iter_mut() {
+        let g = groups[ln.group];
+        ln.group_spent_us = g;
+        ln.group_share = (total > 0).then_some(g as f64 / total_f);
+        ln.over_cap = match ln.group_share {
+            Some(s) => s > ln.group_cap + 1e-9,
+            None => false,
+        };
+    }
+    out
+}
+
 /// Escalonador que executa módulos cognitivos e publica eventos no barramento.
 pub struct Scheduler {
     pub modules: Vec<Arc<dyn crate::module::CognitiveModule>>,
@@ -334,7 +409,14 @@ impl Scheduler {
                 }
             }
         }
+        // 20.6a — mapa nome→camada para o budget observacional.
+        let layer_of: std::collections::BTreeMap<String, tc::Layer> = self
+            .modules
+            .iter()
+            .map(|m| (m.descriptor().name.clone(), m.descriptor().layer))
+            .collect();
         self.clock.advance();
+        let layer_budget = layer_budget_lines(&latencias, &layer_of);
         StepReport {
             step: self.clock.step,
             tick: self.clock.tick,
@@ -346,6 +428,7 @@ impl Scheduler {
             module_latency: latencias,
             state_hashes: hashes,
             throttled: throttled_now,
+            layer_budget,
         }
     }
 
@@ -568,5 +651,83 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(run(), run(), "mesma política ⇒ mesmos saltos (A/A)");
+    }
+
+    /// 20.6a — agregação por camada: 8 linhas canônicas, gasto
+    /// debitado na camada dona, shares COM denominador (Lei 1) e
+    /// veredito de grupo (L3-L4 sobre 0.35 ⇒ over_cap registro).
+    #[test]
+    fn budget_por_camada_linhas_canonicas_e_denominador() {
+        let mut layer_of = std::collections::BTreeMap::new();
+        layer_of.insert("a".to_string(), tc::Layer::L1);
+        layer_of.insert("b".to_string(), tc::Layer::L3);
+        let lat = vec![
+            ("a".to_string(), 100u64),
+            ("b".to_string(), 300u64),
+        ];
+        let linhas = layer_budget_lines(&lat, &layer_of);
+        assert_eq!(linhas.len(), 8, "ordem canônica L1..L5,T,P,B");
+        assert_eq!(
+            linhas.iter().map(|l| l.layer).collect::<Vec<_>>(),
+            vec!["L1", "L2", "L3", "L4", "L5", "T", "P", "B"]
+        );
+        let l1 = &linhas[0];
+        assert_eq!(l1.spent_us, 100, "débito na camada dona");
+        assert_eq!(l1.share, Some(0.25), "share 100/400 com denominador");
+        assert_eq!(l1.group, "L1-L2");
+        assert_eq!(l1.group_cap, 0.25);
+        assert!(!l1.over_cap, "grupo L1-L2 em 25% ⇒ dentro da cota");
+        let l3 = &linhas[2];
+        assert_eq!(l3.spent_us, 300);
+        assert_eq!(l3.group, "L3-L4");
+        assert_eq!(l3.group_cap, 0.35);
+        assert_eq!(l3.group_spent_us, 300);
+        assert!(l3.over_cap, "75% > 35% ⇒ over_cap REGISTRADO (sem efeito)");
+        let soma: f64 = linhas.iter().filter_map(|l| l.share).sum();
+        assert!((soma - 1.0).abs() < 1e-12, "shares somam 1.0");
+    }
+
+    /// 20.6a — Lei 2: SEM gasto no passo ⇒ share None (ausência
+    /// ≠ zero), nunca Some(0.0) fabricado; over_cap sempre false.
+    #[test]
+    fn budget_total_zero_e_ausencia_nunca_zero() {
+        let mut layer_of = std::collections::BTreeMap::new();
+        layer_of.insert("a".to_string(), tc::Layer::L5);
+        let linhas = layer_budget_lines(&[], &layer_of);
+        assert_eq!(linhas.len(), 8);
+        for l in &linhas {
+            assert_eq!(l.share, None, "sem amostra ⇒ NO_DATA (nunca 0.0)");
+            assert_eq!(l.group_share, None);
+            assert!(!l.over_cap);
+        }
+    }
+
+    /// 20.6a — A/A: o budget é OBSERVACIONAL; gêmeos mesma seed ⇒
+    /// state_hashes IDÊNTICOS passo a passo (o campo novo nunca
+    /// toca a trajetória) e a estrutura de linhas é igual.
+    #[test]
+    fn budget_observacional_nao_altera_trajetoria_aa() {
+        let run = || {
+            let mut s =
+                Scheduler::new(mocks(2), StepBudget::new(16), crate::event_bus::EventBus::new(16));
+            (0..5)
+                .map(|_| {
+                    let r = s.step();
+                    (
+                        r.state_hashes.clone(),
+                        r.layer_budget.iter().map(|l| l.layer).collect::<Vec<_>>(),
+                        r.layer_budget.iter().map(|l| l.group_cap).collect::<Vec<_>>(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let (a, b) = (run(), run());
+        assert_eq!(a, b, "hashes idênticos + mesma estrutura (A/A)");
+        // Todos os mocks são L1: o gasto cai no grupo L1-L2.
+        let mut s = Scheduler::new(mocks(2), StepBudget::new(16), crate::event_bus::EventBus::new(16));
+        let r = s.step();
+        let l1 = &r.layer_budget[0];
+        assert!(l1.spent_us > 0, "gasto real medido na camada dona");
+        assert_eq!(l1.group, "L1-L2");
     }
 }
