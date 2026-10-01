@@ -13,4 +13,12 @@ triad-l2-tissue = { path = "../l2_tissue" }
 triad-l3-local = { path = "../l3_local" }
 triad-l4-global = { path = "../l4_global" }
 triad-l5-meta = { path = "../l5_metacognition" }
+triad-development = { path = "../development" }
+triad-learning = { path = "../learning" }
+triad-persistence = { path = "../persistence" }
+triad-cybernetics = { path = "../cybernetics" }
+triad-governance = { path = "../governance" }
+triad-telemetry = { path = "../telemetry" }
+triad-lua = { path = "../lua" }
+triad-compute = { path = "../compute" }
 triad-observability = { path = "../observability" }

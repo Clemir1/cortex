@@ -104,6 +104,22 @@ fn cadeia_real_declara_descritores_canonicos_completos() {
     assert_eq!(d.orders_label(), "O5");
     assert_eq!(d.evidence_requirement.as_str(), "E3");
     assert_eq!(pendencias(d), "nenhuma");
+
+    // 20.4: censo no var/system.log — helper TOLERANTE (IO nunca
+    // reprova). Censo com denominador: 6 módulos, 6 canônicos.
+    {
+        use std::io::Write as _;
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("var/system.log")
+        {
+            let _ = writeln!(
+                f,
+                "[TESTE-INVENTARIO-DESCRITORES] censo 6/6 modulos canonicos (l1,l2,l3,l4,l5,development); pendencias=0"
+            );
+        }
+    }
 }
 
 /// O inventário é REPRODUZÍVEL (A/A): a linha de resumo depende só

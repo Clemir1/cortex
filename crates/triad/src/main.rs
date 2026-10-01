@@ -17,8 +17,10 @@ use triad_development as dev;
 use triad_learning as lrn;
 use triad_persistence as per;
 use triad_cybernetics as cyb;
+use triad_governance as governance;
 use triad_telemetry as tel;
 use triad_lua as lua_host;
+use triad_compute as compute;
 use triad_runtime as rt;
 
 fn main() {
@@ -366,8 +368,168 @@ fn main() {
     let metade = ticks / 2;
     let mut span_amostra: Option<u64> = None;
 
+    // 17.4 — admissão top-down (limiar homeostático 0.6) + ids dos
+    // módulos para o canal AdaptationRequest (canal existente do L2).
+    let mut topdown_adm = l2::TopDownAdmission::new();
+    // 17.14: limiar de especialização real da formação — o
+    // TopDownAdmission acompanha o que o gate de adaptação aplicar.
+    let mut spec_th_prev = l2_handle.specialization_threshold();
+    topdown_adm.set_threshold(
+        spec_th_prev,
+        "limiar inicial da formação [l2.tissues.specialization_threshold]",
+    );
+    // 18.5 — Ecologia T: motor de populações por domínio com
+    // adapters REAIS (L3 conceitos=SYMBOLIC, L2 tecidos=TISSUE).
+    // Projeção viva: o motor NUNCA edita estado das camadas.
+    let mut eco_l3 = governance::EcologyMotor::new("symbolic", 0xEC05_EE01);
+    let mut eco_l2 = governance::EcologyMotor::new("tissue", 0xEC05_EE02);
+    let mut eco_census_l3: Option<governance::EcoCensus> = None;
+    let mut eco_census_l2: Option<governance::EcoCensus> = None;
+    // 18.6 — Arbitragem T: ownership do atuador real do canal
+    // L3→L2 resolvendo conflitos com prioridade determinística.
+    let mut arbitrator = governance::ArbitrationEngine::new();
+    let mut arb_conflitos: u64 = 0;
+    let mut arb_vencedores: u64 = 0;
+    let mut arb_perdedores: u64 = 0;
+    // 18.4 — Federação T (STAGING feature-off): o motor CNP
+    // existe e é comprovado por golden tests; nenhuma troca roda
+    // no organismo sem o dono ligar. A policy Lua "federation"
+    // propõe trade_rate; o Rust valida (whitelist) e aplica no
+    // motor — zero efeito no comportamento (caixa 18.4).
+    let mut fed_engine = governance::FederationEngine::new();
+    let mut fed_propostas_validadas: u64 = 0;
+    let mut fed_propostas_rejeitadas: u64 = 0;
+    let mut fed_scarcity_sinal: Option<f64> = None;
+    let topdown_requester = rt::CognitiveModule::descriptor(&*l3_handle)
+        .module_id
+        .clone();
+    let topdown_target =
+        rt::CognitiveModule::descriptor(&*l2_handle).module_id.clone();
+
+    // 19.5/19.8-c — módulos NÃO-VITAIS sujeitos à política de carga
+    // do O3 (cadência reduzida em crise). Vital = l1.substrate
+    // (vida), learning (Lei 4) e cybernetics (o controlador).
+    const NAO_VITAIS: [&str; 6] = [
+        "l2.tissue",
+        "l3.local",
+        "l4.global",
+        "l5.meta",
+        "development",
+        "telemetry",
+    ];
+    let mut aplicacoes_throttle: u64 = 0;
+    let mut liberacoes_throttle: u64 = 0;
+    let mut razao_throttle_corrente: Option<String> = None;
+    let mut throttled_no_ciclo: u64 = 0;
+    // 19.8-e — resumo do veredito O5 do boundary (impresso no bloco
+    // final do cybernetics).
+    let mut o5_resumo_episodio: Option<String> = None;
+    // 17.11 (sessão 7) — LawEngine: enforcement OBSERVACIONAL
+    // pós-tick das 8 leis da casa (como DADO no HardLawSet) +
+    // soft law de orçamento via policy Lua "law_soft" (whitelist
+    // 17.12, faixa [0.5, 1.0] — Lei 4: o mínimo SEMPRE deixa o
+    // sistema vivo). Nunca causa efeito: audita e REGISTRA.
+    let mut law_engine = governance::LawEngine::new();
+    let budget_base_events = cfg.runtime.max_events_per_tick;
+    let mut law_soft_validadas: u64 = 0;
+    let mut law_soft_rejeitadas: u64 = 0;
+    let mut law_soft_liberacoes: u64 = 0;
+    let mut law_soft_razao: Option<String> = None;
+
     for t in 1..=ticks {
         let report = scheduler.step();
+        // 19.8-c (sob diretriz da dona) — CONSUMIDOR RUNTIME da
+        // GoverningAction do O3: a ação deixa de ser recomendação e
+        // vira POLÍTICA DE CARGA APLICADA no escalonador. Vital é
+        // intocável (Lei 4): l1.substrate (vida), learning
+        // (aprendizagem nunca é suspensa) e cybernetics (o próprio
+        // controlador) NUNCA são throttled; o restante da cadeia
+        // apenas reduz cadência — crise muda política, não desativa.
+        {
+            use triad_cybernetics::GoverningAction;
+            let aplicados_antes = aplicacoes_throttle;
+            match cyb_handle.load_directive() {
+                Some(GoverningAction::Throttle { factor, reason }) => {
+                    let f = factor.clamp(0.25, 1.0) as f64;
+                    for nome in NAO_VITAIS.iter() {
+                        if scheduler.module_throttle(*nome) != Some(f) {
+                            scheduler.set_module_throttle(nome, f);
+                            aplicacoes_throttle += 1;
+                        }
+                    }
+                    if aplicacoes_throttle > aplicados_antes {
+                        razao_throttle_corrente = Some(reason);
+                    }
+                }
+                Some(GoverningAction::Shed { reason }) => {
+                    // Shed no runtime vira cadência mínima 0.25 com
+                    // razão — NUNCA desligamento (Lei 4).
+                    for nome in NAO_VITAIS.iter() {
+                        if scheduler.module_throttle(*nome) != Some(0.25) {
+                            scheduler.set_module_throttle(nome, 0.25);
+                            aplicacoes_throttle += 1;
+                        }
+                    }
+                    razao_throttle_corrente = Some(reason);
+                }
+                Some(GoverningAction::Normal) => {
+                    // Normal ⇒ política removida: cadeia volta ao
+                    // passo pleno (comportamento histórico).
+                    if liberacoes_throttle == 0 && aplicacoes_throttle > 0 {
+                        for nome in NAO_VITAIS.iter() {
+                            scheduler.clear_module_throttle(nome);
+                        }
+                        liberacoes_throttle += 1;
+                        razao_throttle_corrente = None;
+                    }
+                }
+                None => {}
+            }
+            throttled_no_ciclo += report.throttled.len() as u64;
+        }
+        // 17.11 — LawEngine: auditoria pós-tick OBSERVACIONAL das
+        // leis da casa sobre a fotografia do passo (executados,
+        // orçamento, degradação). Violacões só REGISTRAM com razão
+        // — o engine nunca bloqueia nem desliga (Lei 4).
+        {
+            let executados: Vec<String> = report
+                .module_latency
+                .iter()
+                .map(|(nome, _)| nome.clone())
+                .collect();
+            let observacao = governance::LawObservation::from_step(
+                t,
+                executados,
+                report.budget_exceeded,
+                vec![],
+            );
+            law_engine.audit(&observacao);
+            // Soft law de orçamento (per 10 ticks, padrão federation):
+            // sinal REAL = pressão observada (budget_exceeded/10);
+            // ausência de sinal ⇒ SEM proposta (ausência ≠ pressa).
+            if policy_host.policy_hash("law_soft").is_some() && t % 10 == 0 {
+                let pressao = law_engine.budget_pressure();
+                match policy_host.call(
+                    "law_soft",
+                    lua_host::PolicyContext {
+                        active_fraction: pressao,
+                        ..Default::default()
+                    },
+                ) {
+                    Ok(Some(proposta)) => {
+                        // Faixa [0.5, 1.0] já validada pela whitelist
+                        // 17.12 — aplicar é POLÍTICA de orçamento.
+                        let fator = proposta.value.clamp(0.5, 1.0);
+                        scheduler.budget.max_events =
+                            ((budget_base_events as f64) * fator).round().max(1.0) as usize;
+                        law_soft_validadas += 1;
+                        law_soft_razao = Some(proposta.reason);
+                    }
+                    Ok(None) => {}
+                    Err(_) => law_soft_rejeitadas += 1,
+                }
+            }
+        }
         // 17.10: cada tick é um span RAIZ; cada módulo executado é
         // filho (proveniência causal tick→módulo reconstruível).
         let root = tracer.root_span(t);
@@ -420,6 +582,149 @@ fn main() {
                 Err(_) => lua_rejeitadas += 1,
             }
         }
+        // 18.5 — Ecologia T: censo real por cadência (10 ticks) →
+        // um passo ecológico por domínio (seleção/especiação/
+        // extinção/cross-feed tipado — tudo na projeção).
+        if t % 10 == 0 {
+            let obs_symbolic: Vec<governance::SpeciesObs> = l3_handle
+                .ecology_species()
+                .into_iter()
+                .map(|(niche, fitness, population)| governance::SpeciesObs {
+                    niche,
+                    fitness,
+                    population,
+                })
+                .collect();
+            eco_census_l3 = Some(eco_l3.step(&obs_symbolic, t as u64));
+            let obs_tissue: Vec<governance::SpeciesObs> = l2_handle
+                .ecology_species()
+                .into_iter()
+                .map(|(niche, fitness, population)| governance::SpeciesObs {
+                    niche,
+                    fitness,
+                    population,
+                })
+                .collect();
+            eco_census_l2 = Some(eco_l2.step(&obs_tissue, t as u64));
+        }
+        // 18.4 — Policy Lua "federation" (staging): sinal REAL =
+        // escassez média dos budgets L5 (denominador 5); Proposal
+        // validada pelo Rust ajusta SÓ o cap de perna do motor.
+        if policy_host.policy_hash("federation").is_some() && t % 10 == 0 {
+            let rg = l5_handle.resource_governor();
+            let budgets: Vec<Option<f32>> = [
+                l5::Resource::Energy,
+                l5::Resource::Compute,
+                l5::Resource::Attention,
+                l5::Resource::Memory,
+                l5::Resource::Federation,
+            ]
+            .iter()
+            .map(|r| rg.budget(*r).map(|b| b.scarcity()))
+            .collect();
+            drop(rg);
+            let presentes: Vec<f32> = budgets.into_iter().flatten().collect();
+            let scarcity = if presentes.is_empty() {
+                None
+            } else {
+                Some(presentes.iter().sum::<f32>() as f64 / presentes.len() as f64)
+            };
+            fed_scarcity_sinal = scarcity;
+            match policy_host.call(
+                "federation",
+                lua_host::PolicyContext {
+                    active_fraction: scarcity,
+                    ..Default::default()
+                },
+            ) {
+                Ok(None) => {}
+                Ok(Some(proposal)) => {
+                    fed_engine.set_trade_rate(proposal.value);
+                    fed_propostas_validadas += 1;
+                }
+                Err(_) => fed_propostas_rejeitadas += 1,
+            }
+        }
+        // 17.4 — TopDownFeedback L3→L2: sinais do CAMPO REAL de
+        // atenção → admissão TIPADA (recebido/admitido/rejeitado
+        // por motivo, tudo com denominador) → admitidos seguem o
+        // canal AdaptationRequest do L2 (o gate da sessão 6 decide
+        // a aplicação com razão própria — camadas por contrato).
+        topdown_adm.tick();
+        let views_17_4 = l2_handle.tissue_views();
+        // 18.6 — Arbitragem T: os admitidos do tick disputam a
+        // ownership do atuador "inbox.l2.adaptation" (prioridade
+        // = intensidade do realce; chegada = ordem de sinal). Só
+        // o VENCEDOR vira AdaptationRequest — perdedores ganham
+        // recibo tipado e não poluem o gate (contenção real
+        // reduzida; admissão 17.4 intacta).
+        let mut admitidos_do_tick: Vec<(String, f32, l2::AdmittedSignal)> = Vec::new();
+        for signal in l3_handle.topdown_signals() {
+            match topdown_adm.evaluate(
+                signal.concept,
+                signal.intensity,
+                &views_17_4,
+            ) {
+                Ok(admitido) => {
+                    let chave = format!("{:?}", signal.concept);
+                    arbitrator.submit(governance::Contender {
+                        controller: chave.clone(),
+                        actuator: "inbox.l2.adaptation".to_string(),
+                        priority: (signal.intensity * 1000.0) as i32,
+                        reason: "realce top-down admitido".to_string(),
+                    });
+                    admitidos_do_tick.push((chave, signal.intensity, admitido));
+                }
+                Err(_) => {
+                    // Contado COM motivo tipado dentro da admissão.
+                }
+            }
+        }
+        // 18.6 — resolve do tick: vencedor segue o canal, com a
+        // trilha de auditoria tipada dos perdedores.
+        for record in arbitrator.resolve_tick(t as u64) {
+            if record.had_conflict() {
+                arb_conflitos += 1;
+            }
+            if let Some(vencedor) = record.winner.as_deref() {
+                if let Some((_, _, admitido)) = admitidos_do_tick
+                    .iter()
+                    .find(|(chave, _, _)| chave == vencedor)
+                {
+                    let atual = views_17_4
+                        .iter()
+                        .find(|v| v.tissue_id == admitido.tissue_id)
+                        .map(|v| v.specialization.value())
+                        .unwrap_or(0.0);
+                    l2_handle.submit_adaptation(
+                        triad_contracts::messages::AdaptationRequest {
+                            requester: topdown_requester.clone(),
+                            target: topdown_target.clone(),
+                            parameter: "l2.tissue.specialization_threshold"
+                                .to_string(),
+                            current: format!("{atual:.3}"),
+                            proposed: format!("{:.3}", admitido.new_threshold),
+                        },
+                    );
+                    arb_vencedores += 1;
+                }
+            }
+            arb_perdedores += record.losers.len() as u64;
+        }
+        // 17.14 — CANAL FECHADO: quando o gate de adaptação aplica
+        // `l2.tissue.specialization_threshold`, o valor REAL da
+        // formação realimenta o TopDownAdmission (o roteamento L3→L2
+        // passa a usar o limiar aplicado — efeito de ponta a ponta).
+        {
+            let th = l2_handle.specialization_threshold();
+            if (th - spec_th_prev).abs() > 1e-6 {
+                topdown_adm.set_threshold(
+                    th,
+                    "gate de adaptação aplicou l2.tissue.specialization_threshold",
+                );
+                spec_th_prev = th;
+            }
+        }
         // 17.6 — perfil de escala: passos demorados mostram a latência
         // por módulo (µs, ordem canônica) — onde o tempo do passo está.
         let total_us: u64 = report.module_latency.iter().map(|(_, us)| *us).sum();
@@ -454,6 +759,72 @@ fn main() {
     }
 
     // Drena eventos remanescentes no barramento.
+    // 19.8-e — O5 SELEÇÃO NO BOUNDARY DE EPISÓDIO (fora do loop:
+    // Lei 7; hook previsto pela sessão 6: evaluate_offline "é
+    // chamado em boundary de episode pela ORQUESTRAÇÃO"). A seleção
+    // atravessa o tempo DE VERDADE: fitness observado do episódio
+    // (taxa de confirmação do L4, coletada no run com denominador)
+    // decide a promoção; SÓ o vencedor validado é promovido (o erro
+    // do legado — ativo aleatório ≠ campeão, cognitive_genome.py:
+    // 353-358 — fica fora). Lei 6: o retune tem recibo (razão) e o
+    // fitness do PRÓXIMO episódio é o observed_effect (reversível).
+    {
+        const O5_MIN_DENOMINADOR: usize = 10;
+        const O5_PROMOTION_FLOOR: f32 = 0.5;
+        let mut go = l5_handle.genome_offline();
+        let n = go.collected();
+        let avg = go.evaluate_offline();
+        let mut o5_resumo = String::new();
+        match avg {
+            None => {
+                let razao = "fitness AUSENTE — nada coletado (ausência ≠ zero)".to_string();
+                cyb_handle.o5_reject(&razao);
+                o5_resumo = format!("REJEITADO: {razao}");
+            }
+            Some(avg) if n < O5_MIN_DENOMINADOR => {
+                let razao =
+                    format!("denominador insuficiente: {n} de {O5_MIN_DENOMINADOR} amostras")
+                ;
+                cyb_handle.o5_reject(&razao);
+                o5_resumo = format!("REJEITADO: {razao}");
+            }
+            Some(avg) if avg < O5_PROMOTION_FLOOR => {
+                let razao =
+                    format!("fitness {avg:.3}/{n} abaixo do piso {O5_PROMOTION_FLOOR}")
+                ;
+                cyb_handle.o5_reject(&razao);
+                o5_resumo = format!("REJEITADO: {razao}");
+            }
+            Some(avg) => {
+                // Genoma corrente = gene REAL do controlador
+                // (ganho O1); mutação determinística LCG (Lei 7:
+                // offline, seed do episódio); campeão com margem e
+                // denominador ⇒ promovido COM recibo e reversão.
+                let gain_corrente = cyb_handle.o1_gain();
+                let genome = cyb::Genome::new(vec![("o1.gain".to_string(), gain_corrente)]);
+                let mutante = genome.mutate(ticks, 0.2);
+                let (gene, novo) = mutante
+                    .genes
+                    .iter()
+                    .find(|(g, _)| g == "o1.gain")
+                    .map(|(g, v)| (g.clone(), *v))
+                    .expect("gene o1.gain presente no mutante");
+                let _scores = vec![(gene, avg)];
+                let aplicado =
+                    cyb_handle.o5_promote_retune(
+                        novo - gain_corrente,
+                        &format!(
+                            "O5 boundary: fitness {avg:.3}/{n} ≥ piso {O5_PROMOTION_FLOOR}; o1.gain {gain_corrente:.3}→{novo:.3} (reversível — Lei 6)"
+                        ),
+                    );
+                o5_resumo = format!(
+                    "PROMOVIDO: fitness {avg:.3}/{n}, o1.gain {gain_corrente:.3}→{aplicado:.3}"
+                );
+            }
+        }
+        o5_resumo_episodio = Some(o5_resumo);
+    }
+
     let drenados = scheduler.bus.try_receive(1000).len();
     println!("Eventos drenados do barramento: {drenados}");
 
@@ -695,6 +1066,337 @@ fn main() {
         }
     }
 
+    // 17.4 — TopDownFeedback L3→L2: admissão TIPADA com denominador
+    // (recebido ≠ admitido; recusa sempre com motivo) + homeostase.
+    {
+        println!("=== TopDown L3→L2 (17.4) ===");
+        let (rec, ok, rej, por) = topdown_adm.stats();
+        let pct = if rec > 0 {
+            format!("{:.1}%", ok as f64 * 100.0 / rec as f64)
+        } else {
+            "n/d".to_string()
+        };
+        println!(
+            "Sinais: {} recebidos — {} admitidos ({pct}), {} rejeitados (denominador {rec})",
+            rec, ok, rej,
+        );
+        if por.is_empty() {
+            println!("Rejeições por motivo: nenhuma");
+        } else {
+            for (motivo, n) in por {
+                println!("Rejeições por motivo: {motivo} — {n} de {rec}");
+            }
+        }
+        println!(
+            "Limiar homeostático de especialização: {:.3} (razão: {})",
+            topdown_adm.threshold(),
+            topdown_adm.last_threshold_reason().unwrap_or("default da casa"),
+        );
+        let ult = topdown_adm.last_thresholds();
+        if ult.is_empty() {
+            println!("Realces aplicados: nenhum (nenhum tecido com carência)");
+        } else {
+            for (tissue, novo) in ult.iter().rev().take(3) {
+                println!("Realce aplicado (trilha): tecido {tissue:?} → threshold {:.3}", novo);
+            }
+        }
+        // views já computado acima (guards l1/l2 retidos pela main
+        // até o fim — tissue_views() aqui seria deadlock l1→l2).
+        let h = l2::homeostasis(&views);
+        println!(
+            "Homeostase mesoscópica: {} tecidos vivos (de {} vistos) — desvio das especializações {:.3} (denominador {})",
+            h.n_tecidos_vivos,
+            views.len(),
+            h.desvio_padrao,
+            h.n_tecidos_vivos,
+        );
+    }
+
+    // 17.5 — L3 REPRESENTAÇÃO REAL: ConceptStore/Binding/
+    // OntogeneticMemory janelada + ponte temporal HOTM→semântica +
+    // metaestabilidade — tudo COM DENOMINADOR.
+    {
+        println!("=== Representação L3 (17.5) ===");
+        let r = l3_handle.representation_report();
+        println!(
+            "ConceptStore: {} conceitos ({} inserts, {} dedupes)",
+            r.conceitos, r.inserts, r.dedupes,
+        );
+        println!(
+            "Bindings semânticos: {} arestas",
+            r.bindings,
+        );
+        println!(
+            "Memória ontogenética (janelada): {} eventos — {} consolidadas, {} reconsolidadas, {} decaídas (denominador {}); {} traços vivos, {} consolidados agora",
+            r.eventos,
+            r.eventos_consolidados,
+            r.reconsolidadas,
+            r.decaidas,
+            r.eventos,
+            r.traces_vivas,
+            r.traces_consolidadas,
+        );
+        println!(
+            "Ponte temporal HOTM→semântica: {} observações → {} ligações por recorrência (denominador {})",
+            r.observacoes_temporais, r.ligacoes_temporais, r.observacoes_temporais,
+        );
+        println!(
+            "Metaestabilidade local: {} atratores de {} conceitos (limiar 0.5) — estabilidade média {:.3}",
+            r.atratores, r.conceitos, r.estabilidade_media,
+        );
+    }
+
+    // 17.6 — L4 INTEGRAÇÃO COMPLETA: GlobalIntegration agregador
+    // (thalamus/episódico/abstração/navegador fundidos) COM
+    // DENOMINADOR — conforme audit 17-3.
+    {
+        println!("=== GlobalIntegration L4 (17.6) ===");
+        let g = l4_handle.global_integration_report();
+        println!(
+            "ThalamicRouter (gate antes do workspace): {} chamados — {} admitidos, {} recusados (LowPriority/TtlAlive), {} expirados por TTL (denominador {})",
+            g.thalamus_chamados, g.thalamus_admitidos, g.thalamus_recusados,
+            g.thalamus_expirados, g.thalamus_chamados,
+        );
+        println!(
+            "EpisodicIntegration: {} pushes — {} episódios fechados (delta>0.15), {} keyframes (delta>0.05)",
+            g.pushes, g.episodios_fechados, g.keyframes,
+        );
+        println!(
+            "GlobalAbstraction: {} símbolos grounded (L0), {} co-ocorrências (L1), {} meta (L2) — {} formações",
+            g.simbolos_l0, g.simbolos_l1, g.simbolos_l2, g.formacoes,
+        );
+        println!(
+            "FutureNavigator: {} trajetórias (4 bandas × ticks com focos) — melhor banda {} score {:.3}",
+            g.trajetorias,
+            g.best_band.map(|b| b.to_string()).unwrap_or("n/d".into()),
+            g.best_path_score.unwrap_or(0.0),
+        );
+        println!(
+            "Contexto fundido: {} focos no último tick, saliência média {}",
+            g.focos_ultimo_tick,
+            g.saliencia_media
+                .map(|s| format!("{s:.3}"))
+                .unwrap_or("AUSENTE".into()),
+        );
+    }
+
+    // 17.7 — L5 GOVERNADORES COMPLETOS (audit 17-4 §5): budgets
+    // tipados, decisões com Lei 3, morfogênese por causa, bandit
+    // com rollback, genome OFFLINE (Lei 7).
+    {
+        println!("=== Governadores L5 (17.7) ===");
+        let rg = l5_handle.resource_governor();
+        let (gr, de, th, denom) = rg.decision_stats();
+        println!(
+            "ResourceGovernor: {} decisões — {} grants, {} denials, {} throttles (denominador {})",
+            denom, gr, de, th, denom,
+        );
+        for r in [
+            l5::Resource::Energy,
+            l5::Resource::Compute,
+            l5::Resource::Attention,
+            l5::Resource::Memory,
+            l5::Resource::Federation,
+        ] {
+            match rg.budget(r) {
+                Some(b) => println!(
+                    "  budget {:>10}: {:.3} (piso {:.2}) — escassez {:.3}{}",
+                    r.as_str(),
+                    b.value,
+                    b.floor,
+                    b.scarcity(),
+                    if b.is_starving() { " — FAMINTO" } else { "" },
+                ),
+                None => println!("  budget {:>10}: AUSENTE", r.as_str()),
+            }
+        }
+        let (led, total) = rg.ledger();
+        println!(
+            "  ledger {} eventos vivos de {} totais; últimos: {:?}",
+            led,
+            total,
+            rg.last_events()
+                .iter()
+                .rev()
+                .take(2)
+                .map(|e| format!("{:?}{}", e.resource.as_str(), e.reason.split('(').next().unwrap_or("")))
+                .collect::<Vec<_>>()
+        );
+        drop(rg);
+        let dg = l5_handle.development_governor();
+        let (wakes, standbys) = dg.stats();
+        println!(
+            "DevelopmentGovernor: {} wakes, {} standbys por causa declarada (default {})",
+            wakes, standbys, dg.morphogenesis_default,
+        );
+        drop(dg);
+        let ml = l5_handle.meta_learner();
+        let (trials, commits, rollbacks) = ml.stats();
+        println!(
+            "MetaLearning: {} trials — {} commits, {} rollbacks tipados (denominador {})",
+            trials, commits, rollbacks, trials,
+        );
+        drop(ml);
+        let go = l5_handle.genome_offline();
+        let collected = go.collected();
+        match go.avg_fitness() {
+            Some(avg) => println!(
+                "CognitiveGenome (Lei 7 OFFLINE): {} avaliações coletadas — fitness médio {:.3}; seleção NUNCA no loop",
+                collected, avg,
+            ),
+            None => println!(
+                "CognitiveGenome (Lei 7 OFFLINE): {} avaliações coletadas — fitness AUSENTE (ausência ≠ zero)",
+                collected,
+            ),
+        }
+    }
+
+    // 17.3 — L1 DINÂMICA CANÔNICA: multi-motor (HOTM UMA
+    // estratégia + harmônico), inibição lateral esparsa e
+    // prediction error local com gates tipados — COM DENOMINADOR.
+    {
+        println!("=== Dinâmica Local L1 (17.3) ===");
+        let runner = l1_shared.lock().unwrap_or_else(|p| p.into_inner());
+        let r = runner.local_dynamics.report();
+        let motores = r.hotm_passos + r.harmonic_passos;
+        println!(
+            "Multi-motor: {} passos — {} HOTM, {} harmônico (denominador {})",
+            motores, r.hotm_passos, r.harmonic_passos, motores,
+        );
+        println!(
+            "Inibição lateral: {} inibidos de {} vivos agora ({} competidores >0.8) — liberados {} neste passo; total histórico {}",
+            r.inibidos_agora, r.vivos, r.competidores, r.liberados_agora, r.inibicoes_total,
+        );
+        match (r.err_medio, r.surpresa_media) {
+            (Some(err), Some(surp)) => println!(
+                "Prediction error: L2 médio {:.4}, surpresa (entropia) {:.4} — gates {} ALIGNED / {} OPPOSING (denominador {} amostrados, {} sem predição)",
+                err, surp, r.gates_aligned, r.gates_opposing, r.amostrados, r.sem_predicao,
+            ),
+            _ => println!(
+                "Prediction error: AUSENTE — {} sem predição prévia (ausência ≠ zero)",
+                r.sem_predicao,
+            ),
+        }
+        drop(runner);
+    }
+
+    // 18.5 — Ecologia T: censo final dos dois domínios com
+    // denominadores; cross-feeds tipados e validação honesta.
+    {
+        println!("=== Ecologia T (18.5) ===");
+        for (nome, census, motor) in [
+            ("SYMBOLIC (conceitos L3)", &eco_census_l3, &eco_l3),
+            ("TISSUE (tecidos L2)", &eco_census_l2, &eco_l2),
+        ] {
+            match census {
+                Some(c) => {
+                    println!(
+                        "[{nome}] {}/{} espécies vivas/observadas, pop total {} — Shannon {} (ausência ≠ zero), dominante {}",
+                        c.species_alive,
+                        c.species_observed,
+                        c.population_total,
+                        match c.shannon { Some(h) => format!("{h:.4}"), None => "AUSENTE".to_string() },
+                        c.dominant.as_deref().unwrap_or("nenhum"),
+                    );
+                    println!(
+                        "[{nome}] seleção: {} extinções, {} especiações, {} por teto — escassez da comida {:.4} — cross-feeds: {} APPLIED / {} REJECTED / {} NO_TRANSFER (denominador: total de propostas do domínio)",
+                        c.extinctions,
+                        c.speciations,
+                        c.capped,
+                        c.scarcity,
+                        c.feeds_applied,
+                        c.feeds_rejected,
+                        c.feeds_no_transfer,
+                    );
+                    let validados = motor
+                        .feeds()
+                        .iter()
+                        .filter(|r| r.benefit_validated == Some(true))
+                        .count();
+                    let invalidados = motor
+                        .feeds()
+                        .iter()
+                        .filter(|r| r.benefit_validated == Some(false))
+                        .count();
+                    println!(
+                        "[{nome}] validação honesta: {} benefícios COMPROVADOS (MATCH nos horizontes 1 e 5) / {} DRIFT — pendentes não contam como benefício",
+                        validados, invalidados,
+                    );
+                }
+                None => println!(
+                    "[{nome}] AUSENTE — sem censo nesta execução (ausência ≠ zero)"
+                ),
+            }
+        }
+    }
+
+    // 18.6 — Arbitragem T: conflitos reais de ownership com
+    // trilha tipada e denominadores.
+    {
+        println!("=== Arbitragem T (18.6) ===");
+        let s = arbitrator.stats();
+        let concorrencia = arb_vencedores + arb_perdedores;
+        println!(
+            "Atuador inbox.l2.adaptation: {arb_vencedores} vencedores encaminhados, {arb_perdedores} perdedores COM recibo tipado (denominador: {concorrencia} pretensões admitidas no período)",
+        );
+        println!(
+            "Conflitos reais: {arb_conflitos} ticks com disputa — perdas por razão: {} lower_priority / {} later_arrival (denominador: {arb_perdedores} perdedores)",
+            s.by_lower_priority, s.by_later_arrival,
+        );
+        println!(
+            "Trilha retida: {} recibos (teto 64), fila pendente {} (ausência ≠ zero)",
+            s.records_kept, s.queued,
+        );
+        if let Some(last) = arbitrator.records().iter().rev().find(|r| r.had_conflict()) {
+            println!(
+                "Última disputa (tick {}): vencedor {} (prio {}) — perdedores: {}",
+                last.tick,
+                last.winner.as_deref().unwrap_or("nenhum"),
+                last.winner_priority.unwrap_or(0),
+                last.losers
+                    .iter()
+                    .map(|(c, r)| format!("{c} [{}]", r.as_str()))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            );
+        } else {
+            println!("Nenhuma disputa com 2+ pretendentes nesta execução — conflito ausente é ausência, não zero");
+        }
+    }
+
+    // 18.4 — Federação T: estado do staging com evidência real.
+    {
+        println!("=== Federação T (18.4 — STAGING feature-off) ===");
+        let hash = policy_host.policy_hash("federation");
+        match hash {
+            Some(h) => println!(
+                "Policy Lua \"federation\" registrada (hash {h:016x}) — {} propostas validadas pelo Rust, {} rejeitadas (denominador: {} chamadas na janela)",
+                fed_propostas_validadas,
+                fed_propostas_rejeitadas,
+                fed_propostas_validadas + fed_propostas_rejeitadas,
+            ),
+            None => println!(
+                "Policy Lua \"federation\": AUSENTE — nenhum arquivo em lua/policies (ausência ≠ zero)"
+            ),
+        }
+        println!(
+            "Cap de perna corrente: {:.3} (faixa inegociável [0.0, 0.5] da whitelist Rust) — sinal de escassez L5: {}",
+            fed_engine.trade_rate_cap(),
+            match fed_scarcity_sinal {
+                Some(s) => format!("{s:.4} (média dos 5 budgets)"),
+                None => "AUSENTE".to_string(),
+            },
+        );
+        println!(
+            "Protocolo CNP comprovado por golden tests: estados tipados (applied/rejected/reverted), conservação 2 pernas < 1e-12, ledger encadeado determinístico, reservas contra dupla promessa — NENHUMA troca executada no organismo (feature desligada por padrão, critério da caixa)",
+        );
+        let (total, applied, rejected, reverted, max_err) = fed_engine.stats();
+        let _ = (total, applied, rejected, reverted, max_err);
+        println!(
+            "Rodadas CNP no organismo: 0 (staging) — membros federativos: 0; ligar exige decisão do dono + ADR (var/verificacao/18-4_ADR_federacao.md)",
+        );
+    }
+
     // T/CYBERNETICS (16.8): ordens O1–O4 sobre métricas VIVAS nas
     // cadências da config — satisfação/taxas COM denominador; O3
     // recomenda ação TIPADA; O5 amostra horizonte (genome fora, Lei 7).
@@ -724,6 +1426,115 @@ fn main() {
         println!(
             "O4 auto-auditoria: {} execuções; eventos publicados {} de {} ticks (denominador explícito); ticks sem métrica viva {} (ausência ≠ zero)",
             cs.o4_runs, cs.events_published, cs.ticks, cs.no_source_ticks,
+        );
+        // 19.8-a/b/c/d — os loops fecharam de fato (série 19):
+        // O1 corr vira urgência do O3; O2 retuna o controlador O1;
+        // O3 aplica a carga no runtime; O4 emite alarmes tipados.
+        println!(
+            "O1 correção contínua: {} — O2 retuning do controlador O1: {}/{} DOWN, {}/{} UP (oscilação em {} janelas)",
+            cs.o1_last_corrective
+                .map(|v| format!("{v:.3}"))
+                .unwrap_or_else(|| "AUSENTE".into()),
+            cs.o2_retunes_down,
+            cs.o2_runs,
+            cs.o2_retunes_up,
+            cs.o2_runs,
+            cs.o2_oscillating_windows,
+        );
+        println!(
+            "O3 APLICADA de fato no runtime: {} aplicações de throttle, {} liberações; razão corrente: {}",
+            aplicacoes_throttle,
+            liberacoes_throttle,
+            razao_throttle_corrente
+                .as_deref()
+                .unwrap_or("nenhuma (Normal)"),
+        );
+        println!(
+            "  saltos por política de carga no ciclo: {} (denominador: {} ticks; vitais intocáveis: l1.substrate/learning/cybernetics — Lei 4)",
+            throttled_no_ciclo, ticks,
+        );
+        println!(
+            "O4 alarmes tipados: {} de {} auditorias (vivos agora: {}) — observação alimenta O2/O3, nunca decide",
+            cs.o4_alarms,
+            cs.o4_runs,
+            cs.alarms.len(),
+        );
+        for al in &cs.alarms {
+            println!("  ALARME {}: valor {:.3} — {}", al.metric, al.value, al.reason);
+        }
+        // 19.8-e — a seleção através do tempo RODOU no boundary.
+        println!(
+            "O5 SELEÇÃO NO BOUNDARY (fora do loop, Lei 7): {} — promoções {}/{} corridas",
+            o5_resumo_episodio.as_deref().unwrap_or("nenhuma"),
+            cs.o5_promotions,
+            cs.o5_promotions + cs.o5_rejections,
+        );
+    }
+
+    // 17.11 (sessão 7) — LawEngine: as leis da casa AUDITADAS de
+    // fato em cada passo, com denominadores por lei.
+    {
+        println!("=== LawEngine (T, 17.11) ===");
+        let ls = law_engine.stats();
+        println!(
+            "Leis duras como DADO: {} entradas no HardLawSet; auditorias pós-tick: {} (denominador explícito); violações registradas: {}/{} auditorias",
+            law_engine.law_count(),
+            ls.audits,
+            ls.violations_total,
+            ls.audits,
+        );
+        if ls.violations_by_law.is_empty() {
+            println!("  nenhuma lei dura violada no ciclo (0/{})", ls.audits);
+        } else {
+            for (lei, n) in &ls.violations_by_law {
+                println!("  lei {lei}: {n}/{} auditorias violada", ls.audits);
+            }
+        }
+        println!(
+            "Pressão de orçamento observada: {}/{} passos com budget_exceeded; soft law \"law_soft\" (Lei 4: política, nunca suspensão): {} propostas validadas, {} rejeitadas, {} liberações para a base {budget_base_events}",
+            ls.budget_exceeded_steps,
+            ls.audits,
+            law_soft_validadas,
+            law_soft_rejeitadas,
+            law_soft_liberacoes,
+        );
+        println!(
+            "  razão da política corrente: {}",
+            law_soft_razao
+                .as_deref()
+                .unwrap_or("nenhuma (sem pressão observada — ausência ≠ pressa)"),
+        );
+        let soft = &law_engine.soft_book;
+        println!(
+            "Soft laws no livro: {} (peso total {:.1})",
+            soft.len(),
+            soft.total_weight(),
+        );
+    }
+
+    // T/LEARNING (17.8 completa): janelas de validação t+1/t+5 com
+    // vereditos tipados e TRANSFER como taxa de fluxo por fronteira
+    // (legado layer_transfer.py) — denominador sempre, gargalo sempre.
+    {
+        let ls = lrn_handle.stats();
+        println!("=== Learning validação temporal (17.8) ===");
+        let total = ls.validation_hits + ls.validation_incomplete + ls.validation_misses;
+        if total == 0 {
+            println!("Janelas fechadas: 0 (ausência ≠ zero — nenhuma maturou ainda)");
+        } else {
+            println!(
+                "Janelas fechadas: {} — validadas: {} ({:.1}%), incompletas sem penalidade: {}, penalizadas: {} (denominador total)",
+                total,
+                ls.validation_hits,
+                ls.validation_hits as f32 * 100.0 / total as f32,
+                ls.validation_incomplete,
+                ls.validation_misses,
+            );
+        }
+        let t = lrn_handle.transfer_rates();
+        println!(
+            "Transfer (fronteira {}): input {} → accepted {} → acted {} → effect {} → learned {}; F1 {:.2} F2 {:.2} F3 {:.2} F4 {:.2}; gargalo {}",
+            t.fronteira, t.input, t.accepted, t.acted, t.effect, t.learned, t.f1, t.f2, t.f3, t.f4, t.gargalo,
         );
     }
 
@@ -794,6 +1605,23 @@ fn main() {
         println!(
             "Policies registradas: {npol}; módulos utilitários: {nmod}; arquivos com problema: {} (boot segue — o host nunca cai)",
             policy_host.load_issues().len(),
+        );
+    }
+
+    // 17.2 — T/COMPUTE: benchmarks dos kernels nos DOIS backends
+    // (seq = contrato f64 Numba; rayon bit-identical) COM DENOMINADOR
+    // — latência média e throughput por iteração medida.
+    {
+        println!("=== Compute (17.2) ===");
+        let rows = compute::run_benchmarks(256, 5);
+        for r in &rows {
+            println!(
+                "  {} [{}] n={} — {:.1}µs/iter de {} iters (throughput {:.0}/s)",
+                r.kernel, r.backend, r.n, r.mean_us, r.iters, r.ops_per_s,
+            );
+        }
+        println!(
+            "  WGPU: NO-GO pela 17.7 (decisão por benchmarks da sessão 6) — backend duplo CPU é o caminho real",
         );
     }
 

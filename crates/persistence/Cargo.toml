@@ -1,0 +1,38 @@
+# =============================================================================
+# triad-persistence — T/persistence (transversal, camada NONE)
+#
+# Cross-run (17.9, absorve a 16.10): o estado canônico relevante do
+# organismo SOBREVIVE entre execuções — cicos fechados do L4 (histórico
+# de aprendizagem com verified_future_effect), traços/taxas do learning
+# e estágio do development — em SNAPSHOT serde (JSON) em `var/runs/`,
+# escrita atômica (temp + rename), SEM banco prematuro.
+#
+# RESTORE com VERIFICAÇÃO DE PROCEDÊNCIA: schema versionado, checksum
+# sobre os registros e REPLAY do closed_log que precisa reproduzir as
+# taxas do snapshot (bit-idêntico) — snapshot corrompido/trocado é
+# rejeitado com erro TIPADO, nunca aceito silencioso.
+#
+# FORA de escopo: banco de dados, rede, criptografia — serde + fs.
+# =============================================================================
+
+[package]
+name = "triad-persistence"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+triad-contracts = { path = "../contracts" }
+triad-foundation = { path = "../foundation" }
+triad-runtime = { path = "../runtime" }
+triad-l4-global = { path = "../l4_global" }
+triad-learning = { path = "../learning" }
+triad-development = { path = "../development" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+triad-l1-substrate = { path = "../l1_substrate" }
+triad-l2-tissue = { path = "../l2_tissue" }
+triad-l3-local = { path = "../l3_local" }
+toml = "0.8"

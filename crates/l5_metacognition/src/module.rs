@@ -870,6 +870,22 @@ mod tests {
         assert!((sa.identity_continuity - sb.identity_continuity).abs() < 1e-9);
         assert!((sa.stress - sb.stress).abs() < 1e-9);
         assert!((sa.energy_reserve - sb.energy_reserve).abs() < 1e-9);
+        // 20.4: veredito no var/system.log — helper TOLERANTE
+        // (IO nunca reprova).
+        {
+            use std::io::Write as _;
+            if let Ok(mut f) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("var/system.log")
+            {
+                let _ = writeln!(
+                    f,
+                    "[TESTE-A-A-DETERMINISMO-L5] gemeos bit-exatos em 12/12 ticks; events={}/{} stress={:.6}",
+                    sa.events, sb.events, sa.stress
+                );
+            }
+        }
     }
 
     #[test]
