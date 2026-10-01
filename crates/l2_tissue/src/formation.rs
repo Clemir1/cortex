@@ -178,7 +178,8 @@ impl TissueFormation {
             let Some(&current) = self.member_of.get(&cid) else {
                 continue;
             };
-            let last = self.last_bind.get(&cid).copied().unwrap_or(0);
+            // Legitimo: default 0 DECLARADO (ausencia de bind previo = nunca')
+                let last = self.last_bind.get(&cid).copied().unwrap_or(0);
             if step < last.saturating_add(self.config.affinity.rebind_interval_steps()) {
                 continue;
             }

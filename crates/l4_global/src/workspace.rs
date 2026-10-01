@@ -97,7 +97,8 @@ impl GlobalWorkspace {
         }
         let rate = self.cfg.habituation_rate.clamp(0.0, 1.0);
         let effective = |content: &str, salience: f32| -> f32 {
-            let streak = self.win_streaks.get(content).copied().unwrap_or(0);
+            // Legitimo: default 0 DECLARADO (ausencia de vitoria previa = streak 0)
+            let streak = self.win_streaks.get(content).copied().unwrap_or(0) /* Legitimo: default 0 declarado */;
             salience * rate.powi(streak as i32)
         };
         let mut best = 0usize;
@@ -141,7 +142,7 @@ impl GlobalWorkspace {
     /// Sequência de vitórias corrente de um conteúdo (auditoria da
     /// habituação — GWT/novelty).
     pub fn win_streak(&self, content: &str) -> u32 {
-        self.win_streaks.get(content).copied().unwrap_or(0)
+        self.win_streaks.get(content).copied().unwrap_or(0) /* Legitimo: default 0 declarado */
     }
 
     /// Política vigente (auditoria da configuração).

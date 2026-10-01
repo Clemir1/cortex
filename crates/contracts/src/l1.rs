@@ -91,7 +91,10 @@ pub struct L1Snapshot {
     pub phase: L1StatePhase,
     /// População viva total no momento da publicação.
     pub population_total: u32,
-    /// Dimensão do estado por cluster (97).
+    /// Dimensão do estado por cluster (97). 0 SEM medida (mean_state
+    /// ausente) é NO_DATA — nunca "dimensão zero medida"; o discrimi-
+    /// nador é o `phase`/`provider_status`/`no_data_reason` (Lei 2 via
+    /// state_phase, design 20.3d da SEÇÃO 20).
     pub state_dimension: u32,
     /// Linhas da amostra publicada.
     pub sample_count: u32,
