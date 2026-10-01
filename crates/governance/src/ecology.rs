@@ -17,10 +17,28 @@ pub struct NicheHealth {
     pub attempts: u64,
 }
 
+/// 17.13: veredito do episode boundary (janela longa do nicho).
+#[derive(Debug, Clone, PartialEq)]
+pub struct EpisodeVerdict {
+    /// Episódios na janela longa (denominador — Lei 1).
+    pub episodes_in_window: usize,
+    /// Taxa de episódios com benefit_validated na janela
+    /// (None = janela vazia — ausência ≠ zero, Lei 2).
+    pub validated_rate: Option<f64>,
+    /// O5: renovação programada do nicho (janela mínima cheia E
+    /// taxa abaixo do piso — decidido por EPISÓDIO, determinístico).
+    pub renovate: bool,
+}
+
 /// Motor de ecologia: registra tentativas e sucessos por nicho.
 pub struct EcologyEngine {
     /// Saúde por nome de nicho.
     niches: HashMap<String, NicheHealth>,
+    /// 17.13 JANELA LONGA por nicho: episódios FECHADOS
+    /// (benefit_validated do CNP) em janela FIFO de 16 — a
+    /// avaliação O5 no episode boundary usa ESTA janela, não o
+    /// evento avulso.
+    episodes: HashMap<String, std::collections::VecDeque<bool>>,
 }
 
 impl EcologyEngine {
@@ -28,6 +46,69 @@ impl EcologyEngine {
     pub fn new() -> Self {
         Self {
             niches: HashMap::new(),
+            episodes: HashMap::new(),
+        }
+    }
+
+    /// 17.13 EPISODE BOUNDARY (genome/ecologia O5 em janela longa):
+    /// um EPISÓDIO fechou no nicho — o CNP confirmou
+    /// `benefit_validated` (h1 E h5, Lei 5) ou o episódio
+    /// fracassou. O episódio entra na JANELA LONGA (FIFO cap 16)
+    /// e o nicho é avaliado por EPISÓDIO com denominador honesto:
+    /// taxa = validados / episódios na janela (Lei 1); janela
+    /// vazia/nicho ausente = NO_DATA, nunca 0.0 (Lei 2).
+    /// `renovate` = O5: janela mínima cheia (4) E taxa abaixo do
+    /// piso (0.5) ⇒ renovação programada do nicho — decidida por
+    /// EPISÓDIO (determinística; o ciclo por passos segue no
+    /// EcologyMotor).
+    pub fn episode_boundary(&mut self, niche: &str, benefit_validated: bool) -> EpisodeVerdict {
+        const WINDOW: usize = 16;
+        const MIN_WINDOW: usize = 4;
+        const RENOVATION_FLOOR: f64 = 0.5;
+        let window = self
+            .episodes
+            .entry(niche.to_string())
+            .or_default();
+        window.push_back(benefit_validated);
+        if window.len() > WINDOW {
+            window.pop_front();
+        }
+        let n = window.len();
+        let validated = window.iter().filter(|v| **v).count() as f64;
+        let rate = if n == 0 {
+            None // Lei 2: ausência nunca vira 0.0
+        } else {
+            Some(validated / n as f64)
+        };
+        let renovate = n >= MIN_WINDOW
+            && rate.map(|r| r < RENOVATION_FLOOR).unwrap_or(false);
+        EpisodeVerdict {
+            episodes_in_window: n,
+            validated_rate: rate,
+            renovate,
+        }
+    }
+
+    /// 17.13: taxa de episódios validados na JANELA LONGA do nicho
+    /// (Qualified com denominador; NO_DATA em janela vazia — Lei 2).
+    pub fn episode_health(
+        &self,
+        niche: &str,
+        source: ModuleId,
+        step: StepId,
+    ) -> tc::Qualified<tf::Rate> {
+        match self.episodes.get(niche) {
+            None => tc::Qualified::no_data("sem episódios fechados na janela", source, step),
+            Some(w) if w.is_empty() => {
+                tc::Qualified::no_data("sem episódios fechados na janela", source, step)
+            }
+            Some(w) => {
+                let validated = w.iter().filter(|v| **v).count() as u64;
+                match tf::Rate::from_ratio(validated, w.len() as u64) {
+                    Some(rate) => tc::Qualified::value(rate, source, step),
+                    None => tc::Qualified::invalid("taxa fora do dominio", source, step),
+                }
+            }
         }
     }
 
@@ -1118,5 +1199,54 @@ mod ecology_18_5_tests {
         let mut eco = EcologyMotor::new("cross", 13);
         let c = eco.step(&sp, 1);
         assert_eq!(c.species_observed, 2, "censo com denominador da fonte");
+    }
+
+    /// 17.13: episode boundary avalia por EPISÓDIO com denominador
+    /// honesto (Lei 1) — 3 validados de 4 = 0.75 na janela.
+    #[test]
+    fn episode_boundary_taxa_com_denominador_da_janela() {
+        let mut eng = EcologyEngine::new();
+        let v1 = eng.episode_boundary("n", true);
+        assert_eq!(v1.episodes_in_window, 1);
+        assert!((v1.validated_rate.unwrap() - 1.0).abs() < 1e-12);
+        eng.episode_boundary("n", true);
+        eng.episode_boundary("n", true);
+        let v4 = eng.episode_boundary("n", false);
+        assert_eq!(v4.episodes_in_window, 4, "denominador = episódios na janela");
+        assert!((v4.validated_rate.unwrap() - 0.75).abs() < 1e-12, "3/4");
+        assert!(!v4.renovate, "taxa acima do piso: sem renovação");
+    }
+
+    /// 17.13 (Lei 2): nicho SEM episódios fechados = NO_DATA na
+    /// janela longa — ausência nunca vira 0.0.
+    #[test]
+    fn episode_health_sem_episodios_e_no_data() {
+        let eng = EcologyEngine::new();
+        let q = eng.episode_health("fantasma", ModuleId::new(), StepId::new());
+        assert!(q.value.is_none(), "janela vazia = sem valor (Lei 2)");
+        assert!(
+            format!("{:?}", q.status).contains("NoData"),
+            "NO_DATA tipado, nunca 0.0 fabricado"
+        );
+    }
+
+    /// 17.13 O5: janela mínima cheia (4) com taxa abaixo do piso
+    /// (0.5) ⇒ renovação programada do nicho no episode boundary.
+    #[test]
+    fn episode_boundary_renovacao_por_episodio() {
+        let mut eng = EcologyEngine::new();
+        let mut last = eng.episode_boundary("ruim", false);
+        eng.episode_boundary("ruim", false);
+        eng.episode_boundary("ruim", true);
+        last = eng.episode_boundary("ruim", false);
+        assert_eq!(last.episodes_in_window, 4);
+        assert!((last.validated_rate.unwrap() - 0.25).abs() < 1e-12, "1/4");
+        assert!(last.renovate, "taxa 0.25 < 0.5 com janela cheia ⇒ renova O5");
+        // A janela longa respeita o FIFO de 16: a taxa desliza.
+        for _ in 0..12 {
+            last = eng.episode_boundary("ruim", true);
+        }
+        assert_eq!(last.episodes_in_window, 16, "cap FIFO da janela longa");
+        assert!(!last.renovate, "janela recuperou: 13/16 ⇒ sem renovação");
     }
 }

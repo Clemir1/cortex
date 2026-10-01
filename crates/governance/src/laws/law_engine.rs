@@ -21,7 +21,7 @@
 use std::collections::BTreeMap;
 use tracing::warn;
 
-use crate::hard_law::{HardLawSet, Violation};
+use crate::laws::hard_law::{HardLawSet, Violation};
 
 /// Fotografia observacional de um passo — o que as leis auditam.
 /// Ausência de flag ≠ violação: campos default são o estado
@@ -106,14 +106,14 @@ pub struct LawEngine {
     /// Janela de pressão dos últimos 10 passos (orçamento).
     window: std::collections::VecDeque<bool>,
     /// Soft law da casa registrada no livro (17.11).
-    pub soft_book: crate::soft_law::SoftLawBook,
+    pub soft_book: crate::laws::soft_law::SoftLawBook,
 }
 
 impl LawEngine {
     /// Engine com as 8 leis da casa + soft law de orçamento.
     pub fn new() -> Self {
-        let mut soft_book = crate::soft_law::SoftLawBook::new();
-        if let Some(soft) = crate::soft_law::SoftLaw::new(
+        let mut soft_book = crate::laws::soft_law::SoftLawBook::new();
+        if let Some(soft) = crate::laws::soft_law::SoftLaw::new(
             "law_soft_budget",
             "17-11",
             "fator do orçamento de eventos sob pressão (Lei 4: política, nunca suspensão)",
@@ -272,6 +272,6 @@ mod tests {
     fn soft_law_da_casa_tem_adr_e_peso() {
         let e = LawEngine::new();
         assert_eq!(e.soft_book.total_weight(), 1.0);
-        assert!(crate::soft_law::SoftLaw::new("x", "", "sem ADR", 1.0).is_none());
+        assert!(crate::laws::soft_law::SoftLaw::new("x", "", "sem ADR", 1.0).is_none());
     }
 }

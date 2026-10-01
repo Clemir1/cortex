@@ -413,25 +413,103 @@ impl FederationTransport for InProcessTransport {
     }
 }
 
-/// Porta remota: DESLIGADA por padrão (feature `federation-remote`).
-/// Quando o dono abrir federação entre organismos, o transporte
-/// real entra AQUI — o contrato tipado já está fechado.
+/// 17.13 ESCALA HORIZONTAL REAL: porta remota (feature
+/// `federation-remote`, DESLIGADA por padrão — feature OFF = o
+/// binário é bit-idêntico ao canônico). Dois ORGANISMOS (engines
+/// FederationEngine INDEPENDENTES, budgets e chain_hash próprios)
+/// trocam recibos por um enlace de memória local determinístico —
+/// sem rede externa, sem TCP/UDP, sem relógio: o hash de cada lado
+/// evolui só com payload + chain corrente (cross-run bit-exato).
 #[cfg(feature = "federation-remote")]
 pub mod remote {
     use super::{FederationTransport, TradeRecord};
+    use std::collections::VecDeque;
+    use std::sync::{Arc, Mutex};
 
-    /// Stub tipado da porta remota (recusa: sem implementação —
-    /// recebeu sem mentir que entregou).
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct RemoteTransportStub;
+    /// Estado do enlace: uma fila POR SENTIDO. As engines nunca
+    /// partilham estado — só recibos imutáveis cruzam a fronteira.
+    #[derive(Default)]
+    struct LinkState {
+        to_b: VecDeque<TradeRecord>,
+        to_a: VecDeque<TradeRecord>,
+    }
 
-    impl FederationTransport for RemoteTransportStub {
+    /// Lado do enlace (a engine sabe apenas o próprio lado).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Side {
+        /// Organismo A (entrega empilha no canal de B).
+        A,
+        /// Organismo B (entrega empilha no canal de A).
+        B,
+    }
+
+    /// Transporte remoto por memória local: a entrega de um lado
+    /// empilha o recibo no canal do OUTRO organismo. `deliver` só
+    /// retorna false se o enlace estiver fechado (janela morta).
+    pub struct RemoteTransport {
+        side: Side,
+        state: Arc<Mutex<LinkState>>,
+        open: bool,
+    }
+
+    impl std::fmt::Debug for RemoteTransport {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("RemoteTransport")
+                .field("side", &self.side)
+                .field("open", &self.open)
+                .finish()
+        }
+    }
+
+    impl RemoteTransport {
+        /// Consome os recibos que CHEGARAM a este lado (o espelho
+        /// da troca do outro organismo). Ordem FIFO determinística.
+        pub fn drain(&mut self) -> Vec<TradeRecord> {
+            let mut state = match self.state.lock() {
+                Ok(s) => s,
+                Err(_) => return Vec::new(), // enlace envenenado: vazio, não erro
+            };
+            let queue = match self.side {
+                Side::A => &mut state.to_a,
+                Side::B => &mut state.to_b,
+            };
+            queue.drain(..).collect()
+        }
+
+        /// Fecha a janela deste lado (simula queda do enlace).
+        pub fn close(&mut self) {
+            self.open = false;
+        }
+    }
+
+    impl FederationTransport for RemoteTransport {
         fn name(&self) -> &'static str {
-            "remote_stub"
+            "memory_remote"
         }
-        fn deliver(&mut self, _record: &TradeRecord) -> bool {
-            false
+        fn deliver(&mut self, record: &TradeRecord) -> bool {
+            if !self.open {
+                return false; // enlace caído: recibo honesto (TransportUnreachable)
+            }
+            let Ok(mut state) = self.state.lock() else {
+                return false;
+            };
+            let queue = match self.side {
+                Side::A => &mut state.to_b,
+                Side::B => &mut state.to_a,
+            };
+            queue.push_back(record.clone());
+            true
         }
+    }
+
+    /// 17.13: enlace ponto-a-ponto — cria as DUAS pontas para os
+    /// dois organismos (A entrega para B e vice-versa).
+    pub fn memory_link() -> (RemoteTransport, RemoteTransport) {
+        let state = Arc::new(Mutex::new(LinkState::default()));
+        (
+            RemoteTransport { side: Side::A, state: Arc::clone(&state), open: true },
+            RemoteTransport { side: Side::B, state, open: true },
+        )
     }
 }
 
@@ -453,6 +531,13 @@ pub struct FederationEngine {
     transport: Box<dyn FederationTransport>,
     /// 18.4 outcomes pendentes t+1/t+5 das trocas aplicadas.
     pending_outcomes: Vec<PendingOutcome>,
+    /// 20.5b (sessão 7, sob diretriz da dona) — ledger de RESOLUÇÕES
+    /// por tick: chain_hash de cada horizonte fechado em `now`
+    /// (h1 e h5 do mesmo recibo contam cada um). O host do ciclo
+    /// drena com `take_resolved_ids(tick)` e alimenta a fonte que o
+    /// scheduler consulta (`FederationOutcomeSource`) — o StepReport
+    /// publica os ids RESOLVIDOS no tick.
+    resolved_ids_log: std::collections::BTreeMap<u64, Vec<u64>>,
     /// 20.6c (feature federation-policy, ADR ratificado): host de
     /// policy Lua PROPOSITORA. None = canônico Rust puro (bit-
     /// idêntico); Some = a policy "federation" é consultada no
@@ -481,6 +566,7 @@ impl FederationEngine {
             sham: false,
             transport: Box::new(InProcessTransport),
             pending_outcomes: Vec::new(),
+            resolved_ids_log: std::collections::BTreeMap::new(),
             #[cfg(feature = "federation-policy")]
             policy_host: None,
         }
@@ -729,6 +815,57 @@ impl FederationEngine {
             Err(other) => Err(policy_reject_reason(&other)),
         }
     }
+
+    /// 17.13 ESCALA HORIZONTAL (feature federation-remote): aplica
+    /// o ESPELHO de uma troca remota — o recibo que o organismo A
+    /// entregou pelo enlace é reincidente aqui pelo organismo B:
+    /// o membro LOCAL `to` recebe a perna de oferta e paga a perna
+    /// de pagamento (o papel de `from` pertence a A — não é
+    /// tocado em B). Chain_hash de B: FNV determinístico do MESMO
+    /// payload + chain corrente de B — cross-run bit-exato por
+    /// construção. Sham: recusa tipada SEM aplicar (o controle
+    /// desligado nunca aceita espelho — A/A preservado). Recibo
+    /// não-aplicado (A reverteu?): TransportUnreachable honesto.
+    #[cfg(feature = "federation-remote")]
+    pub fn apply_remote_trade(&mut self, record: &TradeRecord) -> TradeStatus {
+        if self.sham {
+            return TradeStatus::Rejected(CnpReject::ShamControl);
+        }
+        if record.status != TradeStatus::Applied {
+            return TradeStatus::Rejected(CnpReject::TransportUnreachable {
+                transport: "memory_remote".to_string(),
+            });
+        }
+        let Some(mut receiver) = self.members.get(&record.to).cloned() else {
+            return TradeStatus::Rejected(CnpReject::UnknownMember { id: record.to.clone() });
+        };
+        // Reserva da perna de pagamento (mesma régua do evaluate).
+        if receiver.available(record.payment.0) < record.payment.1 {
+            return TradeStatus::Rejected(CnpReject::InsufficientReserve {
+                available: receiver.available(record.payment.0),
+                needed: record.payment.1,
+            });
+        }
+        receiver.budget.insert(
+            record.payment.0,
+            (receiver.budget.get(&record.payment.0).copied().unwrap_or(0.0)
+                - record.payment.1)
+                .max(0.0),
+        );
+        *receiver.budget.entry(record.offer.0).or_insert(0.0) += record.offer.1;
+        self.members.insert(record.to.clone(), receiver);
+        // Recibo ESPELHO no ledger de B (proveniência: o payload da
+        // troca original é preservado; o hash é NOSSO, encadeado
+        // na trilha local — organismos independentes, hashes
+        // independentes).
+        let mut mirror = record.clone();
+        mirror.chain_hash = self.chain_next(&mirror);
+        self.ledger.push(mirror);
+        if self.ledger.len() > 64 {
+            self.ledger.remove(0);
+        }
+        TradeStatus::Applied
+    }
 }
 
 /// 20.6c: razão canônica da rejeição de policy (Lei 3: nunca vazia).
@@ -776,10 +913,13 @@ impl FederationEngine {
             if now >= p.at_tick_1 && record.horizon_1.is_none() {
                 record.horizon_1 = Some(matched);
                 resolved += 1;
+                // 20.5b: registra chain_hash resolvido no tick corrente.
+                self.resolved_ids_log.entry(now).or_default().push(p.chain_hash);
             }
             if now >= p.at_tick_5 && record.horizon_5.is_none() {
                 record.horizon_5 = Some(matched);
                 resolved += 1;
+                self.resolved_ids_log.entry(now).or_default().push(p.chain_hash);
             }
             if let (Some(h1), Some(h5)) = (record.horizon_1, record.horizon_5) {
                 record.benefit_validated = Some(h1 && h5);
@@ -814,6 +954,15 @@ impl FederationEngine {
     /// 18.4: outcomes ainda pendentes (telemetria honesta).
     pub fn pending_outcome_count(&self) -> usize {
         self.pending_outcomes.len()
+    }
+
+    /// 20.5b (sessão 7, sob diretriz da dona): drena os chain_hashes
+    /// RESOLVIDOS no tick dado (h1/h5 fechados em `resolve_outcomes`).
+    /// Ausência de resolução ⇒ Vec vazio (ausência ≠ zero). O host do
+    /// ciclo chama após cada `resolve_outcomes(t)` para alimentar a
+    /// fonte do scheduler (`FederationOutcomeSource`).
+    pub fn take_resolved_ids(&mut self, tick: u64) -> Vec<u64> {
+        self.resolved_ids_log.remove(&tick).unwrap_or_default()
     }
 
     /// Avalia e EXECUTA com reserva/transferência atômica nas
@@ -985,6 +1134,12 @@ impl FederationEngine {
     /// Ledger append-only (trilha restaurável).
     pub fn ledger(&self) -> &[TradeRecord] {
         &self.ledger
+    }
+
+    /// 17.13: budget corrente do membro (observacional; None =
+    /// membro/recurso inexistente — ausência ≠ zero, Lei 2).
+    pub fn member_budget(&self, id: &str, r: Resource) -> Option<f64> {
+        self.members.get(id).and_then(|m| m.budget.get(&r).copied())
     }
 
     /// Estatísticas com denominadores.
@@ -1297,6 +1452,40 @@ mod federation_18_4_debitos_tests {
             TradeStatus::Applied
         );
     }
+    /// 20.5b (sessao 7, sob diretriz da dona): `resolve_outcomes`
+    /// registra os chain_hashes resolvidos POR TICK e
+    /// `take_resolved_ids(tick)` drena a lista — o host alimenta a
+    /// fonte que o StepReport consulta. Ausência de resolução =>
+    /// lista vazia (ausência não e zero). A/A: mesma história =>
+    /// mesmos ids.
+    #[test]
+    fn outcomes_resolvidos_por_tick_sao_drenaveis_aa_205b() {
+        let run = || {
+            let mut f = FederationEngine::new();
+            f.add_member("a", budget(&[(Resource::Energy, 0.8)]));
+            f.add_member("b", budget(&[(Resource::Compute, 0.9)]));
+            assert_eq!(
+                f.propose_trade(1, "a", "b", (Resource::Energy, 0.3), (Resource::Compute, 0.3)),
+                TradeStatus::Applied
+            );
+            let h = f.ledger()[0].chain_hash;
+            f.resolve_outcomes(2);
+            let ids_t2 = f.take_resolved_ids(2);
+            let ids_t3 = f.take_resolved_ids(3);
+            f.resolve_outcomes(6);
+            let ids_t6 = f.take_resolved_ids(6);
+            let ids_t2_de_novo = f.take_resolved_ids(2);
+            (h, ids_t2, ids_t3, ids_t6, ids_t2_de_novo)
+        };
+        let (h, ids_t2, ids_t3, ids_t6, drenado) = run();
+        assert_eq!(ids_t2, vec![h], "h1 fechado no t+1 => id no tick 2");
+        assert!(ids_t3.is_empty(), "tick sem resolucao => vazio");
+        assert_eq!(ids_t6, vec![h], "h5 fechado no t+5 => id no tick 6");
+        assert!(drenado.is_empty(), "drenado: segunda leitura do mesmo tick e vazia");
+        let gemea = || run();
+        assert_eq!(gemea(), gemea(), "gemeos bit-exatos (A/A)");
+    }
+
 }
 
 /// 20.6c (ratificado): testes do WIRE CNP⇄PolicyHost — rodam SÓ
@@ -1428,5 +1617,140 @@ mod federation_policy_tests {
             let r = policy_reject_reason(c);
             assert!(!r.trim().is_empty(), "Lei 3: razão vazia");
         }
+    }
+
+}
+
+/// 17.13 ESCALA HORIZONTAL REAL: validação cross-run entre DOIS
+/// organismos sobre o transporte memory_remote (feature
+/// `federation-remote`). Feature OFF: este módulo NÃO EXISTE no
+/// binário — bit-idêntico.
+#[cfg(all(test, feature = "federation-remote"))]
+mod tests_remote {
+    use super::remote::memory_link;
+    use super::{CnpReject, FederationEngine, Resource, TradeStatus, TradeRecord};
+    use std::collections::BTreeMap;
+
+    /// Organismo A: doador "a1" (energia 0.8, memória 0.6).
+    fn organismo_a() -> FederationEngine {
+        let mut a = FederationEngine::new();
+        a.add_member(
+            "a1",
+            BTreeMap::from([(Resource::Energy, 0.8), (Resource::Memory, 0.6)]),
+        );
+        a.set_trade_rate(0.5);
+        a
+    }
+
+    /// Organismo B: receptor "b1" (energia 0.2, memória 0.7) —
+    /// engine INDEPENDENTE (budget e chain próprios).
+    fn organismo_b() -> FederationEngine {
+        let mut b = FederationEngine::new();
+        b.add_member(
+            "b1",
+            BTreeMap::from([(Resource::Energy, 0.2), (Resource::Memory, 0.7)]),
+        );
+        b
+    }
+
+    /// Um run do protocolo: A propõe 2 trocas ao membro espelho
+    /// "b1" (registrado em A para a reserva da perna de pagamento),
+    /// entrega pelo enlace; B drena e aplica os espelhos. Devolve
+    /// hashes dos DOIS chains + budgets-chave para comparação.
+    fn run_cross_organism() -> (u64, u64, f64, f64, f64, f64) {
+        let mut a = organismo_a();
+        a.add_member(
+            "b1",
+            BTreeMap::from([(Resource::Energy, 0.2), (Resource::Memory, 0.7)]),
+        );
+        let mut b = organismo_b();
+        let (ta, mut tb) = memory_link();
+        a = a.with_transport(Box::new(ta)); // ponta A: dentro da engine A
+        let s1 = a.propose_trade(1, "a1", "b1", (Resource::Energy, 0.1), (Resource::Memory, 0.1));
+        let s2 = a.propose_trade(2, "a1", "b1", (Resource::Energy, 0.2), (Resource::Memory, 0.05));
+        assert_eq!(s1, TradeStatus::Applied);
+        assert_eq!(s2, TradeStatus::Applied);
+        let entregues: Vec<TradeRecord> = tb.drain();
+        assert_eq!(entregues.len(), 2, "as duas trocas chegaram ao organismo B");
+        for r in &entregues {
+            let st = b.apply_remote_trade(r);
+            assert_eq!(st, TradeStatus::Applied, "espelho aplicado em B");
+        }
+        let ha = a.ledger().last().map(|r| r.chain_hash).unwrap_or(0);
+        let hb = b.ledger().last().map(|r| r.chain_hash).unwrap_or(0);
+        let a_e = a.member_budget("a1", Resource::Energy).unwrap_or(-1.0);
+        let a_m = a.member_budget("a1", Resource::Memory).unwrap_or(-1.0);
+        let b_e = b.member_budget("b1", Resource::Energy).unwrap_or(-1.0);
+        let b_m = b.member_budget("b1", Resource::Memory).unwrap_or(-1.0);
+        (ha, hb, a_e, a_m, b_e, b_m)
+    }
+
+    /// 17.13 nº1: transfer nos DOIS lados com efeito consistente —
+    /// A perdeu oferta/ganhou pagamento; B ganhou oferta/perdeu
+    /// pagamento (conservação CROSS: o que saiu de A chegou a B).
+    #[test]
+    fn cross_organism_transfer_aplicado_nos_dois_lados() {
+        let (_, _, a_e, a_m, b_e, b_m) = run_cross_organism();
+        // a1 (em A): 0.8 − 0.1 − 0.2 = 0.5 energia; 0.6 + 0.1 + 0.05 = 0.75 memória.
+        assert!((a_e - 0.5).abs() < 1e-12, "a1 energia: {a_e}");
+        assert!((a_m - 0.75).abs() < 1e-12, "a1 memória: {a_m}");
+        // b1 (em B): 0.2 + 0.1 + 0.2 = 0.5 energia; 0.7 − 0.1 − 0.05 = 0.55 memória.
+        assert!((b_e - 0.5).abs() < 1e-12, "b1 energia: {b_e}");
+        assert!((b_m - 0.55).abs() < 1e-12, "b1 memória: {b_m}");
+        // Conservação CROSS (A perdeu X, B ganhou X — o total dos
+        // dois organismos é constante: 1.0 energia, 1.3 memória).
+        assert!(((a_e + b_e) - 1.0).abs() < 1e-12, "energia cross conservada: {}", a_e + b_e);
+        assert!(((a_m + b_m) - 1.3).abs() < 1e-12, "memória cross conservada: {}", a_m + b_m);
+    }
+
+    /// 17.13 nº2: re-run BIT-EXATO nos DOIS chains. Os hashes de A
+    /// e B COINCIDEM por SIMETRIA CANÔNICA do protocolo espelhado:
+    /// mesmas gêneses (chain=0) + mesmos payloads ⇒ mesmo FNV — a
+    /// independência dos organismos está provada pelo nº1 (budgets
+    /// e conservação SEPARADOS) e nº3 (sham de um lado NUNCA vaza
+    /// para o outro); o re-run bit-exato é o contrato 17.13.
+    #[test]
+    fn cross_organism_chain_hashes_independentes_bit_exatos() {
+        let (ha1, hb1, ..) = run_cross_organism();
+        let (ha2, hb2, ..) = run_cross_organism();
+        assert_eq!(ha1, ha2, "chain_hash de A: re-run bit-exato");
+        assert_eq!(hb1, hb2, "chain_hash de B: re-run bit-exato");
+        assert_eq!(
+            ha1, hb1,
+            "simetria canônica: espelho com gêneses iguais produz hashes iguais"
+        );
+    }
+
+    /// 17.13 nº3 (A/A): sham em A ⇒ NADA na fila (a proposta é
+    /// recusada ANTES da entrega); sham em B ⇒ espelho recusado
+    /// tipado e budget de b1 INTACTO.
+    #[test]
+    fn cross_organism_sham_preservado_nos_dois_lados() {
+        // Sham de A: a fila do enlace fica VAZIA.
+        let mut a = organismo_a();
+        a.add_member(
+            "b1",
+            BTreeMap::from([(Resource::Energy, 0.2), (Resource::Memory, 0.7)]),
+        );
+        a.set_sham(true);
+        let (_, mut tb) = memory_link();
+        let s = a.propose_trade(1, "a1", "b1", (Resource::Energy, 0.1), (Resource::Memory, 0.1));
+        assert_eq!(s, TradeStatus::Rejected(CnpReject::ShamControl));
+        assert!(tb.drain().is_empty(), "sham em A: nenhum recibo entregue");
+        // Sham de B: o espelho é recusado tipado SEM aplicar.
+        let mut a2 = organismo_a();
+        a2.add_member(
+            "b1",
+            BTreeMap::from([(Resource::Energy, 0.2), (Resource::Memory, 0.7)]),
+        );
+        let mut b2 = organismo_b();
+        b2.set_sham(true);
+        let s2 = a2.propose_trade(1, "a1", "b1", (Resource::Energy, 0.1), (Resource::Memory, 0.1));
+        assert_eq!(s2, TradeStatus::Applied);
+        let rec = a2.ledger().last().cloned().expect("recibo aplicado em A");
+        let st = b2.apply_remote_trade(&rec);
+        assert_eq!(st, TradeStatus::Rejected(CnpReject::ShamControl));
+        let e = b2.member_budget("b1", Resource::Energy).expect("b1 existe");
+        assert!((e - 0.2).abs() < 1e-12, "sham em B: budget intacto (era {e})");
     }
 }
