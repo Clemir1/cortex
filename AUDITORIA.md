@@ -369,3 +369,6 @@ Após o fechamento principal, zerados os restantes: 20.3b learning (NO-OP sobre 
 
 ### Série 20 — remate definitivo do wire (fa15d88)
 Wire CNP⇄PolicyHost completo: policy Lua determinística proposta no ponto need→proposal, Rust valida (whitelist + Lei 3 tipada) e apenas aperta o cap de perna; proveniência no recibo; sham nunca consulta a policy (A/A 18.4 preservado); gêmeos com chain_hash bit-exato por passo com a policy LIGADA; feature-off bit-idêntico. Governance 36/36 com feature, 31/31 sem; house_laws 5/5. 20.3b re-verificada (Qualified no strength(), crédito sessão 7). Zero débitos técnicos na série 20.
+
+### Remate geral das pendências (diretriz da dona: zerar todas)
+17.11 fechada com validação formal dos 6 componentes (LawEngine, CNP como protocolo, Ecology, Arbitration, grafo O3 crédito sessão 7 — 13/13). 18.7: validação formal da orquestradora (L4/L5 A/A por tick, relatório 19-3). 18.4: observação antiga resolvida (policy Lua + ADR fechados na série 20). 17.6: re-baseline ratificado pela dona — threshold 74 ms (média real, 73x; 50 ms era baseline falso; aresta serial comprovada). Pendente: 17.13 (fork dedicado em andamento — escala horizontal real).

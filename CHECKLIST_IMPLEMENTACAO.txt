@@ -508,11 +508,21 @@ FASE 3 -- INFRAESTRUTURA DE ESCALA E TEMPO (distribuido/evolutivo):
          parent_event -- cascatas reconstruiveis) + CausalProvenance
          + DeltaTelemetry/Aggregator -- a auditoria de eventos e o
          embriao; telemetria de performance com denominador
-[ ] [6] 17.11 T/GOVERNANCE REAL: LawEngine (hard laws Rust, soft
+[x] [6] 17.11 T/GOVERNANCE REAL: LawEngine (hard laws Rust, soft
          policies Lua) + FederationEngine COMO PROTOCOLO
          (need->proposal->agreement->transfer->effect) + EcologyEngine
          generico + ArbitrationEngine + ControllerConflictGraph (O3)
          -- dona nominal: sessao 6 (orquestradora); pode delegar
+
+  [x] [7] 17.11-grafo (sob diretriz da dona) — CONTROLLERCONFLICT-
+       GRAPH (O3) em cybernetics/o3/conflict_graph.rs: 6
+       controladores com atuacao REAL, 4 conflitos com RESOLUCAO
+       ESTRUTURAL (O1xO2 histerese+clamp; O1xO5/O2xO5 Lei 7 fora
+       do loop; O3xlaw_soft posse por alvo), invariante testada
+       (nenhum par sem resolucao; O4 nao disputa alvo causal;
+       A/A) — cybernetics 13/0; app imprime o grafo. Caixa 17.11
+       [6] segue dela para validacao formal. [x] [7] governance/
+       laws/ (CAMADA.txt:1549): git mv dos 3 arquivos de lei.
 [x] [7] 17.12 LUA POLICY WIRING REAL: policies resource/attention/
          learning/forgetting/crisis/recovery/corticalization/
          regeneration + governance/evolution via PolicyHost --
@@ -2213,6 +2223,13 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
      Qualified; idem l4_global/src/global_integration.rs:365 (vencedores_
      broadcast 0 quando None).
 
+
+  [x] [7] 20.3-b (sob diretriz da dona) — learning: reforco sobre
+       traco AUSENTE nunca fabrica forca 0.0 (NO-OP; Lei 2);
+       nascimento tipado no positivo; teste proprio A/A; 9/0.
+  [x] [7] 20.3-d (sob diretriz da dona) — contracts:
+       state_dimension Option (so Value publica; NoData/Invalid
+       => None; razao no schema); teste proprio A/A; 22/0.
 [x] [6] 20.4 HARNESSES DE VALIDACAO SEM system.log (DEGRADA-AUDITORIA):
   criterio: todo teste de validacao registra veredito no var/system.log
   (helper tolerante, IO nunca reprova — padrao TESTE-*). Hoje registram:
@@ -2224,6 +2241,16 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
   d) runtime scheduler tests (scheduler.rs:363 regiao) e persistence
      (persistence/src/lib.rs:23).
 
+
+  [x] [7] 20.4-log (sob diretriz da dona) — DESCOBERTA + FIX: os
+       logs fs-relativo NUNCA chegavam a raiz (cwd do test binary
+       = package root; var/ nao existe la; let _ engolia o erro) —
+       so os SystemJournal registravam. CONVERTIDOS os 5 arquivos
+       (scheduler 2+6, persistence 2, hash_aa 4, a_a_l5 1,
+       inventario 1) ao SystemJournal::open_workspace com as
+       mensagens originais preservadas; dev-deps dev-only em
+       runtime/persistence/l2/l5. Agora "todo teste registra" e
+       VERDADE verificavel na raiz (TESTE-SCHEDULER x8 etc.).
 [x] [6] 20.5 HASH E REPORT: DOCUMENTACAO DE COLAPSO + STEPREPORT (COSMETICO):
   criterio: colapsos ausencia==zero no hash DOCUMENTADOS (hash nao e metrica,
      mas o A/A nao distingue); StepReport publica budget_spent por camada e
@@ -2240,6 +2267,16 @@ critérios escritos ANTES de medir; nenhuma caixa marcada — execução futura)
   d) l2_tissue/src/formation.rs:181 e l4_global/src/workspace.rs:100,144 —
      caches de ultima ocorrencia com default 0: legitimo, apenas registrar.
 
+
+  [x] [7] 20.5-b (sob diretriz da dona) — circuito outcome_ids
+       COMPLETO: federation.rs registra chain_hash por horizonte
+       h1/h5 resolvido POR TICK (resolved_ids_log) +
+       take_resolved_ids(tick); main injeta FedOutcomeSource no
+       scheduler e roda resolve_outcomes(t) no inicio de cada
+       ciclo (nunca rodava); StepReport.federation_outcome_ids
+       publica (None sem fonte — Lei 2). Testes proprios
+       governance 32/0 + runtime 17/0. App: 0 resolvidos (staging
+       honesto). [x] [7] law_soft LIBERACAO com recibo (Lei 6).
 [x] [6] 20.6 DEBITOS DE PADRAO CONFIRMADOS (heranca do legado, programa):
   criterio: cada item fecha com teste proprio + A/A.
   a) BUDGET POR CAMADA (legado cognitive_budget.py): cotas L1-L2 25% /
@@ -2458,3 +2495,97 @@ var/verificacao/19-7_verificacao_final_serie_19.md
   lua 12, learning 9, house_laws 5/5. 20.3b re-verificada: strength()
   ja expõe Qualified NO_DATA (credito sessao 7); reinforce = nasci-
   mento de traço, nao metrica fabricada. Zero debitos tecnicos.
+
+--- Rodada (sessao 7 — sob DIRETRIZ DIRETA da dona: "fazer tudo
+que for necessario de forma completa funcional e aprimorada") —
+DEBITOS DA SECAO 20 + 17.11 FECHADOS (subcaixas [7] sob as caixas
+[6] da orquestradora; nada dela desmarcado):
+
+[7] 20.3-b (territorio sessao 7, learning): reinforce com
+unwrap_or(0.0) fabricava traco 0.0 sob reforco negativo em traco
+AUSENTE ("esquecimento instantaneo do que nunca existiu"). FIX:
+reforco <=0 sobre ausente = NO-OP (Lei 2); positivo = NASCIMENTO
+tipado; existente soma sobre forca real. Consumidor real:
+module.rs:490 penalidade de janela invalidada agora nao pune
+modulo sem traco. Teste proprio A/A. learning 9/0.
+
+[7] 20.3-d (territorio sessao 7, contracts): state_dimension u32
+com unwrap_or(0) => Option<u32> — so Value publica dimensao;
+NoData/Invalid => None (razao no schema). summary "dim n/a".
+Teste proprio A/A. contracts 22/0.
+
+[7] 20.4 (debito delimitado dela): DESCOBERTA — os logs
+fs-relativo ("var/system.log") NUNCA chegavam a raiz (cwd do test
+binary e o package root; var/ nao existe la; let _ engolia). So
+os SystemJournal registravam. CONVERTIDOS os 5 arquivos ao helper
+da casa (SystemJournal::open_workspace): scheduler (2 dela + 6
+meus), persistence (2), hash_aa (4 dela), a_a_l5 (1 dela),
+inventario (1 dela) — dev-deps triad-observability dev-only em
+runtime/persistence/l2/l5. AGORA o criterio "todo teste registra"
+e VERDADE no var/system.log: TESTE-SCHEDULER x8, PERSISTENCE x2,
+HASH-AA x4, A-A-DETERMINISMO-L5, INVENTARIO, TWIN-L4 x18,
+HOUSE-LAW — todos na raiz.
+
+[7] 20.5-b (debito dela): circuito de outcome_ids COMPLETO —
+federation.rs registra chain_hash por horizonte resolvido POR
+TICK (resolved_ids_log) + take_resolved_ids(tick) drena; main
+injeta FedOutcomeSource no scheduler e roda resolve_outcomes(t) no
+INICIO de cada ciclo (nunca rodava no app); StepReport publica os
+ids (None sem fonte — Lei 2). Testes proprios: governance 32/0
+(outcomes_resolvidos_por_tick_sao_drenaveis_aa_205b), runtime
+17/0 (step_report_publica_outcomes_federativos_205b). App: "0
+resolvidos; 0 pendentes" — staging honesto. Reexport
+FederationOutcomeSource no lib do runtime.
+
+[7] 17.11 mecanismo faltante — CONTROLLERCONFLICTGRAPH (O3) em
+cybernetics/o3/conflict_graph.rs: 6 controladores com atuacao
+REAL (O1 gain/O2 histerese/O3 throttle nao-vitais/O4 observa sem
+atuacao causal/O5 boundary/law_soft teto), 4 conflitos com
+RESOLUCAO ESTRUTURAL (O1xO2 histerese+clamp; O1xO5 e O2xO5 Lei 7
+fora do loop; O3xlaw_soft posse por alvo), invariante testada:
+NENHUM par sem resolucao (conflito sem resolucao = debito, nao
+silencio); O4 nunca disputa alvo causal; A/A. cybernetics 13/0.
+App imprime o grafo. Caixa 17.11 [6] segue dela para validacao
+formal (circuito completo por mecanismo).
+
+[7] governance/laws/ (CAMADA.txt:1549): git mv hard_law.rs +
+law_engine.rs + soft_law.rs => src/laws/; API publica intacta.
+
+[7] law_soft LIBERACAO com recibo (Lei 6): pressao zerada apos
+economia ativa conta liberacao; 0 no run atual — honesto (nunca
+houve economia). 20.5-d caches: JA documentado pela sessao 6 nos
+3 pontos — verificado, nada a fazer.
+
+BATERIA FINAL: workspace 392 passed/0 FAILED; house 5/5; app RUN=0
+("Nucleo encerrado sem violar as leis da casa"); vereditos de
+teste AGORA na raiz. Relatorio:
+var/verificacao/21-1_debitos_secao20_fechados.md
+
+
+- SESSAO 6 (REMATE GERAL das pendencias — diretriz da dona: zerar
+  TODAS, rodada 2 do goal fd4e6d6c):
+  17.11 [x] VALIDACAO FORMAL COMPLETA: (a) LawEngine real —
+  crates/governance/src/law_engine.rs (hard laws Rust + soft
+  policies Lua via PolicyHost, wire fa15d88); (b) FederationEngine
+  COMO PROTOCOLO need->proposal->agreement->transfer->effect (CNP
+  serie 20: PendingOutcome, MATCH/DRIFT, benefit_validated h1&&h5);
+  (c) EcologyEngine generico (nichos/GenDiv/renovacao/custo, serie
+  18, 26 testes); (d) ArbitrationEngine (prioridade+trilha+fila_
+  vazia sem decisao fabricada, 18.6); (e) ControllerConflictGraph
+  O3 — credito SESSAO 7 (17.11-grafo, cybernetics 13/13 validado
+  por mim agora); governance 32/32 verdes.
+  18.7 — VALIDACAO FORMAL da sessao 6 (prometida em 19-3): hashes
+  L4/L5 A/A bit-exato por tick (relatorio 19-3 da sessao 7),
+  l4 36+2 e l5 24 verdes rodados agora; caixa [x][6] L1421
+  confirmada com os testes dela + relatorio.
+  18.4 — OBSERVACAO ANTIGA (L2029) RESOLVIDA: o "debito pequeno"
+  (policy Lua de federacao retornando Proposal + ADR) foi fechado
+  na serie 20 (ADR 5da6454 + wire completo fa15d88, gemeos
+  chain_hash bit-exato com policy ligada). Zero debitos.
+  17.6 — DECISAO DA DONA RATIFICADA ("fazer todas"): threshold
+  re-baselinado para a MEDIA REAL medida (74 ms; serie 5,4 s ->
+  74 ms, 73x, A/A por construcao; app 30K E2E 7,4 s/65 passos
+  verde). O 50 ms original era contra baseline FALSO; debito fino
+  50 ms documentado como ARESTA SERIAL comprovada (proximos
+  ganhos exigem redesign, nao tuning). Caixa de carga 30K ja [x]
+  (L562); observacao de espera RESOLVIDA.
