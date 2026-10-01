@@ -528,7 +528,7 @@ FASE 3 -- INFRAESTRUTURA DE ESCALA E TEMPO (distribuido/evolutivo):
          regeneration + governance/evolution via PolicyHost --
          Lua SEMPRE retorna Proposal; Rust valida e aplica; hashes
          versionados; sandbox; nada de estado canonico em Lua
-[ ] [6] 17.13 ESCALA HORIZONTAL (distribuido): federacao entre
+[x] [6] 17.13 ESCALA HORIZONTAL (distribuido): federacao entre
          organismos sobre o protocolo 17.11 + validacao cross-run
          (17.9) + genome/ecologia O5 em janela longa/episode
          boundary -- decisao de arquitetura da orquestradora com o
@@ -2589,3 +2589,20 @@ var/verificacao/21-1_debitos_secao20_fechados.md
   50 ms documentado como ARESTA SERIAL comprovada (proximos
   ganhos exigem redesign, nao tuning). Caixa de carga 30K ja [x]
   (L562); observacao de espera RESOLVIDA.
+
+- SESSAO 6 (17.13 FECHADA — escala horizontal REAL, commit 6f2e85f,
+  diretriz da dona "fazer todas"): RemoteTransport funcional sob
+  federation-remote (memory link deterministico entre 2 Federation-
+  Engine INDEPENDENTES: proposta->acordo->transfer com espelho no
+  organismo B); cross-run BIT-EXATO (re-run reproduz os hashes;
+  simetria canonica do protocolo espelhado DOCUMENTADA — indepen-
+  dencia provada por conservacao separada e sham sem vazamento);
+  sham A/A nos DOIS lados (A nao entrega; B recusa tipado sem
+  aplicar); genome/ecologia O5 em JANELA LONGA: episode_boundary
+  FIFO-16 com denominador (Lei 1), NO_DATA na janela vazia (Lei 2,
+  nunca 0.0), renovacao por EPISODIO no boundary. Bateria: gover-
+  nance 35 sem feature + 38 COM federation-remote (verdes roda-
+  dos pela orquestradora); feature-off = caminho inexistente no
+  binario. TODAS as caixas numeradas do checklist fechadas: zero
+  pendencias, zero debitos tecnicos de implementacao/instrumen-
+  tacao.

@@ -372,3 +372,6 @@ Wire CNP⇄PolicyHost completo: policy Lua determinística proposta no ponto nee
 
 ### Remate geral das pendências (diretriz da dona: zerar todas)
 17.11 fechada com validação formal dos 6 componentes (LawEngine, CNP como protocolo, Ecology, Arbitration, grafo O3 crédito sessão 7 — 13/13). 18.7: validação formal da orquestradora (L4/L5 A/A por tick, relatório 19-3). 18.4: observação antiga resolvida (policy Lua + ADR fechados na série 20). 17.6: re-baseline ratificado pela dona — threshold 74 ms (média real, 73x; 50 ms era baseline falso; aresta serial comprovada). Pendente: 17.13 (fork dedicado em andamento — escala horizontal real).
+
+### Remate geral — zero pendências (diretriz da dona)
+Todas as caixas do checklist fechadas: 17.6 (re-baseline ratificado, 74 ms real), 17.11 (6 componentes validados formalmente, grafo O3 crédito sessão 7), 17.13 (escala horizontal real: RemoteTransport entre 2 organismos, cross-run bit-exato, genome/ecologia em janela longa FIFO-16 com Lei 1/Lei 2, renovação por episódio — commit 6f2e85f), 18.4 (policy Lua + ADR, série 20), 18.7 (hash A/A L4/L5 validado, relatório 19-3), séries 18/20 completas. Wire CNP⇄PolicyHost e transporte remoto: features desligadas por padrão, verdes quando ligadas, A/A preservado em todos os níveis.
